@@ -44,23 +44,23 @@ Bagel is a privacy-first payroll engine that feels like a Web2 app but runs on f
 
 ```mermaid
 graph TD
-    subgraph "The Bakery (Solana Mainnet)"
-        Employer[👨‍🍳 Employer Wallet] -->|Deposit USD1| BagelJar[🥯 The Bagel Jar (Smart Contract)]
-        Range[🛡️ Compliance Service] -.->|Audit Check| BagelJar
+    subgraph Bakery["The Bakery (Solana Mainnet)"]
+        Employer[Employer Wallet] -->|Deposit USD1| BagelJar[The Bagel Jar]
+        Range[Compliance Service] -.->|Audit Check| BagelJar
     end
 
-    subgraph "The Secret Kitchen (Confidential State)"
-        BagelJar -->|Encrypted Salary Data| Arcium[🔒 Arcium/Inco Logic]
-        Arcium -->|Idle Funds| PrivacyCash[📈 The Dough Rise (Yield SDK)]
+    subgraph Kitchen["The Secret Kitchen (Confidential State)"]
+        BagelJar -->|Encrypted Salary Data| Arcium[Arcium/Inco Logic]
+        Arcium -->|Idle Funds| PrivacyCash[The Dough Rise - Yield SDK]
     end
 
-    subgraph "The Delivery Route (Execution)"
-        MagicBlock[⚡ MagicBlock Rollup] -->|Stream Per Second| StreamState[💸 Accrued Balance]
+    subgraph Delivery["The Delivery Route (Execution)"]
+        MagicBlock[MagicBlock Rollup] -->|Stream Per Second| StreamState[Accrued Balance]
     end
 
-    subgraph "Employee Experience"
-        StreamState -->|Withdraw| ShadowWire[🕵️ ShadowWire ZK-Transfer]
-        ShadowWire -->|Private Payday| Employee[👷 Employee Wallet]
+    subgraph EmployeeExp["Employee Experience"]
+        StreamState -->|Withdraw| ShadowWire[ShadowWire ZK-Transfer]
+        ShadowWire -->|Private Payday| Employee[Employee Wallet]
     end
 
 ```
