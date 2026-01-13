@@ -1,0 +1,37 @@
+{
+  "name": "bagel",
+  "version": "0.1.0",
+  "description": "Simple payroll, private paydays, and a little extra cream cheese",
+  "keywords": [
+    "solana",
+    "privacy",
+    "payroll",
+    "web3",
+    "defi"
+  ],
+  "author": "ConejoCapital",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ConejoCapital/Bagel"
+  },
+  "scripts": {
+    "dev": "cd app && npm run dev",
+    "build": "anchor build && cd app && npm run build",
+    "test": "anchor test",
+    "lint": "cd app && npm run lint",
+    "deploy": "anchor deploy"
+  },
+  "dependencies": {
+    "@coral-xyz/anchor": "^0.29.0",
+    "@solana/web3.js": "^1.87.6",
+    "@solana/wallet-adapter-base": "^0.9.23",
+    "@solana/wallet-adapter-react": "^0.15.35",
+    "@solana/wallet-adapter-react-ui": "^0.9.35",
+    "@solana/wallet-adapter-wallets": "^0.19.32"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.3.3"
+  }
+}
