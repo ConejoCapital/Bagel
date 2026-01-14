@@ -54,6 +54,8 @@ export function getProvider(
 /**
  * Create a new payroll (bake_payroll instruction)
  * MANUAL INSTRUCTION BUILDING (no IDL needed!)
+ * 
+ * IMPORTANT: Uses wallet.sendTransaction() which properly respects the connection's cluster!
  */
 export async function createPayroll(
   connection: Connection,
@@ -61,13 +63,15 @@ export async function createPayroll(
   employee: PublicKey,
   salaryPerSecond: number // in lamports
 ): Promise<string> {
-  if (!wallet.publicKey || !wallet.signTransaction || !wallet.signAllTransactions) {
+  if (!wallet.publicKey || !wallet.sendTransaction) {
     throw new Error('Wallet not connected');
   }
 
   const employer = wallet.publicKey;
   const [payrollJarPDA] = getPayrollJarPDA(employee, employer);
 
+  // Log connection info for debugging
+  console.log('🔗 Connection endpoint:', connection.rpcEndpoint);
   console.log('Creating payroll...');
   console.log('Employer:', employer.toBase58());
   console.log('Employee:', employee.toBase58());
@@ -96,17 +100,33 @@ export async function createPayroll(
       data,
     });
 
+    // Create transaction
     const transaction = new web3.Transaction().add(instruction);
+    
+    // Get recent blockhash from our devnet connection
+    const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('confirmed');
+    transaction.recentBlockhash = blockhash;
     transaction.feePayer = employer;
-    transaction.recentBlockhash = (await connection.getLatestBlockhash()).blockhash;
 
-    const signed = await wallet.signTransaction(transaction);
-    const txid = await connection.sendRawTransaction(signed.serialize());
+    console.log('📤 Sending transaction via wallet.sendTransaction()...');
+    console.log('   Blockhash:', blockhash);
+    
+    // USE sendTransaction - this properly uses the connection's cluster!
+    // This is the KEY FIX - signTransaction + sendRawTransaction bypasses wallet's network detection
+    const txid = await wallet.sendTransaction(transaction, connection, {
+      skipPreflight: false,
+      preflightCommitment: 'confirmed',
+    });
     
     console.log('Transaction sent:', txid);
     
     // Wait for confirmation
-    await connection.confirmTransaction(txid, 'confirmed');
+    console.log('⏳ Waiting for confirmation...');
+    await connection.confirmTransaction({
+      blockhash,
+      lastValidBlockHeight,
+      signature: txid,
+    }, 'confirmed');
     
     console.log('✅ Payroll created! Transaction:', txid);
     return txid;
