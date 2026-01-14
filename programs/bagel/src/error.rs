@@ -34,4 +34,10 @@ pub enum BagelError {
     
     #[msg("Invalid timestamp detected")]
     InvalidTimestamp,
+    
+    #[msg("Amount must be greater than zero")]
+    InvalidAmount,
+    
+    #[msg("Arithmetic underflow occurred during calculation")]
+    ArithmeticUnderflow,
 }

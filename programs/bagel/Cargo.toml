@@ -13,11 +13,15 @@ no-entrypoint = []
 no-idl = []
 no-log-ix-name = []
 cpi = ["no-entrypoint"]
+idl-build = ["anchor-lang/idl-build"]  # , "anchor-spl/idl-build"]
 default = []
 
 [dependencies]
 anchor-lang = "0.29.0"
-anchor-spl = "0.29.0"
+# anchor-spl = "0.29.0"  # Temporarily disabled due to spl-token-2022 stack issues
+# Pin to Edition 2021 compatible versions (Solana 3.0.x toolchain limitation)
+blake3 = "=1.8.2"
+constant_time_eq = "=0.3.1"
 
 [profile.release]
 overflow-checks = true
