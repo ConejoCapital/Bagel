@@ -28,6 +28,9 @@ pub mod shadowwire;
 // MagicBlock streaming payments module
 pub mod magicblock;
 
+// Privacy Cash yield generation module
+pub mod privacycash;
+
 /// Encrypted u64 type using Arcium C-SPL
 /// 
 /// **RE-EXPORT:** Using Arcium's ConfidentialBalance type
@@ -75,6 +78,9 @@ pub use shadowwire::{execute_private_payout, initialize_encrypted_balance, Shado
 
 // Re-export MagicBlock functions
 pub use magicblock::{initialize_stream, get_stream_balance, claim_streamed_balance, EphemeralSession};
+
+// Re-export Privacy Cash functions
+pub use privacycash::{deposit_to_vault, calculate_employee_yield_bonus, YieldVaultPosition, YieldDistribution};
 
 /// Calculate accrued salary using Arcium MPC
 /// 
