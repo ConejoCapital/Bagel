@@ -254,15 +254,94 @@ export class BagelClient {
     console.log('   Employee:', this.wallet.publicKey.toBase58());
     console.log('   Employer:', employerAddress);
 
-    // For now, use direct withdrawal
-    // In production, this would:
-    // 1. Generate ShadowWire Bulletproof proof (frontend)
-    // 2. Undelegate from MagicBlock ER (if delegated)
-    // 3. Call get_dough with proof
+    // Check if privacy features are enabled
+    const SHADOW_WIRE_ENABLED = process.env.NEXT_PUBLIC_SHADOWWIRE_ENABLED === 'true';
+    const MAGIC_BLOCK_ENABLED = process.env.NEXT_PUBLIC_MAGICBLOCK_ENABLED === 'true';
 
-    console.log('   ⚠️  NOTE: ShadowWire proof generation pending');
-    console.log('   ⚠️  NOTE: MagicBlock undelegate pending');
-    console.log('   Using direct withdrawal for now');
+    // Step 1: MagicBlock - Undelegate from ER if enabled
+    if (MAGIC_BLOCK_ENABLED) {
+      try {
+        console.log('   ⚡ Undelegating from MagicBlock ER...');
+        const { MagicBlockClient } = await import('./magicblock');
+        
+        const magicBlockClient = new MagicBlockClient({
+          solanaRpcUrl: this.connection.rpcEndpoint,
+          network: 'devnet',
+        });
+
+        // Get payroll data to find ER session
+        const payrollData = await this.getPayroll(
+          this.wallet.publicKey.toBase58(),
+          employerAddress
+        );
+
+        if (payrollData) {
+          // Undelegate and commit state to L1
+          await magicBlockClient.undelegateAccount(
+            new PublicKey(payrollData.doughVault)
+          );
+          console.log('   ✅ MagicBlock ER state committed to L1');
+        }
+      } catch (err) {
+        console.warn('   ⚠️  MagicBlock undelegate failed, continuing with direct withdrawal:', err);
+      }
+    }
+
+    // Step 2: ShadowWire - Generate Bulletproof proof if enabled
+    let shadowwireProof: { commitment: Uint8Array; rangeProof: Uint8Array } | null = null;
+    
+    if (SHADOW_WIRE_ENABLED) {
+      try {
+        console.log('   🔒 Generating ShadowWire Bulletproof proof...');
+        const { ShadowWireClient } = await import('./shadowwire');
+        
+        const shadowwireClient = new ShadowWireClient({
+          solanaRpcUrl: this.connection.rpcEndpoint,
+          network: 'devnet',
+          programId: 'GQBqwwoikYh7p6KEUHDUu5r9dHHXx9tMGskAPubmFPzD',
+        });
+
+        // Get accrued balance
+        const payrollData = await this.getPayroll(
+          this.wallet.publicKey.toBase58(),
+          employerAddress
+        );
+
+        if (payrollData) {
+          // Calculate accrued amount (this would normally come from MPC)
+          const currentTime = Math.floor(Date.now() / 1000);
+          const elapsedSeconds = currentTime - payrollData.lastWithdraw;
+          // Note: In production, this would use decrypted salary from Arcium
+          const MOCK_SALARY_PER_SECOND = 27_777;
+          const amount = MOCK_SALARY_PER_SECOND * elapsedSeconds;
+
+          // Generate proof
+          const proof = await shadowwireClient.generatePrivateTransferProof({
+            amount,
+            recipient: this.wallet.publicKey,
+            mint: new PublicKey('11111111111111111111111111111111'), // USD1 mint placeholder
+          });
+
+          shadowwireProof = {
+            commitment: proof.commitment,
+            rangeProof: proof.rangeProof.proof,
+          };
+
+          console.log('   ✅ ShadowWire Bulletproof proof generated');
+          console.log('   ✅ Transfer amount hidden in proof');
+        }
+      } catch (err) {
+        console.warn('   ⚠️  ShadowWire proof generation failed, continuing with direct withdrawal:', err);
+      }
+    }
+
+    // Step 3: Execute withdrawal
+    // Note: Currently get_dough doesn't accept ShadowWire proof yet
+    // This will be added when the program is updated
+    if (shadowwireProof) {
+      console.log('   ⚠️  NOTE: ShadowWire proof ready but program integration pending');
+      console.log('   Using direct withdrawal (proof will be used in future update)');
+    }
 
     const signature = await bagelClient.withdrawDough(
       this.connection,
@@ -271,6 +350,8 @@ export class BagelClient {
     );
 
     console.log('✅ Salary withdrawn:', signature);
+    console.log('   View on Solscan: https://solscan.io/tx/' + signature + '?cluster=devnet');
+    
     return signature;
   }
 
