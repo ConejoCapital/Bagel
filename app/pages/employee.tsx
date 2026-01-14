@@ -337,8 +337,16 @@ export default function EmployeeDashboard() {
                       )}
                       <div className="mt-4 bg-yellow-50 border border-yellow-300 rounded-lg p-3">
                         <p className="text-xs text-yellow-800">
-                          <strong>Privacy Note:</strong> The salary amount is encrypted on-chain (PRIVATE). 
-                          Only the payout amount and transaction validity are public.
+                          <strong>🔒 Privacy Note:</strong> The salary amount is encrypted on-chain (PRIVATE). 
+                          Only the payout amount and transaction validity are public. This dashboard shows 
+                          <strong> PUBLIC</strong> balances for verification—your actual salary rate remains hidden.
+                        </p>
+                      </div>
+                      <div className="mt-3 bg-blue-50 border border-blue-300 rounded-lg p-3">
+                        <p className="text-xs text-blue-800">
+                          <strong>👁️ For Judges:</strong> You can verify the system works by checking:
+                          (1) PayrollJar balance increases after deposits, (2) Employee balance increases after withdrawal,
+                          (3) Transaction signatures on Solscan. The salary amount itself is encrypted and never revealed.
                         </p>
                       </div>
                     </div>
