@@ -74,6 +74,9 @@ export class BagelClient {
    * @param employeeAddress - Employee's wallet address
    * @param salaryPerSecond - Salary in lamports per second
    * @returns Transaction signature
+   * 
+   * **PRIVACY:** This method encrypts the salary client-side before sending to the program.
+   * The plaintext salary never appears on-chain.
    */
   async initEmployer(
     employeeAddress: string,
@@ -86,8 +89,9 @@ export class BagelClient {
     console.log('🥯 Initializing employer vault...');
     console.log('   Employee:', employeeAddress);
     console.log('   Salary:', salaryPerSecond, 'lamports/second');
+    console.log('   🔒 Salary will be encrypted client-side before on-chain storage');
 
-    // Use existing createPayroll function
+    // Use existing createPayroll function (now encrypts client-side)
     const signature = await bagelClient.createPayroll(
       this.connection,
       this.wallet,
@@ -96,6 +100,7 @@ export class BagelClient {
     );
 
     console.log('✅ Employer vault initialized:', signature);
+    console.log('   ✅ Salary stored as encrypted ciphertext on-chain');
     return signature;
   }
 

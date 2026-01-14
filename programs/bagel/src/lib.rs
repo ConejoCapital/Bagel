@@ -22,11 +22,14 @@ pub mod bagel {
 
     /// Initialize a new payroll for an employee with encrypted salary
     /// 🥯 "Start Baking" - Create a new BagelJar for an employee
+    /// 
+    /// **PRIVACY:** This accepts pre-encrypted salary ciphertext (32 bytes).
+    /// The frontend MUST encrypt the salary using Arcium RescueCipher before calling this.
     pub fn bake_payroll(
         ctx: Context<BakePayroll>,
-        salary_per_second: u64,
+        salary_ciphertext: [u8; 32],
     ) -> Result<()> {
-        instructions::bake_payroll::handler(ctx, salary_per_second)
+        instructions::bake_payroll::handler(ctx, salary_ciphertext)
     }
 
     /// Deposit funds into the BagelJar
