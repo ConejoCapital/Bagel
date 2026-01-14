@@ -25,9 +25,9 @@ constant_time_eq = "=0.3.1"
 # Kamino Lend V2 SDK
 kamino-lend = { version = "0.4.1", features = ["cpi"] }
 # MagicBlock Ephemeral Rollups SDK
-# NOTE: Uncomment when program ID is available from MagicBlock team
-# ephemeral-rollups-sdk = { version = "0.7.2", features = ["anchor"] }
+# Program ID: DELeGGvXpWV2fqJUhqcF5ZSYMS4JTLjteaAMARRSaeSh (Delegation Program)
 # Devnet RPC: https://devnet.magicblock.app/
+ephemeral-rollups-sdk = { version = "0.7.2", features = ["anchor"] }
 
 [profile.release]
 overflow-checks = true

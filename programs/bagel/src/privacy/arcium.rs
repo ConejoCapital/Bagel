@@ -192,18 +192,22 @@ impl MPCCircuit {
     /// 
     /// **DEPLOYED:** MXE account address from Arcium deployment
     /// MXE: 5nGzD7hUHyWQR24rDHiZv7mvKFfvWmomUNNzjzt6XEWuCv58DyiyyRUviSWvGNzkRj4TaoAAUDk3Q4MQuHB8eCY
-    /// Cluster: 1078779259 (Devnet)
+    /// Cluster: pEtraPDXjE9SJzENgzgsN2RGvyXzxr3Bdj7vbBCt8sciLK2z81JGweokhFq7qYjA6SV8vWnF7LsFT6vKkt5hiYd
+    /// Cluster Offset: 1078779259 (Devnet)
     /// Deployed: 2026-01-14
     pub fn payroll_circuit() -> Self {
+        use crate::constants::{ARCIUM_MXE_ACCOUNT, ARCIUM_CLUSTER_ACCOUNT};
+        
         // Get from environment variable (set in Anchor.toml or .env)
         // Or from: NEXT_PUBLIC_ARCIUM_CIRCUIT_ID environment variable
         let circuit_id_str = std::env::var("ARCIUM_CIRCUIT_ID")
             .unwrap_or_else(|_| {
                 // Fallback to deployed MXE address (Devnet)
-                "5nGzD7hUHyWQR24rDHiZv7mvKFfvWmomUNNzjzt6XEWuCv58DyiyyRUviSWvGNzkRj4TaoAAUDk3Q4MQuHB8eCY".to_string()
+                ARCIUM_MXE_ACCOUNT.to_string()
             });
         
         msg!("🔮 MPC Circuit v0.5.4: {}", circuit_id_str);
+        msg!("   Cluster: {}", ARCIUM_CLUSTER_ACCOUNT);
         msg!("   Priority Fee: 1000 micro-lamports");
         msg!("   ✅ MXE deployed and initialized on Devnet");
         

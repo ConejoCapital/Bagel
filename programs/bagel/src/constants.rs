@@ -26,6 +26,15 @@ pub const KAMINO_MAIN_MARKET: &str = "7u3HeHxYDLhnCoErrtycNokbQYbWGzLs6JSDqGAv5P
 pub const KAMINO_SOL_RESERVE: &str = "d4A2prbA2whesmvHaL88BH6Ewn5N4bTSU2Ze8P6Bc4Q";
 pub const KAMINO_USDC_RESERVE: &str = "D6q6wuQSrifJKZYpR1M8R4YawnLDtDsMmWM1NbBmgJ59";
 
+/// Arcium MPC Configuration (Devnet)
+/// Cluster Offset: 1078779259
+/// Cluster Account: pEtraPDXjE9SJzENgzgsN2RGvyXzxr3Bdj7vbBCt8sciLK2z81JGweokhFq7qYjA6SV8vWnF7LsFT6vKkt5hiYd
+/// MXE Account: 5nGzD7hUHyWQR24rDHiZv7mvKFfvWmomUNNzjzt6XEWuCv58DyiyyRUviSWvGNzkRj4TaoAAUDk3Q4MQuHB8eCY
+/// Deployed: 2026-01-14
+pub const ARCIUM_CLUSTER_OFFSET: u64 = 1078779259;
+pub const ARCIUM_CLUSTER_ACCOUNT: &str = "pEtraPDXjE9SJzENgzgsN2RGvyXzxr3Bdj7vbBCt8sciLK2z81JGweokhFq7qYjA6SV8vWnF7LsFT6vKkt5hiYd";
+pub const ARCIUM_MXE_ACCOUNT: &str = "5nGzD7hUHyWQR24rDHiZv7mvKFfvWmomUNNzjzt6XEWuCv58DyiyyRUviSWvGNzkRj4TaoAAUDk3Q4MQuHB8eCY";
+
 /// Privacy Provider Program IDs
 /// 
 /// These will be updated with actual program IDs from each team.
