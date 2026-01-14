@@ -23,6 +23,7 @@ import {
   ChevronRight,
 } from 'lucide-react';
 import { BagelLoader } from '../components/ui/holo-pulse-loader';
+import ScrollMorphHero from '../components/ui/scroll-morph-hero';
 
 const WalletButton = dynamic(() => import('../components/WalletButton'), {
   ssr: false,
@@ -93,7 +94,14 @@ export default function Landing() {
           className="min-h-screen bg-white"
         >
           {/* ============================================
-              NAVIGATION
+              SCROLL MORPH HERO - FIRST THING USERS SEE
+          ============================================ */}
+          <section className="relative h-[85vh] min-h-[600px]">
+            <ScrollMorphHero />
+          </section>
+
+          {/* ============================================
+              NAVIGATION - Fixed on top
           ============================================ */}
           <motion.nav
             initial={{ y: -100 }}
