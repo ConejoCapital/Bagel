@@ -30,6 +30,7 @@ pub fn handler(
     // Reconstruct encrypted salary from stored bytes
     let encrypted_salary = EncryptedU64 {
         ciphertext: jar.encrypted_salary_per_second.clone(),
+        encryption_pubkey: None, // Will be populated when using real C-SPL
     };
     
     // Calculate accrued amount using FHE (encrypted computation!)
