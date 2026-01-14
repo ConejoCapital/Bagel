@@ -22,6 +22,8 @@ anchor-lang = "0.29.0"
 # Pin to Edition 2021 compatible versions (Solana 3.0.x toolchain limitation)
 blake3 = "=1.8.2"
 constant_time_eq = "=0.3.1"
+# MagicBlock Ephemeral Rollups SDK
+# ephemeral-rollups-sdk = { version = "0.1.0", features = ["anchor"] }  # TODO: Uncomment when SDK is available
 
 [profile.release]
 overflow-checks = true

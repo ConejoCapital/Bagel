@@ -170,7 +170,7 @@ impl ShadowWireTransfer {
     /// Create a mock range proof (for development)
     /// 
     /// **PRODUCTION:** Replace with real Bulletproof
-    fn mock_range_proof(amount: u64) -> Vec<u8> {
+    fn mock_range_proof(_amount: u64) -> Vec<u8> {
         // Mock: Just the amount bytes (NOT A REAL PROOF!)
         // Real Bulletproof would be ~672 bytes proving:
         // - Amount is in range [0, 2^64)

@@ -31,6 +31,9 @@ pub mod magicblock;
 // Privacy Cash yield generation module
 pub mod privacycash;
 
+// Kamino Finance yield integration module
+pub mod kamino;
+
 /// Encrypted u64 type using Arcium C-SPL
 /// 
 /// **RE-EXPORT:** Using Arcium's ConfidentialBalance type
@@ -77,10 +80,13 @@ pub use arcium::{encrypt_salary, decrypt_for_transfer};
 pub use shadowwire::{execute_private_payout, initialize_encrypted_balance, ShadowWireTransfer};
 
 // Re-export MagicBlock functions
-pub use magicblock::{initialize_stream, get_stream_balance, claim_streamed_balance, EphemeralSession};
+pub use magicblock::{delegate_payroll_jar, commit_and_undelegate, get_er_balance, ERConfig};
 
 // Re-export Privacy Cash functions
 pub use privacycash::{deposit_to_vault, calculate_employee_yield_bonus, YieldVaultPosition, YieldDistribution};
+
+// Re-export Kamino functions
+pub use kamino::{deposit_to_kamino_vault, KaminoVaultPosition};
 
 /// Calculate accrued salary using Arcium MPC
 /// 
