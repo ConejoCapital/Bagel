@@ -5,7 +5,18 @@
 Built for the [Solana Privacy Hackathon](https://solana.com/privacyhack) (January 2026)
 
 🏆 **Targeting $10,000 Arcium DeFi Bounty** 🏆  
-🔐 **Powered by C-SPL (Confidential SPL) Standard** 🔐
+🔐 **Powered by Arcium's C-SPL (Confidential SPL) and Multi-Party Computation** 🔐
+
+## 🔮 How Arcium MPC Powers Bagel
+
+Bagel uses **Arcium's Multi-Party Computation (MPC)** to calculate salary accruals **without ever revealing the base salary on-chain**. Here's how:
+
+1. **Encrypted Storage**: Salaries are stored as **C-SPL confidential balances** using Arcium's Twisted ElGamal encryption
+2. **MPC Calculation**: Our custom MPC circuit computes `accrued = salary_per_second * elapsed_time` **without decrypting**
+3. **Privacy Preserved**: The calculation happens across distributed nodes - no single party sees the plaintext salary
+4. **RescueCipher Decryption**: Only the employee can decrypt their accrued pay using their x25519 private key
+
+**Result:** Employers can pay teams transparently while keeping individual salaries completely private. 🎯
 
 ---
 
