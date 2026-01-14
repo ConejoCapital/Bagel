@@ -1,10 +1,14 @@
 import { useWallet, useConnection } from '@solana/wallet-adapter-react';
-import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
 import { PublicKey, SystemProgram, LAMPORTS_PER_SOL } from '@solana/web3.js';
 import { Program, AnchorProvider, web3, BN } from '@coral-xyz/anchor';
 import Head from 'next/head';
 import Link from 'next/link';
+import dynamic from 'next/dynamic';
 import { useState } from 'react';
+
+const WalletButton = dynamic(() => import('../components/WalletButton'), {
+  ssr: false,
+});
 
 const PROGRAM_ID = new PublicKey('8rgaVvV6m3SSaVJfJ2VNoBk67frTWbCS3WDBjrk7S6gU');
 
@@ -82,7 +86,7 @@ export default function EmployerDashboard() {
           {!wallet.connected ? (
             <div className="card text-center">
               <p className="text-lg mb-4">Please connect your wallet to continue</p>
-              <WalletMultiButton />
+              <WalletButton />
             </div>
           ) : (
             <div className="space-y-6">

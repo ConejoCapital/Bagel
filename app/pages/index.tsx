@@ -1,7 +1,11 @@
 import { useWallet } from '@solana/wallet-adapter-react';
-import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
 import Head from 'next/head';
 import Link from 'next/link';
+import dynamic from 'next/dynamic';
+
+const WalletButton = dynamic(() => import('../components/WalletButton'), {
+  ssr: false,
+});
 
 export default function Home() {
   const { connected, publicKey } = useWallet();
@@ -23,7 +27,7 @@ export default function Home() {
               <span className="text-4xl">🥯</span>
               <h1 className="text-2xl font-bold text-[#2D2D2A]">Bagel</h1>
             </div>
-            <WalletMultiButton />
+            <WalletButton />
           </div>
         </header>
 

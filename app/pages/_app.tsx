@@ -1,11 +1,17 @@
 import type { AppProps } from 'next/app';
 import { useMemo } from 'react';
+import dynamic from 'next/dynamic';
 import { ConnectionProvider, WalletProvider } from '@solana/wallet-adapter-react';
 import { WalletAdapterNetwork } from '@solana/wallet-adapter-base';
 import { PhantomWalletAdapter, SolflareWalletAdapter } from '@solana/wallet-adapter-wallets';
-import { WalletModalProvider } from '@solana/wallet-adapter-react-ui';
 import '@solana/wallet-adapter-react-ui/styles.css';
 import '../styles/globals.css';
+
+// Dynamically import WalletModalProvider to avoid SSR issues
+const WalletModalProvider = dynamic(
+  async () => (await import('@solana/wallet-adapter-react-ui')).WalletModalProvider,
+  { ssr: false }
+);
 
 export default function App({ Component, pageProps }: AppProps) {
   const network = WalletAdapterNetwork.Devnet;

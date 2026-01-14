@@ -1,8 +1,12 @@
 import { useWallet } from '@solana/wallet-adapter-react';
-import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
 import Head from 'next/head';
 import Link from 'next/link';
+import dynamic from 'next/dynamic';
 import { useState, useEffect } from 'react';
+
+const WalletButton = dynamic(() => import('../components/WalletButton'), {
+  ssr: false,
+});
 
 export default function EmployeeDashboard() {
   const wallet = useWallet();
@@ -93,7 +97,7 @@ export default function EmployeeDashboard() {
           {!wallet.connected ? (
             <div className="card text-center">
               <p className="text-lg mb-4">Please connect your wallet to continue</p>
-              <WalletMultiButton />
+              <WalletButton />
             </div>
           ) : (
             <div className="space-y-6">
