@@ -190,22 +190,22 @@ impl MPCCircuit {
     /// **CIRCUIT HASH:** The computation_def will match the hash from `build/payroll.hash`
     /// generated during `arcium build`. Use `circuit_hash!` macro to embed it at compile time.
     /// 
-    /// **UPDATE:** Once circuit is deployed, update ARCIUM_CIRCUIT_ID environment variable
-    /// or replace "PLACEHOLDER_CIRCUIT_ID" with the actual Computation Offset.
+    /// **DEPLOYED:** MXE account address from Arcium deployment
+    /// MXE: 5nGzD7hUHyWQR24rDHiZv7mvKFfvWmomUNNzjzt6XEWuCv58DyiyyRUviSWvGNzkRj4TaoAAUDk3Q4MQuHB8eCY
+    /// Cluster: 1078779259 (Devnet)
+    /// Deployed: 2026-01-14
     pub fn payroll_circuit() -> Self {
-        // TODO: Replace with actual Circuit ID from deployment
-        // Get from: arcium deploy output (Computation Definition Offset)
+        // Get from environment variable (set in Anchor.toml or .env)
         // Or from: NEXT_PUBLIC_ARCIUM_CIRCUIT_ID environment variable
         let circuit_id_str = std::env::var("ARCIUM_CIRCUIT_ID")
             .unwrap_or_else(|_| {
-                // Fallback: Check for circuit hash from build
-                // In production, use: circuit_hash!("payroll") macro
-                "PLACEHOLDER_CIRCUIT_ID".to_string()
+                // Fallback to deployed MXE address (Devnet)
+                "5nGzD7hUHyWQR24rDHiZv7mvKFfvWmomUNNzjzt6XEWuCv58DyiyyRUviSWvGNzkRj4TaoAAUDk3Q4MQuHB8eCY".to_string()
             });
         
-        msg!("🔮 MPC Circuit v0.5.1: {}", circuit_id_str);
+        msg!("🔮 MPC Circuit v0.5.4: {}", circuit_id_str);
         msg!("   Priority Fee: 1000 micro-lamports");
-        msg!("   ⚠️ NOTE: Update with Computation Offset from arcium deploy");
+        msg!("   ✅ MXE deployed and initialized on Devnet");
         
         Self {
             circuit_id: circuit_id_str,
