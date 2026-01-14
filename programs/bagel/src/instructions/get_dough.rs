@@ -88,11 +88,15 @@ pub struct GetDough<'info> {
     #[account(mut)]
     pub employee: Signer<'info>,
     
+    /// CHECK: Employer reference needed for PDA derivation
+    pub employer: UncheckedAccount<'info>,
+    
     #[account(
         mut,
-        seeds = [BAGEL_JAR_SEED, payroll_jar.employer.as_ref()],
+        seeds = [BAGEL_JAR_SEED, employer.key().as_ref(), employee.key().as_ref()],
         bump,
         has_one = employee,
+        has_one = employer,
     )]
     pub payroll_jar: Account<'info, PayrollJar>,
     

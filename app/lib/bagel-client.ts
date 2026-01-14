@@ -95,12 +95,17 @@ export async function createPayroll(
     
     const data = Buffer.concat([discriminator, salaryBuffer]);
 
+    // Account order MUST match BakePayroll struct in bake_payroll.rs:
+    // 1. employer (Signer, mut)
+    // 2. employee (UncheckedAccount, not mut)
+    // 3. payroll_jar (Account, init, mut) 
+    // 4. system_program
     const instruction = new web3.TransactionInstruction({
       keys: [
-        { pubkey: payrollJarPDA, isSigner: false, isWritable: true },
-        { pubkey: employer, isSigner: true, isWritable: true },
-        { pubkey: employee, isSigner: false, isWritable: false },
-        { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
+        { pubkey: employer, isSigner: true, isWritable: true },      // 1. employer
+        { pubkey: employee, isSigner: false, isWritable: false },    // 2. employee
+        { pubkey: payrollJarPDA, isSigner: false, isWritable: true },// 3. payroll_jar PDA
+        { pubkey: SystemProgram.programId, isSigner: false, isWritable: false }, // 4. system
       ],
       programId: BAGEL_PROGRAM_ID,
       data,
@@ -311,12 +316,17 @@ export async function withdrawDough(
     
     const data = discriminator; // No additional params needed
 
+    // Account order MUST match GetDough struct in get_dough.rs:
+    // 1. employee (Signer, mut)
+    // 2. employer (UncheckedAccount)
+    // 3. payroll_jar (Account, mut)
+    // 4. system_program
     const instruction = new web3.TransactionInstruction({
       keys: [
-        { pubkey: payrollJarPDA, isSigner: false, isWritable: true },
-        { pubkey: employee, isSigner: true, isWritable: true },
-        { pubkey: employer, isSigner: false, isWritable: true },
-        { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
+        { pubkey: employee, isSigner: true, isWritable: true },        // 1. employee
+        { pubkey: employer, isSigner: false, isWritable: false },      // 2. employer
+        { pubkey: payrollJarPDA, isSigner: false, isWritable: true },  // 3. payroll_jar
+        { pubkey: SystemProgram.programId, isSigner: false, isWritable: false }, // 4. system
       ],
       programId: BAGEL_PROGRAM_ID,
       data,
@@ -399,12 +409,17 @@ export async function depositDough(
     
     const data = Buffer.concat([discriminator, amountBuffer]);
 
+    // Account order MUST match DepositDough struct in deposit_dough.rs:
+    // 1. employer (Signer, mut)
+    // 2. employee (UncheckedAccount)
+    // 3. payroll_jar (Account, mut)
+    // 4. system_program
     const instruction = new web3.TransactionInstruction({
       keys: [
-        { pubkey: payrollJarPDA, isSigner: false, isWritable: true },
-        { pubkey: employer, isSigner: true, isWritable: true },
-        { pubkey: employee, isSigner: false, isWritable: false },
-        { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
+        { pubkey: employer, isSigner: true, isWritable: true },       // 1. employer
+        { pubkey: employee, isSigner: false, isWritable: false },     // 2. employee
+        { pubkey: payrollJarPDA, isSigner: false, isWritable: true }, // 3. payroll_jar
+        { pubkey: SystemProgram.programId, isSigner: false, isWritable: false }, // 4. system
       ],
       programId: BAGEL_PROGRAM_ID,
       data,
@@ -481,12 +496,17 @@ export async function closePayroll(
     
     const data = discriminator; // No additional params needed
 
+    // Account order MUST match CloseJar struct in close_jar.rs:
+    // 1. employer (Signer, mut)
+    // 2. employee (UncheckedAccount)
+    // 3. payroll_jar (Account, mut, close)
+    // 4. system_program
     const instruction = new web3.TransactionInstruction({
       keys: [
-        { pubkey: payrollJarPDA, isSigner: false, isWritable: true },
-        { pubkey: employer, isSigner: true, isWritable: true },
-        { pubkey: employee, isSigner: false, isWritable: false },
-        { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
+        { pubkey: employer, isSigner: true, isWritable: true },        // 1. employer
+        { pubkey: employee, isSigner: false, isWritable: false },      // 2. employee
+        { pubkey: payrollJarPDA, isSigner: false, isWritable: true },  // 3. payroll_jar
+        { pubkey: SystemProgram.programId, isSigner: false, isWritable: false }, // 4. system
       ],
       programId: BAGEL_PROGRAM_ID,
       data,

@@ -38,9 +38,12 @@ pub struct DepositDough<'info> {
     #[account(mut)]
     pub employer: Signer<'info>,
     
+    /// CHECK: Employee reference needed for PDA derivation
+    pub employee: UncheckedAccount<'info>,
+    
     #[account(
         mut,
-        seeds = [BAGEL_JAR_SEED, employer.key().as_ref()],
+        seeds = [BAGEL_JAR_SEED, employer.key().as_ref(), employee.key().as_ref()],
         bump,
         has_one = employer,
     )]
