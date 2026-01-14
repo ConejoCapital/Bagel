@@ -18,6 +18,9 @@ const BAGEL_JAR_SEED = Buffer.from('bagel_jar');
 
 /**
  * Get the PayrollJar PDA for an employee and employer
+ * 
+ * IMPORTANT: Seed order must match the program!
+ * Program uses: [SEED, employer, employee] (see bake_payroll.rs lines 62-65)
  */
 export function getPayrollJarPDA(
   employee: PublicKey,
@@ -26,8 +29,8 @@ export function getPayrollJarPDA(
   return PublicKey.findProgramAddressSync(
     [
       BAGEL_JAR_SEED,
-      employee.toBuffer(),
-      employer.toBuffer(),
+      employer.toBuffer(),  // employer FIRST (matches program)
+      employee.toBuffer(),  // employee SECOND (matches program)
     ],
     BAGEL_PROGRAM_ID
   );
@@ -83,7 +86,8 @@ export async function createPayroll(
   try {
     // Build the instruction data manually
     // Instruction discriminator for bake_payroll (first 8 bytes of sha256("global:bake_payroll"))
-    const discriminator = Buffer.from([0x9a, 0xbc, 0xf1, 0x0c, 0x4b, 0x9f, 0x4e, 0x6d]);
+    // Verified: echo -n "global:bake_payroll" | shasum -a 256 = 175f686159cfa592...
+    const discriminator = Buffer.from([0x17, 0x5f, 0x68, 0x61, 0x59, 0xcf, 0xa5, 0x92]);
     
     // Salary as u64 (8 bytes, little-endian)
     const salaryBuffer = Buffer.alloc(8);
@@ -302,7 +306,8 @@ export async function withdrawDough(
   try {
     // Build the instruction data manually
     // Instruction discriminator for get_dough (first 8 bytes of sha256("global:get_dough"))
-    const discriminator = Buffer.from([0x7c, 0x84, 0x17, 0xf5, 0x95, 0x6e, 0x91, 0x18]);
+    // Verified: echo -n "global:get_dough" | shasum -a 256 = 5305fcc4e20c0b24...
+    const discriminator = Buffer.from([0x53, 0x05, 0xfc, 0xc4, 0xe2, 0x0c, 0x0b, 0x24]);
     
     const data = discriminator; // No additional params needed
 
@@ -385,7 +390,8 @@ export async function depositDough(
   try {
     // Build the instruction data manually
     // Instruction discriminator for deposit_dough (first 8 bytes of sha256("global:deposit_dough"))
-    const discriminator = Buffer.from([0xf2, 0x23, 0xc6, 0x89, 0x52, 0xe1, 0x41, 0x0a]);
+    // Verified: echo -n "global:deposit_dough" | shasum -a 256 = 430f358819db275f...
+    const discriminator = Buffer.from([0x43, 0x0f, 0x35, 0x88, 0x19, 0xdb, 0x27, 0x5f]);
     
     // Amount as u64 (8 bytes, little-endian)
     const amountBuffer = Buffer.alloc(8);
@@ -470,7 +476,8 @@ export async function closePayroll(
   try {
     // Build the instruction data manually
     // Instruction discriminator for close_jar (first 8 bytes of sha256("global:close_jar"))
-    const discriminator = Buffer.from([0x48, 0xe0, 0xd5, 0x0a, 0x88, 0x7c, 0x12, 0x3b]);
+    // Verified: echo -n "global:close_jar" | shasum -a 256 = 5cbd7224ba7b00a3...
+    const discriminator = Buffer.from([0x5c, 0xbd, 0x72, 0x24, 0xba, 0x7b, 0x00, 0xa3]);
     
     const data = discriminator; // No additional params needed
 
