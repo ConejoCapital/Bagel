@@ -6,13 +6,13 @@ skip-lint = false
 seeds = true
 
 [programs.localnet]
-bagel = "BaGeLvKDoSi2g6yk3hTNSGFKkizbWRKLxZqJJbGwP6N"
+bagel = "8rgaVvV6m3SSaVJfJ2VNoBk67frTWbCS3WDBjrk7S6gU"
 
 [programs.devnet]
-bagel = "BaGeLvKDoSi2g6yk3hTNSGFKkizbWRKLxZqJJbGwP6N"
+bagel = "8rgaVvV6m3SSaVJfJ2VNoBk67frTWbCS3WDBjrk7S6gU"
 
 [programs.mainnet]
-bagel = "BaGeLvKDoSi2g6yk3hTNSGFKkizbWRKLxZqJJbGwP6N"
+bagel = "8rgaVvV6m3SSaVJfJ2VNoBk67frTWbCS3WDBjrk7S6gU"
 
 [registry]
 url = "https://api.apr.dev"

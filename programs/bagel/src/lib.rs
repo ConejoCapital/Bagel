@@ -12,7 +12,7 @@ pub use error::*;
 pub use instructions::*;
 pub use state::*;
 
-declare_id!("BaGeLvKDoSi2g6yk3hTNSGFKkizbWRKLxZqJJbGwP6N");
+declare_id!("8rgaVvV6m3SSaVJfJ2VNoBk67frTWbCS3WDBjrk7S6gU");
 
 #[program]
 pub mod bagel {
