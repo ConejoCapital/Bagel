@@ -121,6 +121,23 @@ export default function EmployerDashboard() {
       setDepositTxid('');
 
       console.log('💵 Depositing to existing payroll...');
+      
+      // Verify payroll exists first
+      try {
+        const payrollJar = await getPayrollJarPDA(
+          wallet.publicKey!,
+          new PublicKey(employeeAddress)
+        );
+        const jarAccount = await connection.getAccountInfo(payrollJar);
+        if (!jarAccount) {
+          setError('Payroll does not exist. Please create the payroll first using "Bake a New Payroll".');
+          return;
+        }
+      } catch (checkErr) {
+        setError('Could not verify payroll exists. Please create the payroll first.');
+        return;
+      }
+      
       const depositLamports = solToLamports(parseFloat(depositAmount));
       
       const signature = await depositDough(

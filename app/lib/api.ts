@@ -218,6 +218,14 @@ export class BagelClient {
       signature,
     }, 'confirmed');
 
+    // Verify transaction actually succeeded
+    const { verifyTransactionSuccess } = await import('./transaction-utils');
+    const verification = await verifyTransactionSuccess(this.connection, signature);
+    
+    if (!verification.success) {
+      throw new Error(`Transaction failed: ${verification.error}`);
+    }
+
     console.log('✅ SOL wrapped to WSOL:', signature);
     return { signature, wsolAccount };
   }

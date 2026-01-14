@@ -140,6 +140,15 @@ export async function createPayroll(
       signature: txid,
     }, 'confirmed');
     
+    // Verify transaction actually succeeded (not just included)
+    console.log('🔍 Verifying transaction success...');
+    const { verifyTransactionSuccess } = await import('./transaction-utils');
+    const verification = await verifyTransactionSuccess(connection, txid);
+    
+    if (!verification.success) {
+      throw new Error(`Transaction failed: ${verification.error}`);
+    }
+    
     console.log('✅ Payroll created on DEVNET! Transaction:', txid);
     return txid;
   } catch (error: any) {
@@ -152,8 +161,11 @@ export async function createPayroll(
     if (error.message?.includes('Blockhash not found')) {
       throw new Error('Transaction expired. Please try again.');
     }
-    if (error.message?.includes('0x1')) {
-      throw new Error('Program error - payroll may already exist for this employee.');
+    if (error.message?.includes('0x1') || error.message?.includes('already in use')) {
+      throw new Error('Payroll already exists for this employee. Use "Deposit Dough" to add funds.');
+    }
+    if (error.message?.includes('Instruction #') || error.message?.includes('Transaction failed')) {
+      throw new Error(`Transaction failed: ${error.message}. Check Solana Explorer for details.`);
     }
     if (error.name === 'WalletSendTransactionError') {
       throw new Error('Wallet error - please make sure Phantom is set to Devnet in Settings > Developer Settings > Testnet Mode ON, then select "Solana Devnet" from the network dropdown.');
@@ -359,6 +371,15 @@ export async function withdrawDough(
       signature: txid,
     }, 'confirmed');
     
+    // Verify transaction actually succeeded
+    console.log('🔍 Verifying transaction success...');
+    const { verifyTransactionSuccess } = await import('./transaction-utils');
+    const verification = await verifyTransactionSuccess(connection, txid);
+    
+    if (!verification.success) {
+      throw new Error(`Transaction failed: ${verification.error}`);
+    }
+    
     console.log('✅ Dough withdrawn! Transaction:', txid);
     return txid;
   } catch (error: any) {
@@ -452,13 +473,31 @@ export async function depositDough(
       signature: txid,
     }, 'confirmed');
     
+    // Verify transaction actually succeeded
+    console.log('🔍 Verifying transaction success...');
+    const { verifyTransactionSuccess } = await import('./transaction-utils');
+    const verification = await verifyTransactionSuccess(connection, txid);
+    
+    if (!verification.success) {
+      throw new Error(`Transaction failed: ${verification.error}`);
+    }
+    
     console.log('✅ Dough deposited! Transaction:', txid);
     return txid;
   } catch (error: any) {
     console.error('❌ Failed to deposit dough:', error);
+    
+    // Check for common errors
+    if (error.message?.includes('AccountNotInitialized') || error.message?.includes('0x0')) {
+      throw new Error('Payroll does not exist. Please create the payroll first using "Bake a New Payroll".');
+    }
+    if (error.message?.includes('Instruction #') || error.message?.includes('Transaction failed')) {
+      throw new Error(`Transaction failed: ${error.message}. Make sure the payroll exists first.`);
+    }
     if (error.name === 'WalletSendTransactionError') {
       throw new Error('Wallet error - please ensure Phantom is on Devnet (Settings > Developer Settings > Testnet Mode, then select Solana Devnet).');
     }
+    
     throw new Error(`Failed to deposit: ${error.message || error.toString()}`);
   }
 }
@@ -538,6 +577,15 @@ export async function closePayroll(
       lastValidBlockHeight,
       signature: txid,
     }, 'confirmed');
+    
+    // Verify transaction actually succeeded
+    console.log('🔍 Verifying transaction success...');
+    const { verifyTransactionSuccess } = await import('./transaction-utils');
+    const verification = await verifyTransactionSuccess(connection, txid);
+    
+    if (!verification.success) {
+      throw new Error(`Transaction failed: ${verification.error}`);
+    }
     
     console.log('✅ Payroll closed! Transaction:', txid);
     return txid;
