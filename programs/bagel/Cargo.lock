@@ -131,6 +131,52 @@ dependencies = [
 ]
 
 [[package]]
+name = "anchor-gen"
+version = "0.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9037ea7fc4d7ad3d8a5dcffbf114a685a743373ca00a1ff862e6739829c0eae0"
+dependencies = [
+ "anchor-generate-cpi-crate",
+ "anchor-generate-cpi-interface",
+]
+
+[[package]]
+name = "anchor-generate-cpi-crate"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c85d2ac7ec4f76aba3f4e9c91c2a5b946e10141a3f226e0551e3ae571384f1e9"
+dependencies = [
+ "anchor-idl",
+ "syn 1.0.109",
+]
+
+[[package]]
+name = "anchor-generate-cpi-interface"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0655c8beb88a5e5115865e1782c5933ffac28ed60783ac699b2bffc1b30dbdef"
+dependencies = [
+ "anchor-idl",
+ "darling",
+ "syn 1.0.109",
+]
+
+[[package]]
+name = "anchor-idl"
+version = "0.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ba6b436b01afac2041df1ab596fa8f46c54a90f716c56b5e50a85af208b8837a"
+dependencies = [
+ "anchor-lang-idl-spec",
+ "darling",
+ "heck 0.4.1",
+ "proc-macro2",
+ "quote",
+ "serde_json",
+ "syn 1.0.109",
+]
+
+[[package]]
 name = "anchor-lang"
 version = "0.29.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -157,6 +203,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "anchor-lang-idl-spec"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2bdf143115440fe621bdac3a29a1f7472e09f6cd82b2aa569429a0c13f103838"
+dependencies = [
+ "anyhow",
+ "serde",
+]
+
+[[package]]
 name = "anchor-syn"
 version = "0.29.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -164,7 +220,7 @@ checksum = "d9101b84702fed2ea57bd22992f75065da5648017135b844283a2f6d74f27825"
 dependencies = [
  "anyhow",
  "bs58 0.5.1",
- "heck",
+ "heck 0.3.3",
  "proc-macro2",
  "quote",
  "serde",
@@ -322,6 +378,7 @@ dependencies = [
  "anchor-lang",
  "blake3",
  "constant_time_eq",
+ "kamino-lend",
 ]
 
 [[package]]
@@ -696,6 +753,41 @@ dependencies = [
 ]
 
 [[package]]
+name = "darling"
+version = "0.14.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7b750cb3417fd1b327431a470f388520309479ab0bf5e323505daf0290cd3850"
+dependencies = [
+ "darling_core",
+ "darling_macro",
+]
+
+[[package]]
+name = "darling_core"
+version = "0.14.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "109c1ca6e6b7f82cc233a97004ea8ed7ca123a9af07a8230878fcfda9b158bf0"
+dependencies = [
+ "fnv",
+ "ident_case",
+ "proc-macro2",
+ "quote",
+ "strsim",
+ "syn 1.0.109",
+]
+
+[[package]]
+name = "darling_macro"
+version = "0.14.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a4aab4dbc9f7611d8b55048a3a16d2d010c2c8334e46304b40ac1cc14bf3b48e"
+dependencies = [
+ "darling_core",
+ "quote",
+ "syn 1.0.109",
+]
+
+[[package]]
 name = "derivative"
 version = "2.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -749,6 +841,12 @@ name = "find-msvc-tools"
 version = "0.1.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f449e6c6c08c865631d4890cfacf252b3d396c9bcc83adb6623cdb02a8336c41"
+
+[[package]]
+name = "fnv"
+version = "1.0.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3f9eec918d3f24069decb9af1554cad7c880e2da24a9afd88aca000531ab82c1"
 
 [[package]]
 name = "generic-array"
@@ -833,6 +931,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "heck"
+version = "0.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "95505c38b4572b2d910cecb0281560f54b440a19336cbbcb27bf6ce6adc6f5a8"
+
+[[package]]
 name = "hmac"
 version = "0.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -852,6 +956,12 @@ dependencies = [
  "generic-array",
  "hmac",
 ]
+
+[[package]]
+name = "ident_case"
+version = "1.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b9e0384b61958566e926dc50660321d12159025e767c18e043daf26b70104c39"
 
 [[package]]
 name = "im"
@@ -912,6 +1022,18 @@ checksum = "464a3709c7f55f1f721e5389aa6ea4e3bc6aba669353300af094b29ffbdde1d8"
 dependencies = [
  "once_cell",
  "wasm-bindgen",
+]
+
+[[package]]
+name = "kamino-lend"
+version = "0.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2edc1f42dfb227a56f50176b201e91d8feef09ece479d8dd4969fc1b758b99b9"
+dependencies = [
+ "anchor-gen",
+ "anchor-lang",
+ "borsh 0.10.4",
+ "bytemuck",
 ]
 
 [[package]]
@@ -1529,6 +1651,12 @@ dependencies = [
  "rustversion",
  "syn 2.0.114",
 ]
+
+[[package]]
+name = "strsim"
+version = "0.10.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "73473c0e59e6d5812c5dfe2a064a6444949f089e20eec9a2e5506596494e4623"
 
 [[package]]
 name = "subtle"

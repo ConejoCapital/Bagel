@@ -12,8 +12,16 @@ use crate::{constants::*, error::*, privacy::*, state::*};
 pub fn handler(
     ctx: Context<GetDough>,
 ) -> Result<()> {
-    let jar = &mut ctx.accounts.payroll_jar;
     let current_time = Clock::get()?.unix_timestamp;
+    
+    // Get account info and keys BEFORE mutable borrow
+    let payroll_jar_key = ctx.accounts.payroll_jar.key();
+    let employee_key = ctx.accounts.employee.key();
+    let payroll_jar_account_info = ctx.accounts.payroll_jar.to_account_info();
+    let employee_account_info = ctx.accounts.employee.to_account_info();
+    let system_program_account_info = ctx.accounts.system_program.to_account_info();
+    
+    let jar = &mut ctx.accounts.payroll_jar;
     
     // Calculate elapsed time since last withdrawal
     let time_elapsed = current_time
@@ -53,24 +61,53 @@ pub fn handler(
         BagelError::InsufficientFunds
     );
     
-    // Update state
+    // Get keys for seeds BEFORE updating state
+    let employer_key = jar.employer;
+    let employee_key_for_seeds = jar.employee;
+    let bump = jar.bump;
+    
+    // Update state BEFORE transfer (atomic operation)
     jar.total_accrued = jar.total_accrued
         .checked_sub(accrued)
         .ok_or(BagelError::ArithmeticUnderflow)?;
     
     jar.last_withdraw = current_time;
     
-    msg!("📤 Executing private transfer via ShadowWire...");
+    msg!("📤 Transferring {} lamports to employee...", accrued);
     
-    // Execute private transfer using ShadowWire (Bulletproofs!)
-    // This hides the transfer amount using zero-knowledge proofs
-    execute_private_payout(
+    // REAL SOL TRANSFER: Use system_instruction::transfer
+    // The PayrollJar PDA signs the transfer using its seeds
+    let seeds = &[
+        BAGEL_JAR_SEED,
+        employer_key.as_ref(),
+        employee_key_for_seeds.as_ref(),
+        &[bump],
+    ];
+    
+    let transfer_ix = anchor_lang::solana_program::system_instruction::transfer(
+        &payroll_jar_key,
+        &employee_key,
         accrued,
-        ctx.accounts.employee.key(),
-        jar.dough_vault, // Using vault as mint placeholder
+    );
+    
+    anchor_lang::solana_program::program::invoke_signed(
+        &transfer_ix,
+        &[
+            payroll_jar_account_info,
+            employee_account_info,
+            system_program_account_info,
+        ],
+        &[seeds],
     )?;
     
-    msg!("✅ Private transfer complete! Amount hidden via Bulletproofs");
+    msg!("✅ SOL transferred to employee! {} lamports", accrued);
+    
+    // TODO: In production, wrap this transfer with ShadowWire for privacy
+    // When ShadowWire program ID is available, use real private transfer:
+    // shadowwire::execute_private_payout(accrued, employee_key, USD1_MINT)?;
+    // 
+    // For now, we have working SOL transfers (core functionality restored)
+    msg!("📝 NOTE: ShadowWire private transfer pending program ID from Radr Labs");
     
     // Emit privacy-preserving event (no amounts logged!)
     emit!(DoughDelivered {

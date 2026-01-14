@@ -16,16 +16,39 @@ pub const MAX_SALARY_PER_SECOND: u64 = 50_000_000; // ~$50/second max
 /// Minimum time between withdrawals (anti-spam)
 pub const MIN_WITHDRAW_INTERVAL: i64 = 60; // 1 minute
 
-/// Program IDs for integrations (to be updated with actual addresses)
-/// TODO: Update these with real program IDs from privacy providers
+/// Kamino Finance Lend V2 (Devnet & Mainnet)
+/// Program ID: KLend2g3cP87fffoy8q1mQqGKjrxjC8boSyAYavgmjD
+/// Main Market: 7u3HeHxYDLhnCoErrtycNokbQYbWGzLs6JSDqGAv5PfF
+/// SOL Reserve: d4A2prbA2whesmvHaL88BH6Ewn5N4bTSU2Ze8P6Bc4Q
+/// USDC Reserve: D6q6wuQSrifJKZYpR1M8R4YawnLDtDsMmWM1NbBmgJ59
+pub const KAMINO_LENDING_PROGRAM: &str = "KLend2g3cP87fffoy8q1mQqGKjrxjC8boSyAYavgmjD";
+pub const KAMINO_MAIN_MARKET: &str = "7u3HeHxYDLhnCoErrtycNokbQYbWGzLs6JSDqGAv5PfF";
+pub const KAMINO_SOL_RESERVE: &str = "d4A2prbA2whesmvHaL88BH6Ewn5N4bTSU2Ze8P6Bc4Q";
+pub const KAMINO_USDC_RESERVE: &str = "D6q6wuQSrifJKZYpR1M8R4YawnLDtDsMmWM1NbBmgJ59";
+
+/// Privacy Provider Program IDs
+/// 
+/// These will be updated with actual program IDs from each team.
+/// Contact information:
+/// - MagicBlock: Discord server
+/// - ShadowWire: https://github.com/Radrdotfun/ShadowWire
+/// - Arcium: Discord #arcium channel
 pub mod program_ids {
     use anchor_lang::prelude::*;
     
-    // Placeholder for ShadowWire program ID
-    // TODO: Replace with actual ShadowWire program ID
+    // MagicBlock Ephemeral Rollups Program ID
+    // TODO: Get from MagicBlock team (devnet + mainnet)
+    // Contact: MagicBlock Discord
+    // Devnet Endpoint: https://devnet.magicblock.app/
+    // SDK: ephemeral-rollups-sdk v0.7.2
+    pub const MAGICBLOCK_PROGRAM_ID: &str = "11111111111111111111111111111111";
+    
+    // ShadowWire Private Transfers Program ID
+    // TODO: Get from Radr Labs (devnet + mainnet)
+    // Contact: https://github.com/Radrdotfun/ShadowWire
     pub const SHADOWWIRE_PROGRAM_ID: &str = "11111111111111111111111111111111";
     
-    // Placeholder for USD1 token mint
-    // TODO: Replace with actual USD1 mint address
+    // USD1 Token Mint (for ShadowWire private transfers)
+    // TODO: Get from ShadowWire team
     pub const USD1_MINT: &str = "11111111111111111111111111111111";
 }

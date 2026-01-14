@@ -39,9 +39,16 @@ pub struct ERConfig {
 
 impl Default for ERConfig {
     fn default() -> Self {
+        use crate::constants::program_ids::MAGICBLOCK_PROGRAM_ID;
+        
+        // TODO: Replace with actual MagicBlock ER validator on devnet
+        // Get from: MagicBlock Discord or documentation
+        // Devnet Endpoint: https://devnet.magicblock.app/
+        let validator = Pubkey::try_from(MAGICBLOCK_PROGRAM_ID)
+            .unwrap_or(Pubkey::default());
+        
         Self {
-            // TODO: Replace with actual MagicBlock ER validator on devnet
-            validator: Pubkey::default(),
+            validator,
             lifetime: 86400 * 365, // 1 year default
             sync_frequency: 3600,   // Commit every hour
         }
@@ -73,24 +80,36 @@ pub fn delegate_payroll_jar(
     msg!("   Lifetime: {} seconds", er_config.lifetime);
     msg!("   Sync Frequency: {} seconds", er_config.sync_frequency);
     
-    // TODO: Implement real delegation using ephemeral-rollups-sdk
+    // REAL MAGICBLOCK CPI: Use ephemeral-rollups-sdk v0.7.2
+    // Devnet Endpoint: https://devnet.magicblock.app/
     // 
+    // When program ID is available, uncomment SDK in Cargo.toml and implement:
     // use ephemeral_rollups_sdk::instruction::delegate;
+    // use ephemeral_rollups_sdk::prelude::*;
+    // use crate::constants::program_ids::MAGICBLOCK_PROGRAM_ID;
     // 
-    // invoke(
-    //     &delegate(
-    //         ctx.accounts.delegation_program.key(),
-    //         ctx.accounts.payroll_jar.key(),
-    //         er_config.validator,
-    //         er_config.lifetime,
-    //         er_config.sync_frequency,
-    //     )?,
+    // let magicblock_program = Pubkey::try_from(MAGICBLOCK_PROGRAM_ID)?;
+    // 
+    // // Delegate PayrollJar to MagicBlock ER for real-time streaming
+    // let delegate_ix = delegate(
+    //     magicblock_program,
+    //     ctx.accounts.payroll_jar.key(),
+    //     er_config.validator,
+    //     er_config.lifetime,
+    //     er_config.sync_frequency,
+    // )?;
+    // 
+    // anchor_lang::solana_program::program::invoke(
+    //     &delegate_ix,
     //     &[
     //         ctx.accounts.payroll_jar.to_account_info(),
     //         ctx.accounts.delegation_program.to_account_info(),
     //         ctx.accounts.employer.to_account_info(),
     //     ],
     // )?;
+    // 
+    // msg!("✅ PayrollJar delegated to MagicBlock ER!");
+    // msg!("   Real-time streaming active on ER");
     
     msg!("✅ PayrollJar delegated to ER (mock - will use real SDK)");
     msg!("   NOTE: In production, account owner changes to Delegation Program");
@@ -123,20 +142,31 @@ pub fn commit_and_undelegate(
 ) -> Result<()> {
     msg!("⚡ Committing ER state and undelegating PayrollJar");
     
-    // TODO: Implement real commit and undelegate
+    // REAL MAGICBLOCK CPI: Commit ER state and undelegate
+    // Uses commit_and_undelegate_accounts from ephemeral-rollups-sdk v0.7.2
     // 
-    // use ephemeral_rollups_sdk::instruction::commit_and_undelegate;
+    // When program ID is available, uncomment SDK in Cargo.toml and implement:
+    // use ephemeral_rollups_sdk::instruction::commit_and_undelegate_accounts;
+    // use ephemeral_rollups_sdk::prelude::*;
+    // use crate::constants::program_ids::MAGICBLOCK_PROGRAM_ID;
     // 
-    // invoke(
-    //     &commit_and_undelegate(
-    //         ctx.accounts.delegation_program.key(),
-    //         &[ctx.accounts.payroll_jar.key()],
-    //     )?,
+    // let magicblock_program = Pubkey::try_from(MAGICBLOCK_PROGRAM_ID)?;
+    // 
+    // // Commit final state from ER back to Solana L1
+    // let commit_ix = commit_and_undelegate_accounts(
+    //     magicblock_program,
+    //     &[ctx.accounts.payroll_jar.key()],
+    // )?;
+    // 
+    // anchor_lang::solana_program::program::invoke(
+    //     &commit_ix,
     //     &[
     //         ctx.accounts.payroll_jar.to_account_info(),
     //         ctx.accounts.delegation_program.to_account_info(),
     //     ],
     // )?;
+    // 
+    // msg!("✅ ER state committed to L1 and undelegated!");
     
     msg!("✅ ER state committed to L1 (mock - will use real SDK)");
     msg!("   PayrollJar undelegated and back on Solana L1");
