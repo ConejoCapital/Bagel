@@ -192,11 +192,23 @@ async function main() {
   console.log('   Waiting 5 seconds for accrual...');
   await new Promise(resolve => setTimeout(resolve, 5000));
 
-  // Airdrop to employee for fees
-  if ((await connection.getBalance(employee.publicKey)) < 0.1 * LAMPORTS_PER_SOL) {
+  // Airdrop to employee for fees (with retry on failure)
+  const employeeBalance = await connection.getBalance(employee.publicKey);
+  if (employeeBalance < 0.1 * LAMPORTS_PER_SOL) {
     console.log('   Airdropping to employee...');
-    const airdropSig = await connection.requestAirdrop(employee.publicKey, 0.1 * LAMPORTS_PER_SOL);
-    await connection.confirmTransaction(airdropSig, 'confirmed');
+    try {
+      const airdropSig = await connection.requestAirdrop(employee.publicKey, 0.1 * LAMPORTS_PER_SOL);
+      await connection.confirmTransaction(airdropSig, 'confirmed');
+      console.log('   ✅ Airdrop successful');
+    } catch (err) {
+      console.log('   ⚠️  Airdrop failed (rate limit), but employee may have enough for fees');
+      console.log('   Employee balance:', employeeBalance / LAMPORTS_PER_SOL, 'SOL');
+      if (employeeBalance < 0.01 * LAMPORTS_PER_SOL) {
+        console.log('   ❌ Employee needs at least 0.01 SOL for transaction fees');
+        console.log('   💡 Manually airdrop to:', employee.publicKey.toBase58());
+        process.exit(1);
+      }
+    }
   }
 
   const employeeBalanceBefore = await connection.getBalance(employee.publicKey);
