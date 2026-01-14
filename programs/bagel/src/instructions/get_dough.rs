@@ -1,7 +1,7 @@
 use anchor_lang::prelude::*;
 // NOTE: SPL token functionality temporarily disabled due to stack issues
 // use anchor_spl::token::{self, Token, TokenAccount, Transfer};
-use crate::{constants::*, error::*, state::*};
+use crate::{constants::*, error::*, privacy::*, state::*};
 
 /// Withdraw accrued salary (get your dough!)
 /// 
@@ -15,7 +15,7 @@ pub fn handler(
     let jar = &mut ctx.accounts.payroll_jar;
     let current_time = Clock::get()?.unix_timestamp;
     
-    // Calculate accrued amount
+    // Calculate elapsed time since last withdrawal
     let time_elapsed = current_time
         .checked_sub(jar.last_withdraw)
         .ok_or(BagelError::InvalidTimestamp)?;
@@ -25,13 +25,26 @@ pub fn handler(
         BagelError::WithdrawTooSoon
     );
     
-    // TODO: Decrypt salary_per_second using Arcium/Inco
-    // For now, use placeholder calculation
-    let placeholder_salary_per_second = 1_000_000; // 0.001 SOL/second for testing
+    msg!("⏱️ Elapsed time: {} seconds", time_elapsed);
     
-    let accrued = (time_elapsed as u64)
-        .checked_mul(placeholder_salary_per_second)
-        .ok_or(BagelError::ArithmeticOverflow)?;
+    // Reconstruct encrypted salary from stored bytes
+    let encrypted_salary = EncryptedU64 {
+        ciphertext: jar.encrypted_salary_per_second.clone(),
+    };
+    
+    // Calculate accrued amount using FHE (encrypted computation!)
+    // MOCK: Currently decrypts, multiplies, re-encrypts (NOT SECURE!)
+    // TODO: Will use real FHE multiplication once Inco SDK is installed
+    let encrypted_accrued = calculate_accrued(&encrypted_salary, time_elapsed as u64)?;
+    
+    msg!("🔒 Calculated accrued amount (encrypted - FHE in production!)");
+    
+    // Decrypt for private transfer (TEE-based in production)
+    // MOCK: Simple decryption (NOT SECURE!)
+    // TODO: Will use TEE attestation with Inco SDK
+    let accrued = decrypt_for_transfer(&encrypted_accrued)?;
+    
+    msg!("💰 Decrypted amount for transfer: {} lamports", accrued);
     
     require!(accrued > 0, BagelError::NoAccruedDough);
     require!(
@@ -46,10 +59,10 @@ pub fn handler(
     
     jar.last_withdraw = current_time;
     
-    msg!("Withdrew {} lamports from payroll jar", accrued);
+    msg!("📤 Simulating private transfer of {} dough to employee", accrued);
     
-    // TODO: Implement ShadowWire private transfer
-    // For now, just emit event
+    // TODO: ShadowWire CPI call for private transfer
+    // This will be integrated in the next phase
     
     // Emit privacy-preserving event (no amounts logged!)
     emit!(DoughDelivered {

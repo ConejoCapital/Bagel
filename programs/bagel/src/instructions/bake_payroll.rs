@@ -1,5 +1,5 @@
 use anchor_lang::prelude::*;
-use crate::{constants::*, error::*, state::*};
+use crate::{constants::*, error::*, privacy::*, state::*};
 
 /// Initialize a new payroll with encrypted salary
 /// 🥯 "Start Baking" - Create the BagelJar

@@ -4,12 +4,14 @@ use anchor_lang::prelude::*;
 pub mod constants;
 pub mod error;
 pub mod instructions;
+pub mod privacy; // Privacy SDK integration layer
 pub mod state;
 
 // Re-export for convenience
 pub use constants::*;
 pub use error::*;
 pub use instructions::*;
+pub use privacy::*; // Privacy utilities
 pub use state::*;
 
 declare_id!("8rgaVvV6m3SSaVJfJ2VNoBk67frTWbCS3WDBjrk7S6gU");
