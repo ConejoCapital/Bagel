@@ -233,19 +233,35 @@ anchor test --skip-local-validator tests/verify-all.ts
 
 ---
 
-## 🔐 Privacy Guarantees
+## 🔐 Privacy Implementation Status
 
-### **What's Hidden (PRIVATE):**
-- ✅ Salary amounts (encrypted via Arcium MPC)
-- ✅ Transfer amounts (hidden via ShadowWire Bulletproofs)
-- ✅ Balance updates (private in MagicBlock ER)
-- ✅ Yield earnings (only parties know)
+### **⚠️ HONEST DISCLOSURE: Privacy Structure Ready, Implementation Mocked**
 
-### **What's Public (VERIFIABLE):**
-- ✅ Transaction validity (proof verification)
-- ✅ Payout amounts (for verification)
+**Current Status:**
+- ✅ **Privacy Structure:** Complete interfaces for Arcium, ShadowWire, MagicBlock
+- ✅ **Integration Points:** All program IDs configured, CPI structures ready
+- ⚠️ **Encryption:** Currently mocked (stores plaintext as bytes, ready for real Arcium C-SPL)
+- ⚠️ **MPC:** Currently mocked (local calculation, ready for Arcium MPC circuit)
+- ⚠️ **Bulletproofs:** Currently mocked (ready for ShadowWire SDK integration)
+- ⚠️ **ER Streaming:** Currently mocked (ready for MagicBlock SDK integration)
+
+**What's Actually Private (Currently):**
+- ⚠️ **Salary amounts:** Stored as plaintext bytes (structure ready for encryption)
+- ⚠️ **Transfer amounts:** Visible on-chain (structure ready for Bulletproofs)
+- ⚠️ **Balance updates:** Public (structure ready for ER privacy)
+
+**What's Public (VERIFIABLE):**
+- ✅ Transaction validity (all transactions succeed)
+- ✅ Payout amounts (employee balance increases verified)
 - ✅ Timing information (block timestamps)
 - ✅ Account existence (on-chain state)
+- ✅ **Employee Received Funds:** Verified (balance increased from 0.05 to 0.0519 SOL)
+
+**Privacy Architecture:**
+- ✅ Arcium MXE deployed and initialized
+- ✅ Circuit structure defined (`payroll.arcis`)
+- ✅ All privacy SDK interfaces complete
+- ✅ Ready for real encryption integration (replace mocks with SDKs)
 
 ---
 
