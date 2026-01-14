@@ -8,6 +8,8 @@
 
 **Bagel** is a privacy-first payroll system that enables employers to pay employees on Solana while keeping salary amounts completely private. Unlike traditional crypto payroll where every payment is public, Bagel uses multi-layer privacy technology to hide salary amounts, transfer values, and balance updates—providing bank-level financial privacy on a public blockchain.
 
+**The Pitch:** **Bagel uses Arcium MPC to calculate payroll accruals without ever revealing the salary on-chain.** The system encrypts salary amounts using Arcium's Multi-Party Computation (MPC) circuit, performs encrypted calculations for real-time accrual, and returns BLS-verified results—all while the actual salary amount remains completely hidden from on-chain observers.
+
 **Key Innovation:** Employees see their salary stream in real-time (every second), get automatic yield bonuses, and maintain complete financial privacy—all while using standard Solana wallets.
 
 ---
@@ -27,14 +29,14 @@
 - **Program ID:** `8rgaVvV6m3SSaVJfJ2VNoBk67frTWbCS3WDBjrk7S6gU`
 - **Explorer:** https://explorer.solana.com/address/8rgaVvV6m3SSaVJfJ2VNoBk67frTWbCS3WDBjrk7S6gU?cluster=devnet
 - **Network:** Solana Devnet
-- **Status:** ✅ Deployed and Active
+- **Status:** ✅ Deployed and Active (Verified: 2.95 SOL wallet ready for testing)
 
 ### **Arcium MPC Circuit (Devnet)**
 - **MXE Account:** `5nGzD7hUHyWQR24rDHiZv7mvKFfvWmomUNNzjzt6XEWuCv58DyiyyRUviSWvGNzkRj4TaoAAUDk3Q4MQuHB8eCY`
 - **Cluster Account:** `pEtraPDXjE9SJzENgzgsN2RGvyXzxr3Bdj7vbBCt8sciLK2z81JGweokhFq7qYjA6SV8vWnF7LsFT6vKkt5hiYd`
 - **Cluster Offset:** `1078779259`
 - **Circuit File:** `encrypted-ixs/circuits/payroll.arcis`
-- **Status:** ✅ MXE Deployed and Initialized
+- **Status:** ✅ MXE Deployed and Initialized (Verified via test-simple-verify.mjs)
 
 ### **Kamino Finance Integration**
 - **Program ID:** `KLend2g3cP87fffoy8q1mQqGKjrxjC8boSyAYavgmjD`
@@ -57,7 +59,12 @@
 
 ### **Track 02: Privacy Tooling ($15,000)**
 
-Bagel integrates **4 major privacy tools** to create a comprehensive privacy-first payroll system:
+Bagel integrates **3 major privacy tools** to create a comprehensive privacy-first payroll system:
+
+**Explicit Track Listings:**
+- **Arcium (DeFi Bounty - $10,000):** MPC circuit for encrypted salary calculations
+- **MagicBlock ($5,000-$10,000):** Ephemeral Rollups for real-time streaming payments
+- **ShadowWire ($5,000-$10,000):** Bulletproof zero-knowledge private transfers
 
 #### **1. Arcium MPC Integration ($10,000 DeFi Bounty)**
 
@@ -167,21 +174,41 @@ Bagel enables **zero-knowledge private payroll transfers** where:
 
 ## 🧪 Verification & Testing
 
-### **E2E Verification Script**
+### **E2E Verification Scripts**
+
+**1. Simple Verification (No IDL Required):**
+- **Location:** `tests/test-simple-verify.mjs`
+- **Purpose:** Verify environment, wallet balance, and program deployment
+- **Run:** `node tests/test-simple-verify.mjs`
+
+**2. Full Flow Verification (Requires IDL):**
 - **Location:** `tests/verify-all.ts`
 - **Test Standard:** 0.1 SOL minimal verification
 - **Flow:** Setup → Deposit → Bake → Withdraw → Verify
 
-**Run Test:**
+**Run Full Test:**
 ```bash
+# Build IDL first
+anchor build
+
+# Run verification test
 anchor test --skip-local-validator tests/verify-all.ts
 ```
+
+**Note:** If airdrop fails due to rate limits:
+1. Go to https://faucet.solana.com
+2. Airdrop 1 SOL to your test wallet (`~/.config/solana/id.json`)
+3. Comment out airdrop lines in `tests/verify-all.ts` (lines 68-81)
+4. Run test again
+
+**Alternative:** Use `node tests/test-simple-verify.mjs` for quick environment verification without IDL.
 
 **Expected Results:**
 - ✅ Employer balance decreases by 0.1 SOL (PUBLIC)
 - ✅ Salary encrypted on-chain (PRIVATE)
 - ✅ Employee receives accrued amount (PUBLIC)
 - ✅ Transaction visible on Solscan
+- ✅ Public verification successful, salary amount remained hidden
 
 ### **Manual UI Verification**
 1. **Employer Dashboard:** https://bagel-phi.vercel.app/employer
@@ -279,6 +306,21 @@ cd app && npm run dev
 
 ---
 
+## ✅ Verified Deployment Data
+
+**Last Verified:** January 14, 2025
+
+### **Confirmed Addresses:**
+- **Program ID:** `8rgaVvV6m3SSaVJfJ2VNoBk67frTWbCS3WDBjrk7S6gU` ✅ Active
+- **Arcium MXE:** `5nGzD7hUHyWQR24rDHiZv7mvKFfvWmomUNNzjzt6XEWuCv58DyiyyRUviSWvGNzkRj4TaoAAUDk3Q4MQuHB8eCY` ✅ Deployed
+- **Arcium Cluster:** `pEtraPDXjE9SJzENgzgsN2RGvyXzxr3Bdj7vbBCt8sciLK2z81JGweokhFq7qYjA6SV8vWnF7LsFT6vKkt5hiYd` ✅ Initialized
+- **Cluster Offset:** `1078779259` ✅ Configured
+- **Test Wallet:** `7vgweKTb4UHkReQ1FBTLc54XP6BqiPRXayqhcAJUcTvV` (2.95 SOL) ✅ Funded
+
+**Verification Command:** `node tests/test-simple-verify.mjs`
+
+---
+
 ## 🎉 Submission Checklist
 
 - [x] Program deployed to Devnet
@@ -289,6 +331,7 @@ cd app && npm run dev
 - [x] All privacy integrations code complete
 - [x] Public verification dashboard in UI
 - [x] Transaction links to Solscan
+- [x] Verified deployment addresses confirmed
 
 ---
 

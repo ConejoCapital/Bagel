@@ -13,10 +13,10 @@ import { join } from 'path';
 const BAGEL_PROGRAM_ID = new PublicKey('8rgaVvV6m3SSaVJfJ2VNoBk67frTWbCS3WDBjrk7S6gU');
 const connection = new Connection('https://api.devnet.solana.com', 'confirmed');
 
-// Load wallet
-const keypairPath = join(homedir(), '.config', 'solana', 'id.json');
-const keypair = JSON.parse(readFileSync(keypairPath, 'utf-8'));
-const walletPubkey = new PublicKey(keypair.pubkey);
+// Load wallet - use solana CLI to get address
+import { execSync } from 'child_process';
+const walletAddress = execSync('solana address', { encoding: 'utf-8' }).trim();
+const walletPubkey = new PublicKey(walletAddress);
 
 function getPayrollJarPDA(employer, employee) {
   return PublicKey.findProgramAddressSync(
