@@ -10,6 +10,14 @@ const WalletButton = dynamic(() => import('../components/WalletButton'), {
   ssr: false,
 });
 
+const NetworkWarning = dynamic(() => import('../components/NetworkWarning'), {
+  ssr: false,
+});
+
+const NetworkSwitchGuide = dynamic(() => import('../components/NetworkSwitchGuide'), {
+  ssr: false,
+});
+
 export default function EmployerDashboard() {
   const { connection } = useConnection();
   const wallet = useWallet();
@@ -95,7 +103,9 @@ export default function EmployerDashboard() {
         <title>Employer Dashboard - Bagel</title>
       </Head>
 
-      <header className="bg-white shadow-sm">
+      <NetworkWarning />
+
+      <header className="bg-white shadow-sm" style={{ marginTop: wallet.connected ? '40px' : '0' }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
           <Link href="/" className="flex items-center space-x-2">
             <span className="text-4xl">🥯</span>
