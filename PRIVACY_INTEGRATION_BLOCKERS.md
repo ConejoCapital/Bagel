@@ -122,28 +122,47 @@ previously selected package `solana-instruction v2.3.3`
 ### **4. MagicBlock Account Context**
 
 **Issue:**
-- `commit_accounts` requires `magic_context` and `magic_program` accounts
+- `commit_accounts` function exists in `ephemeral_rollups_sdk::ephem` module
+- Requires `initializer`, `accounts`, `magic_context`, and `magic_program` parameters
 - These accounts not yet added to `GetDough` struct
-- Need exact account structure from SDK
 
 **Impact:**
 - ⚠️ MagicBlock undelegation partially implemented
 - ⚠️ Requires account structure completion
 
-**Solutions:**
-1. **Option A:** Check MagicBlock SDK docs for account structure
-   - Search: "ephemeral-rollups-sdk commit_accounts accounts"
-   - Check: MagicBlock examples for account context
+**Correct API:**
+```rust
+use ephemeral_rollups_sdk::ephem::commit_accounts;
 
-2. **Option B:** Add placeholder accounts to `GetDough`
-   - Mark as `UncheckedAccount` initially
-   - Validate program ID matches MagicBlock program
-   - Complete implementation once structure confirmed
+commit_accounts(
+    initializer,           // &AccountInfo (must be signer)
+    vec![payroll_jar],     // Vec<&AccountInfo>
+    magic_context,         // &AccountInfo
+    magic_program,         // &AccountInfo
+)?;
+```
+
+**Solutions:**
+1. **Add accounts to `GetDough` struct:**
+   ```rust
+   #[account(mut)]
+   pub initializer: Signer<'info>,  // Employee (already exists)
+   
+   /// CHECK: MagicBlock context account
+   pub magic_context: UncheckedAccount<'info>,
+   
+   /// CHECK: MagicBlock program account
+   pub magic_program: UncheckedAccount<'info>,
+   ```
+
+2. **Validate program IDs:**
+   - `magic_program` must equal `DELeGGvXpWV2fqJUhqcF5ZSYMS4JTLjteaAMARRSaeSh`
+   - Add validation in instruction handler
 
 **Recommended Action:**
-- Search: "ephemeral-rollups-sdk 0.7.2 commit_accounts example"
-- Check: MagicBlock docs for account requirements
-- Implement: Add accounts to `GetDough` struct
+- Add `magic_context` and `magic_program` to `GetDough` accounts
+- Import `ephemeral_rollups_sdk::ephem::commit_accounts`
+- Call `commit_accounts` before payout
 
 ---
 
