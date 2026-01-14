@@ -42,6 +42,10 @@ yarn-error.log*
 *.swo
 *~
 
+# Cursor (keep rules but not cache/temp files)
+.cursor/cache/
+.cursor/tmp/
+
 # Solana
 .anchor/
 target/
