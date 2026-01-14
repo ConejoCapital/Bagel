@@ -13,6 +13,7 @@
   "dependencies": {
     "@arcium-hq/client": "latest",
     "@coral-xyz/anchor": "^0.32.1",
+    "@radr/shadowwire": "^1.1.2",
     "@solana/spl-token": "^0.4.9",
     "@solana/wallet-adapter-base": "^0.9.27",
     "@solana/wallet-adapter-react": "^0.15.39",
