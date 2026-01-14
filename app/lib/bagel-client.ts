@@ -55,8 +55,8 @@ export function getProvider(
  * Create a new payroll (bake_payroll instruction)
  * MANUAL INSTRUCTION BUILDING (no IDL needed!)
  * 
- * APPROACH: Sign with wallet (network-agnostic), send via our devnet connection
- * This ensures the transaction goes to DEVNET regardless of wallet's UI network display
+ * APPROACH: Use wallet.sendTransaction() with the devnet connection passed in.
+ * The connection MUST be from useConnection() which uses our devnet ConnectionProvider.
  */
 export async function createPayroll(
   connection: Connection,
@@ -64,8 +64,8 @@ export async function createPayroll(
   employee: PublicKey,
   salaryPerSecond: number // in lamports
 ): Promise<string> {
-  if (!wallet.publicKey || !wallet.signTransaction) {
-    throw new Error('Wallet not connected or does not support signing');
+  if (!wallet.publicKey) {
+    throw new Error('Wallet not connected');
   }
 
   const employer = wallet.publicKey;
@@ -112,25 +112,18 @@ export async function createPayroll(
 
     console.log('📝 Requesting signature from wallet...');
     console.log('   Blockhash (from devnet):', blockhash);
-    console.log('   ⚠️ Phantom may show "Solana" - this is just UI. TX goes to devnet!');
     
-    // Step 1: Sign with wallet (this is network-agnostic - just cryptography!)
-    // The wallet's network display doesn't affect signing
-    const signedTransaction = await wallet.signTransaction(transaction);
-    
-    console.log('✅ Transaction signed!');
-    console.log('📤 Sending to DEVNET via:', connection.rpcEndpoint);
-    
-    // Step 2: Send via OUR devnet connection (bypasses wallet's network setting)
-    // This ensures the transaction goes to devnet.helius-rpc.com
-    const txid = await connection.sendRawTransaction(signedTransaction.serialize(), {
-      skipPreflight: false,
+    // Use sendTransaction with explicit options
+    // skipPreflight: true to avoid wallet trying to simulate on wrong network
+    const txid = await wallet.sendTransaction(transaction, connection, {
+      skipPreflight: true, // CRITICAL: Skip wallet's preflight to avoid network mismatch
       preflightCommitment: 'confirmed',
+      maxRetries: 3,
     });
     
     console.log('Transaction sent to devnet:', txid);
     
-    // Wait for confirmation on DEVNET
+    // Now do OUR OWN simulation/confirmation on devnet
     console.log('⏳ Waiting for devnet confirmation...');
     await connection.confirmTransaction({
       blockhash,
@@ -152,6 +145,9 @@ export async function createPayroll(
     }
     if (error.message?.includes('0x1')) {
       throw new Error('Program error - payroll may already exist for this employee.');
+    }
+    if (error.name === 'WalletSendTransactionError') {
+      throw new Error('Wallet error - please make sure Phantom is set to Devnet in Settings > Developer Settings > Testnet Mode ON, then select "Solana Devnet" from the network dropdown.');
     }
     
     throw new Error(`Failed to create payroll: ${error.message || error.toString()}`);
@@ -282,14 +278,14 @@ export function solToLamports(sol: number): number {
  * Withdraw accrued salary (get_dough instruction)
  * REAL TRANSACTION - Employee claims their earnings!
  * 
- * APPROACH: Sign with wallet, send via devnet connection
+ * APPROACH: Use sendTransaction with skipPreflight to avoid network mismatch
  */
 export async function withdrawDough(
   connection: Connection,
   wallet: WalletContextState,
   employer: PublicKey
 ): Promise<string> {
-  if (!wallet.publicKey || !wallet.signTransaction) {
+  if (!wallet.publicKey) {
     throw new Error('Wallet not connected');
   }
 
@@ -331,15 +327,11 @@ export async function withdrawDough(
 
     console.log('📝 Requesting signature...');
     
-    // Sign with wallet (network-agnostic)
-    const signedTransaction = await wallet.signTransaction(transaction);
-    
-    console.log('📤 Sending to DEVNET...');
-    
-    // Send via our devnet connection
-    const txid = await connection.sendRawTransaction(signedTransaction.serialize(), {
-      skipPreflight: false,
+    // Use sendTransaction with skipPreflight
+    const txid = await wallet.sendTransaction(transaction, connection, {
+      skipPreflight: true,
       preflightCommitment: 'confirmed',
+      maxRetries: 3,
     });
     
     console.log('Transaction sent:', txid);
@@ -356,6 +348,9 @@ export async function withdrawDough(
     return txid;
   } catch (error: any) {
     console.error('❌ Failed to withdraw dough:', error);
+    if (error.name === 'WalletSendTransactionError') {
+      throw new Error('Wallet error - please ensure Phantom is on Devnet (Settings > Developer Settings > Testnet Mode, then select Solana Devnet).');
+    }
     throw new Error(`Failed to withdraw: ${error.message || error.toString()}`);
   }
 }
@@ -364,7 +359,7 @@ export async function withdrawDough(
  * Deposit funds to payroll (deposit_dough instruction)
  * REAL TRANSACTION - Employer adds SOL to employee's payroll
  * 
- * APPROACH: Sign with wallet, send via devnet connection
+ * APPROACH: Use sendTransaction with skipPreflight to avoid network mismatch
  */
 export async function depositDough(
   connection: Connection,
@@ -372,7 +367,7 @@ export async function depositDough(
   employee: PublicKey,
   amountLamports: number
 ): Promise<string> {
-  if (!wallet.publicKey || !wallet.signTransaction) {
+  if (!wallet.publicKey) {
     throw new Error('Wallet not connected');
   }
 
@@ -419,15 +414,11 @@ export async function depositDough(
 
     console.log('📝 Requesting signature...');
     
-    // Sign with wallet (network-agnostic)
-    const signedTransaction = await wallet.signTransaction(transaction);
-    
-    console.log('📤 Sending to DEVNET...');
-    
-    // Send via our devnet connection
-    const txid = await connection.sendRawTransaction(signedTransaction.serialize(), {
-      skipPreflight: false,
+    // Use sendTransaction with skipPreflight
+    const txid = await wallet.sendTransaction(transaction, connection, {
+      skipPreflight: true,
       preflightCommitment: 'confirmed',
+      maxRetries: 3,
     });
     
     console.log('Transaction sent:', txid);
@@ -444,6 +435,9 @@ export async function depositDough(
     return txid;
   } catch (error: any) {
     console.error('❌ Failed to deposit dough:', error);
+    if (error.name === 'WalletSendTransactionError') {
+      throw new Error('Wallet error - please ensure Phantom is on Devnet (Settings > Developer Settings > Testnet Mode, then select Solana Devnet).');
+    }
     throw new Error(`Failed to deposit: ${error.message || error.toString()}`);
   }
 }
@@ -452,14 +446,14 @@ export async function depositDough(
  * Close/cancel a payroll (close_jar instruction)
  * REAL TRANSACTION - Employer cancels payroll and gets remaining funds back
  * 
- * APPROACH: Sign with wallet, send via devnet connection
+ * APPROACH: Use sendTransaction with skipPreflight to avoid network mismatch
  */
 export async function closePayroll(
   connection: Connection,
   wallet: WalletContextState,
   employee: PublicKey
 ): Promise<string> {
-  if (!wallet.publicKey || !wallet.signTransaction) {
+  if (!wallet.publicKey) {
     throw new Error('Wallet not connected');
   }
 
@@ -501,15 +495,11 @@ export async function closePayroll(
 
     console.log('📝 Requesting signature...');
     
-    // Sign with wallet (network-agnostic)
-    const signedTransaction = await wallet.signTransaction(transaction);
-    
-    console.log('📤 Sending to DEVNET...');
-    
-    // Send via our devnet connection
-    const txid = await connection.sendRawTransaction(signedTransaction.serialize(), {
-      skipPreflight: false,
+    // Use sendTransaction with skipPreflight
+    const txid = await wallet.sendTransaction(transaction, connection, {
+      skipPreflight: true,
       preflightCommitment: 'confirmed',
+      maxRetries: 3,
     });
     
     console.log('Transaction sent:', txid);
@@ -526,6 +516,9 @@ export async function closePayroll(
     return txid;
   } catch (error: any) {
     console.error('❌ Failed to close payroll:', error);
+    if (error.name === 'WalletSendTransactionError') {
+      throw new Error('Wallet error - please ensure Phantom is on Devnet (Settings > Developer Settings > Testnet Mode, then select Solana Devnet).');
+    }
     throw new Error(`Failed to close payroll: ${error.message || error.toString()}`);
   }
 }
