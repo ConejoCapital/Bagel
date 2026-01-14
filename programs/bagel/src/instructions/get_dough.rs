@@ -60,10 +60,17 @@ pub fn handler(
     
     jar.last_withdraw = current_time;
     
-    msg!("📤 Simulating private transfer of {} dough to employee", accrued);
+    msg!("📤 Executing private transfer via ShadowWire...");
     
-    // TODO: ShadowWire CPI call for private transfer
-    // This will be integrated in the next phase
+    // Execute private transfer using ShadowWire (Bulletproofs!)
+    // This hides the transfer amount using zero-knowledge proofs
+    execute_private_payout(
+        accrued,
+        ctx.accounts.employee.key(),
+        jar.dough_vault, // Using vault as mint placeholder
+    )?;
+    
+    msg!("✅ Private transfer complete! Amount hidden via Bulletproofs");
     
     // Emit privacy-preserving event (no amounts logged!)
     emit!(DoughDelivered {

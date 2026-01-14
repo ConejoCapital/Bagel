@@ -22,6 +22,9 @@ use anchor_lang::prelude::*;
 // Arcium C-SPL integration module
 pub mod arcium;
 
+// ShadowWire private transfers module
+pub mod shadowwire;
+
 /// Encrypted u64 type using Arcium C-SPL
 /// 
 /// **RE-EXPORT:** Using Arcium's ConfidentialBalance type
@@ -63,6 +66,9 @@ pub use arcium::ErrorCode;
 
 // Re-export Arcium functions
 pub use arcium::{encrypt_salary, decrypt_for_transfer};
+
+// Re-export ShadowWire functions
+pub use shadowwire::{execute_private_payout, initialize_encrypted_balance, ShadowWireTransfer};
 
 /// Calculate accrued salary using Arcium MPC
 /// 
