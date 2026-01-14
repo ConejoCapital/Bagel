@@ -23,6 +23,7 @@ NC='\033[0m' # No Color
 CIRCUIT_FILE="programs/bagel/circuits/payroll.arcis"
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 CLUSTER_OFFSET="1078779259"  # Solana Privacy Hack 2026 devnet offset
+PRIORITY_FEE="1000"         # v0.5.1: Priority fee in micro-lamports
 
 echo -e "${BLUE}🔮 Bagel MPC Circuit Deployment (CLI)${NC}"
 echo -e "${BLUE}=====================================${NC}\n"
@@ -81,22 +82,28 @@ else
     exit 1
 fi
 
-# Step 2: Initialize computation (get Circuit ID)
-echo -e "${BLUE}🚀 Step 2: Initializing computation on devnet...${NC}"
-echo -e "   Cluster Offset: $CLUSTER_OFFSET\n"
+# Step 2: Initialize computation (get Circuit ID) - v0.5.1
+echo -e "${BLUE}🚀 Step 2: Deploying computation on devnet (v0.5.1)...${NC}"
+echo -e "   Cluster Offset: $CLUSTER_OFFSET"
+echo -e "   Priority Fee: $PRIORITY_FEE micro-lamports\n"
 
-# Try init-computation first (newer versions)
-if arcium init-computation --path "$CIRCUIT_FILE" --cluster-offset "$CLUSTER_OFFSET" 2>/dev/null; then
-    echo -e "${GREEN}✅ Computation initialized!${NC}\n"
-elif arcium deploy --skip-program --path "$CIRCUIT_FILE" --cluster-offset "$CLUSTER_OFFSET" 2>/dev/null; then
-    echo -e "${GREEN}✅ Computation deployed!${NC}\n"
+# v0.5.1: Use arcium deploy with priority-fee-micro-lamports
+echo -e "${BLUE}Using v0.5.1 deploy command...${NC}"
+if arcium deploy \
+    --cluster-offset "$CLUSTER_OFFSET" \
+    --priority-fee-micro-lamports "$PRIORITY_FEE" 2>&1 | tee /tmp/arcium_deploy.log; then
+    echo -e "${GREEN}✅ Computation deployed (v0.5.1)!${NC}\n"
 else
-    # Fallback: try without --path flag
-    if arcium deploy --skip-program --cluster-offset "$CLUSTER_OFFSET"; then
+    # Fallback: Try init-computation (older versions)
+    echo -e "${YELLOW}⚠️  v0.5.1 deploy failed, trying init-computation...${NC}"
+    if arcium init-computation --path "$CIRCUIT_FILE" --cluster-offset "$CLUSTER_OFFSET" 2>/dev/null; then
+        echo -e "${GREEN}✅ Computation initialized!${NC}\n"
+    elif arcium deploy --skip-program --path "$CIRCUIT_FILE" --cluster-offset "$CLUSTER_OFFSET" 2>/dev/null; then
         echo -e "${GREEN}✅ Computation deployed!${NC}\n"
     else
-        echo -e "${RED}❌ Deployment failed${NC}"
+        echo -e "${RED}❌ All deployment methods failed${NC}"
         echo -e "${YELLOW}💡 Troubleshooting:${NC}"
+        echo -e "   - Ensure Docker Desktop is running"
         echo -e "   - Check cluster offset is correct: $CLUSTER_OFFSET"
         echo -e "   - Verify you have SOL for deployment fees"
         echo -e "   - Ask in #arcium Discord for current offset"
