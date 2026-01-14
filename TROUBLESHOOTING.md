@@ -71,6 +71,25 @@ anchor-spl = "0.28.0"
 
 ---
 
+## 💧 Getting Devnet SOL
+
+If the CLI airdrop command fails due to rate limits or RPC congestion, use these web faucets:
+
+### Reliable Faucets (2026)
+1. **Official Solana Faucet:** https://faucet.solana.com (Requires GitHub login; 5 SOL limit)
+2. **QuickNode Faucet:** https://faucet.quicknode.com/solana/devnet (Reliable for small drips)
+3. **Helius Faucet:** https://helius.dev/faucet (Best if using Helius RPCs)
+4. **Jumpbit Faucet:** https://solfaucet.com (Simple UI for quick airdrops)
+
+### CLI Method
+```bash
+solana airdrop 2
+# If rate limited, wait 60 seconds and try again
+solana airdrop 1
+```
+
+---
+
 ## 🔧 General Build Commands
 
 ### Clean Build
