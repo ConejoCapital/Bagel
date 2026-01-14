@@ -124,7 +124,7 @@ export default function EmployerDashboard() {
       
       // Verify payroll exists first
       try {
-        const payrollJar = await getPayrollJarPDA(
+        const [payrollJar] = getPayrollJarPDA(
           wallet.publicKey!,
           new PublicKey(employeeAddress)
         );
