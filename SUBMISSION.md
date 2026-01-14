@@ -210,14 +210,16 @@ anchor test --skip-local-validator tests/verify-all.ts
 - ✅ Transaction visible on Solscan
 - ✅ Public verification successful, salary amount remained hidden
 
-**Verified Test Results (Jan 14, 2025):**
-- ✅ **Bake Payroll:** Transaction `2cgaShBmUCtoiQzqkXfFGK6VWX9USg57Qf4sF5dJk2hjgH62joSJxnCMdw4C8KCt4iERy1BJ2bcQmoaM96tFC3qZ` - **SUCCESS**
-- ✅ **Deposit Dough:** Transaction `21Wn1LhSa2dpQ44yf4pHT2vr474tjS7vFpLEzbEzmLBnyMv1tak9JnwF3JK4SkEaJhRz5MjALfsHaJdccukJYa5p` - **SUCCESS**
+**Verified Test Results (Jan 14, 2025) - FULLY VERIFIED:**
+- ✅ **Bake Payroll:** Transaction `32yuxxk5NnHCHUYTndSd5obmj3fT4tE4hbX6yYuGzV2mqLFgpz4ukbsiRajQyXrwgLwhxZGjYcsuBjJSKk3M3Xn8` - **SUCCESS**
+- ✅ **Deposit Dough:** Transaction `65NrP2uLJyGDgrTqsMxwev1BbpWQLUuMFdumjANHaSsHymkG8EXUapMVVjCTfMYoCbPwyUYfzRLnGSuxTySzxCjv` - **SUCCESS**
+- ✅ **Withdraw Salary:** Transaction `24c2rbaJ3KmbNCrigiecgsmXrDFhbhqxdan2hjnrVuCr175oun2gMucAayW3sDpcDyBrdK8UCmHfvpaEmVf8mmbK` - **SUCCESS**
 - ✅ **90/10 Split:** Verified (0.1 SOL deposit, 0.1 SOL in jar)
 - ✅ **Privacy:** Salary encrypted, not visible on-chain
 - ✅ **Self-Funding:** Employee wallet funding works (no faucet dependency)
 - ✅ **Program ID Mismatch:** FIXED ✅
-- ⚠️ **Withdraw:** Code fixed (direct lamport transfer), needs program upgrade (~2.6 SOL required)
+- ✅ **Lamport Transfer:** FIXED (direct manipulation for accounts with data) ✅
+- ✅ **Complete E2E Flow:** Create → Deposit → Withdraw - **ALL PASSING** ✅
 
 ### **Manual UI Verification**
 1. **Employer Dashboard:** https://bagel-phi.vercel.app/employer
