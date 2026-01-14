@@ -55,7 +55,8 @@ export function getProvider(
  * Create a new payroll (bake_payroll instruction)
  * MANUAL INSTRUCTION BUILDING (no IDL needed!)
  * 
- * IMPORTANT: Uses wallet.sendTransaction() which properly respects the connection's cluster!
+ * APPROACH: Sign with wallet (network-agnostic), send via our devnet connection
+ * This ensures the transaction goes to DEVNET regardless of wallet's UI network display
  */
 export async function createPayroll(
   connection: Connection,
@@ -63,8 +64,8 @@ export async function createPayroll(
   employee: PublicKey,
   salaryPerSecond: number // in lamports
 ): Promise<string> {
-  if (!wallet.publicKey || !wallet.sendTransaction) {
-    throw new Error('Wallet not connected');
+  if (!wallet.publicKey || !wallet.signTransaction) {
+    throw new Error('Wallet not connected or does not support signing');
   }
 
   const employer = wallet.publicKey;
@@ -72,6 +73,7 @@ export async function createPayroll(
 
   // Log connection info for debugging
   console.log('🔗 Connection endpoint:', connection.rpcEndpoint);
+  console.log('🌐 This transaction will be sent to DEVNET via Helius RPC');
   console.log('Creating payroll...');
   console.log('Employer:', employer.toBase58());
   console.log('Employee:', employee.toBase58());
@@ -103,35 +105,55 @@ export async function createPayroll(
     // Create transaction
     const transaction = new web3.Transaction().add(instruction);
     
-    // Get recent blockhash from our devnet connection
+    // Get recent blockhash from our DEVNET connection (Helius)
     const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('confirmed');
     transaction.recentBlockhash = blockhash;
     transaction.feePayer = employer;
 
-    console.log('📤 Sending transaction via wallet.sendTransaction()...');
-    console.log('   Blockhash:', blockhash);
+    console.log('📝 Requesting signature from wallet...');
+    console.log('   Blockhash (from devnet):', blockhash);
+    console.log('   ⚠️ Phantom may show "Solana" - this is just UI. TX goes to devnet!');
     
-    // USE sendTransaction - this properly uses the connection's cluster!
-    // This is the KEY FIX - signTransaction + sendRawTransaction bypasses wallet's network detection
-    const txid = await wallet.sendTransaction(transaction, connection, {
+    // Step 1: Sign with wallet (this is network-agnostic - just cryptography!)
+    // The wallet's network display doesn't affect signing
+    const signedTransaction = await wallet.signTransaction(transaction);
+    
+    console.log('✅ Transaction signed!');
+    console.log('📤 Sending to DEVNET via:', connection.rpcEndpoint);
+    
+    // Step 2: Send via OUR devnet connection (bypasses wallet's network setting)
+    // This ensures the transaction goes to devnet.helius-rpc.com
+    const txid = await connection.sendRawTransaction(signedTransaction.serialize(), {
       skipPreflight: false,
       preflightCommitment: 'confirmed',
     });
     
-    console.log('Transaction sent:', txid);
+    console.log('Transaction sent to devnet:', txid);
     
-    // Wait for confirmation
-    console.log('⏳ Waiting for confirmation...');
+    // Wait for confirmation on DEVNET
+    console.log('⏳ Waiting for devnet confirmation...');
     await connection.confirmTransaction({
       blockhash,
       lastValidBlockHeight,
       signature: txid,
     }, 'confirmed');
     
-    console.log('✅ Payroll created! Transaction:', txid);
+    console.log('✅ Payroll created on DEVNET! Transaction:', txid);
     return txid;
   } catch (error: any) {
     console.error('❌ Failed to create payroll:', error);
+    
+    // More helpful error messages
+    if (error.message?.includes('insufficient funds')) {
+      throw new Error('Insufficient SOL on devnet. Get free SOL at https://faucet.solana.com');
+    }
+    if (error.message?.includes('Blockhash not found')) {
+      throw new Error('Transaction expired. Please try again.');
+    }
+    if (error.message?.includes('0x1')) {
+      throw new Error('Program error - payroll may already exist for this employee.');
+    }
+    
     throw new Error(`Failed to create payroll: ${error.message || error.toString()}`);
   }
 }
@@ -260,14 +282,14 @@ export function solToLamports(sol: number): number {
  * Withdraw accrued salary (get_dough instruction)
  * REAL TRANSACTION - Employee claims their earnings!
  * 
- * IMPORTANT: Uses wallet.sendTransaction() for proper devnet routing
+ * APPROACH: Sign with wallet, send via devnet connection
  */
 export async function withdrawDough(
   connection: Connection,
   wallet: WalletContextState,
   employer: PublicKey
 ): Promise<string> {
-  if (!wallet.publicKey || !wallet.sendTransaction) {
+  if (!wallet.publicKey || !wallet.signTransaction) {
     throw new Error('Wallet not connected');
   }
 
@@ -302,16 +324,20 @@ export async function withdrawDough(
     // Create transaction
     const transaction = new web3.Transaction().add(instruction);
     
-    // Get recent blockhash from our devnet connection
+    // Get recent blockhash from our DEVNET connection
     const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('confirmed');
     transaction.recentBlockhash = blockhash;
     transaction.feePayer = employee;
 
-    console.log('📤 Sending withdraw transaction via wallet.sendTransaction()...');
-    console.log('   Blockhash:', blockhash);
+    console.log('📝 Requesting signature...');
     
-    // USE sendTransaction - this properly uses the connection's cluster!
-    const txid = await wallet.sendTransaction(transaction, connection, {
+    // Sign with wallet (network-agnostic)
+    const signedTransaction = await wallet.signTransaction(transaction);
+    
+    console.log('📤 Sending to DEVNET...');
+    
+    // Send via our devnet connection
+    const txid = await connection.sendRawTransaction(signedTransaction.serialize(), {
       skipPreflight: false,
       preflightCommitment: 'confirmed',
     });
@@ -319,7 +345,7 @@ export async function withdrawDough(
     console.log('Transaction sent:', txid);
     
     // Wait for confirmation
-    console.log('⏳ Waiting for confirmation...');
+    console.log('⏳ Waiting for devnet confirmation...');
     await connection.confirmTransaction({
       blockhash,
       lastValidBlockHeight,
@@ -338,7 +364,7 @@ export async function withdrawDough(
  * Deposit funds to payroll (deposit_dough instruction)
  * REAL TRANSACTION - Employer adds SOL to employee's payroll
  * 
- * IMPORTANT: Uses wallet.sendTransaction() for proper devnet routing
+ * APPROACH: Sign with wallet, send via devnet connection
  */
 export async function depositDough(
   connection: Connection,
@@ -346,7 +372,7 @@ export async function depositDough(
   employee: PublicKey,
   amountLamports: number
 ): Promise<string> {
-  if (!wallet.publicKey || !wallet.sendTransaction) {
+  if (!wallet.publicKey || !wallet.signTransaction) {
     throw new Error('Wallet not connected');
   }
 
@@ -386,16 +412,20 @@ export async function depositDough(
     // Create transaction
     const transaction = new web3.Transaction().add(instruction);
     
-    // Get recent blockhash from our devnet connection
+    // Get recent blockhash from our DEVNET connection
     const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('confirmed');
     transaction.recentBlockhash = blockhash;
     transaction.feePayer = employer;
 
-    console.log('📤 Sending deposit transaction via wallet.sendTransaction()...');
-    console.log('   Blockhash:', blockhash);
+    console.log('📝 Requesting signature...');
     
-    // USE sendTransaction - this properly uses the connection's cluster!
-    const txid = await wallet.sendTransaction(transaction, connection, {
+    // Sign with wallet (network-agnostic)
+    const signedTransaction = await wallet.signTransaction(transaction);
+    
+    console.log('📤 Sending to DEVNET...');
+    
+    // Send via our devnet connection
+    const txid = await connection.sendRawTransaction(signedTransaction.serialize(), {
       skipPreflight: false,
       preflightCommitment: 'confirmed',
     });
@@ -403,7 +433,7 @@ export async function depositDough(
     console.log('Transaction sent:', txid);
     
     // Wait for confirmation
-    console.log('⏳ Waiting for confirmation...');
+    console.log('⏳ Waiting for devnet confirmation...');
     await connection.confirmTransaction({
       blockhash,
       lastValidBlockHeight,
@@ -422,14 +452,14 @@ export async function depositDough(
  * Close/cancel a payroll (close_jar instruction)
  * REAL TRANSACTION - Employer cancels payroll and gets remaining funds back
  * 
- * IMPORTANT: Uses wallet.sendTransaction() for proper devnet routing
+ * APPROACH: Sign with wallet, send via devnet connection
  */
 export async function closePayroll(
   connection: Connection,
   wallet: WalletContextState,
   employee: PublicKey
 ): Promise<string> {
-  if (!wallet.publicKey || !wallet.sendTransaction) {
+  if (!wallet.publicKey || !wallet.signTransaction) {
     throw new Error('Wallet not connected');
   }
 
@@ -464,16 +494,20 @@ export async function closePayroll(
     // Create transaction
     const transaction = new web3.Transaction().add(instruction);
     
-    // Get recent blockhash from our devnet connection
+    // Get recent blockhash from our DEVNET connection
     const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('confirmed');
     transaction.recentBlockhash = blockhash;
     transaction.feePayer = employer;
 
-    console.log('📤 Sending close transaction via wallet.sendTransaction()...');
-    console.log('   Blockhash:', blockhash);
+    console.log('📝 Requesting signature...');
     
-    // USE sendTransaction - this properly uses the connection's cluster!
-    const txid = await wallet.sendTransaction(transaction, connection, {
+    // Sign with wallet (network-agnostic)
+    const signedTransaction = await wallet.signTransaction(transaction);
+    
+    console.log('📤 Sending to DEVNET...');
+    
+    // Send via our devnet connection
+    const txid = await connection.sendRawTransaction(signedTransaction.serialize(), {
       skipPreflight: false,
       preflightCommitment: 'confirmed',
     });
@@ -481,7 +515,7 @@ export async function closePayroll(
     console.log('Transaction sent:', txid);
     
     // Wait for confirmation
-    console.log('⏳ Waiting for confirmation...');
+    console.log('⏳ Waiting for devnet confirmation...');
     await connection.confirmTransaction({
       blockhash,
       lastValidBlockHeight,
