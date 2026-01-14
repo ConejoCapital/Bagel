@@ -4,17 +4,23 @@
 
 Built for the [Solana Privacy Hackathon](https://solana.com/privacyhack) (January 2026)
 
+🏆 **Targeting $10,000 Arcium DeFi Bounty** 🏆  
+🔐 **Powered by C-SPL (Confidential SPL) Standard** 🔐
+
 ---
 
-## What is Bagel?
+## 🎯 What is Bagel?
 
-Bagel is a **privacy-first payroll platform** for Web3 teams. We solve the "Glass Office" problem where every crypto payment is publicly visible on the blockchain.
+Bagel is a **privacy-first payroll platform** for Web3 teams using **Arcium's C-SPL (Confidential SPL)** for encrypted token balances. We solve the "Glass Office" problem where every crypto payment is publicly visible on the blockchain.
 
-With Bagel:
-- 💼 **Employers** can pay teams without revealing salaries
-- 🔒 **Employees** get paid privately (amounts hidden on-chain)
-- 📈 **Everyone** benefits from yield on idle payroll funds
-- ⚡ **Payments** stream in real-time (every second)
+### Key Privacy Features:
+
+- 🛡️ **C-SPL Integration** - Encrypted salary balances using Arcium's Confidential SPL standard
+- 🔮 **MPC Computations** - Multi-Party Computation for payroll calculations without revealing amounts
+- 💼 **Employers** - Pay teams without revealing salaries (amounts encrypted on-chain)
+- 🔒 **Employees** - Get paid privately with amounts hidden from everyone except the recipient
+- 📈 **Yield Generation** - Earn interest on idle payroll funds via Privacy Cash
+- ⚡ **Real-time Streaming** - Payments stream every second via MagicBlock ephemeral rollups
 
 ---
 
@@ -55,16 +61,26 @@ Generate zero-knowledge proofs of income for loans/taxes without revealing detai
 
 ---
 
-## Tech Stack
+## 🔐 Privacy Tech Stack
 
-- **Smart Contracts:** Rust + Anchor Framework
-- **Privacy Layer:** Arcium (encrypted state), ShadowWire (private transfers)
-- **Streaming:** MagicBlock Private Ephemeral Rollups
-- **Yield:** Privacy Cash SDK
-- **Compliance:** Range
-- **Frontend:** Next.js 14 + TypeScript
-- **Styling:** Tailwind CSS (with warm, rounded design system)
-- **RPC:** Helius
+### Core Privacy (Arcium C-SPL) 🏆
+- **C-SPL Standard** - Confidential SPL tokens with encrypted balances (Token-2022 extension)
+- **MPC Circuits** - Multi-Party Computation for payroll calculations
+- **RescueCipher** - x25519 key exchange for client-side encryption/decryption
+- **Twisted ElGamal** - Homomorphic encryption for balance operations
+
+### Additional Privacy Layers
+- **ShadowWire** - Zero-knowledge private transfers using Bulletproofs
+- **MagicBlock** - Private Ephemeral Rollups for real-time streaming
+- **Privacy Cash** - Yield generation on encrypted balances
+- **Range** - Compliance and selective disclosure
+
+### Infrastructure
+- **Smart Contracts:** Rust + Anchor Framework 0.32.1
+- **Frontend:** Next.js 14 + TypeScript + React 18
+- **Wallet Integration:** @solana/wallet-adapter
+- **RPC:** Helius (priority fees + webhooks)
+- **Styling:** Tailwind CSS (warm, approachable design)
 
 ---
 
@@ -153,20 +169,31 @@ npm run dev
 
 ---
 
-## Prize Strategy
+## 🏆 Prize Strategy
 
-Targeting **$47,000** across these categories:
+**Primary Target:** Arcium **$10,000 DeFi Bounty** (C-SPL Integration)
 
-| Sponsor | Prize | Integration |
-|---------|-------|-------------|
-| Track 02: Privacy Tooling | $15,000 | Embeddable SDK |
-| ShadowWire | $10,000 | All payouts |
-| Privacy Cash | $6,000 | Yield feature |
-| Arcium | $5,000 | Encrypted state |
-| Helius | $5,000 | RPC infrastructure |
-| MagicBlock | $2,500 | Streaming engine |
-| Inco | $2,000 | Payments |
-| Range | $1,500 | Compliance |
+Targeting **$47,000+** across these categories:
+
+| Sponsor | Prize | Integration Status |
+|---------|-------|-------------------|
+| **Arcium (C-SPL)** | **$10,000** | ✅ **C-SPL integrated, MPC circuit deployed** |
+| Track 02: Privacy Tooling | $15,000 | ✅ Embeddable privacy SDK |
+| Track 01: Private Payments | $15,000 | ✅ Streaming + confidential transfers |
+| ShadowWire | $10,000 | 🔄 Private ZK transfers |
+| Privacy Cash | $6,000 | 🔄 Yield on encrypted balances |
+| Helius | $5,000 | ✅ RPC + priority fees |
+| MagicBlock | $2,500 | 🔄 Ephemeral rollups |
+| Range | $1,500 | 🔄 Compliance features |
+
+### Why We'll Win the Arcium Bounty:
+
+1. ✅ **C-SPL Implementation** - Using Arcium's Confidential SPL standard for encrypted balances
+2. ✅ **MPC Circuit** - Custom payroll calculation circuit deployed to Arcium network
+3. ✅ **Real Use Case** - Actual payroll problem with clear business value
+4. ✅ **Production Ready** - Not a toy example, designed for real deployment
+5. ✅ **Advanced Integration** - RescueCipher, x25519, homomorphic operations
+6. ✅ **Complete Documentation** - Every aspect documented for judges
 
 ---
 
