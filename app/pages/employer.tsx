@@ -132,6 +132,9 @@ export default function EmployerDashboard() {
           </div>
         ) : (
           <div className="space-y-6">
+            {/* Network Switch Guide */}
+            <NetworkSwitchGuide />
+
             {/* Create Payroll Card */}
             <div className="bg-white rounded-2xl p-8 shadow-md">
               <h3 className="text-2xl font-bold text-[#2D2D2A] mb-6">
