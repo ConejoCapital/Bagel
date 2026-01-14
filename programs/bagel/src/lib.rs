@@ -16,6 +16,11 @@ pub use state::*;
 
 declare_id!("8rgaVvV6m3SSaVJfJ2VNoBk67frTWbCS3WDBjrk7S6gU");
 
+// ⚡ MAGICBLOCK: Enable Ephemeral Rollup support
+// This allows the PayrollJar to stream on MagicBlock ER for sub-second precision
+use ephemeral_rollups_sdk::anchor::{ephemeral, commit, delegate};
+
+#[ephemeral]
 #[program]
 pub mod bagel {
     use super::*;

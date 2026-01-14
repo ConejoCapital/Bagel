@@ -28,6 +28,10 @@ kamino-lend = { version = "0.4.1", features = ["cpi"] }
 # Program ID: DELeGGvXpWV2fqJUhqcF5ZSYMS4JTLjteaAMARRSaeSh (Delegation Program)
 # Devnet RPC: https://devnet.magicblock.app/
 ephemeral-rollups-sdk = { version = "0.7.2", features = ["anchor"] }
+# Arcium Anchor SDK for MPC computations
+# BLOCKER: v0.5.4 requires anchor-lang v0.32.1, but we use v0.29.0
+# TODO: Find compatible version or upgrade anchor-lang
+# arcium-anchor = { version = "0.5.4", features = ["idl-build"] }
 
 [profile.release]
 overflow-checks = true
