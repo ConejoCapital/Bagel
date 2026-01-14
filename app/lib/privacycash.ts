@@ -405,10 +405,4 @@ export function formatYield(amount: number): string {
   return `+${amount.toFixed(9)} SOL`;
 }
 
-// Export types
-export type {
-  PrivacyCashConfig,
-  VaultPosition,
-  YieldStats,
-  YieldSplit,
-};
+// Export types (already exported with interface declarations above)

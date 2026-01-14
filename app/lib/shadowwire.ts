@@ -373,10 +373,4 @@ export function formatPrivateAmount(amount?: number): string {
   return `$${(amount / 1e9).toFixed(2)}`; // Assuming SOL/lamports
 }
 
-// Export types
-export type {
-  ShadowWireConfig,
-  BulletproofCommitment,
-  RangeProof,
-  PrivateTransferParams,
-};
+// Export types (already exported with interface declarations above)

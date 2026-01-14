@@ -84,7 +84,7 @@ export default function EmployeeDashboard() {
               <span className="text-4xl">🥯</span>
               <h1 className="text-2xl font-bold text-[#2D2D2A]">Bagel</h1>
             </Link>
-            <WalletMultiButton />
+            <WalletButton />
           </div>
         </header>
 

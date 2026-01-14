@@ -448,9 +448,4 @@ export function formatStreamRate(ratePerSecond: number): {
   };
 }
 
-// Export types
-export type {
-  MagicBlockConfig,
-  StreamSession,
-  StreamStats,
-};
+// Export types (already exported with interface declarations above)

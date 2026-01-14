@@ -409,4 +409,4 @@ export function salaryPerSecondToYearly(lamportsPerSecond: number, solPrice: num
 }
 
 // Export types for use in components
-export type { ArciumConfig, EncryptedPayload };
+// (Removed duplicate export - types are already exported above)
