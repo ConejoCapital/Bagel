@@ -46,8 +46,26 @@ export class BagelClient {
   constructor(connection: Connection, wallet: WalletContextState) {
     this.connection = connection;
     this.wallet = wallet;
-    this.arciumClient = new ArciumClient();
-    this.shadowwireClient = new ShadowWireClient();
+    
+    // Determine network from RPC endpoint
+    const rpcUrl = connection.rpcEndpoint;
+    const isDevnet = rpcUrl.includes('devnet') || rpcUrl.includes('localhost');
+    const network = isDevnet ? 'devnet' : 'mainnet-beta';
+    
+    // Initialize Arcium client with config
+    this.arciumClient = new ArciumClient({
+      solanaRpcUrl: rpcUrl,
+      network: network,
+      circuitId: process.env.NEXT_PUBLIC_ARCIUM_CIRCUIT_ID,
+      priorityFeeMicroLamports: 1000,
+    });
+    
+    // Initialize ShadowWire client with config
+    this.shadowwireClient = new ShadowWireClient({
+      solanaRpcUrl: rpcUrl,
+      network: network,
+      programId: process.env.NEXT_PUBLIC_SHADOWWIRE_PROGRAM_ID,
+    });
   }
 
   /**

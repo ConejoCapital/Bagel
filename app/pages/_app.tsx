@@ -14,12 +14,12 @@ const WalletModalProvider = dynamic(
 );
 
 export default function App({ Component, pageProps }: AppProps) {
-  // 🚀 MAINNET: Switched to Solana Mainnet
-  const network = WalletAdapterNetwork.Mainnet;
+  // 🧪 DEVNET: Using Solana Devnet for testing
+  const network = WalletAdapterNetwork.Devnet;
   
-  // Helius RPC endpoint (Mainnet)
+  // Helius RPC endpoint (Devnet)
   const endpoint = useMemo(
-    () => process.env.NEXT_PUBLIC_SOLANA_RPC_URL || 'https://mainnet.helius-rpc.com/?api-key=06227422-9d57-42de-a7b3-92f1491c58af',
+    () => process.env.NEXT_PUBLIC_SOLANA_RPC_URL || 'https://devnet.helius-rpc.com/?api-key=06227422-9d57-42de-a7b3-92f1491c58af',
     []
   );
 
