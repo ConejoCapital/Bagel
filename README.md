@@ -2,7 +2,7 @@
 
 **Real-time streaming payments • Zero-knowledge transfers • Automated yield generation**
 
-Built for [Solana Privacy Hackathon 2026](https://solana.com/privacyhack)
+Built for [Solana Privacy Hackathon 2026](https://solana.com/privacyhack) by @Conejocapital & @tomi204_
 
 [![Deployed](https://img.shields.io/badge/Deployed-Devnet-success)](https://explorer.solana.com/address/8rgaVvV6m3SSaVJfJ2VNoBk67frTWbCS3WDBjrk7S6gU?cluster=devnet)
 [![Built with Anchor](https://img.shields.io/badge/Anchor-0.32.1-blueviolet)](https://www.anchor-lang.com/)
