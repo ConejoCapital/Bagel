@@ -4,7 +4,7 @@ import Head from 'next/head';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import { useState } from 'react';
-import { createPayroll, solToLamports, lamportsToSOL, getPayrollJarPDA } from '../lib/bagel-client';
+import { createPayroll, depositDough, closePayroll, solToLamports, lamportsToSOL, getPayrollJarPDA } from '../lib/bagel-client';
 
 const WalletButton = dynamic(() => import('../components/WalletButton'), {
   ssr: false,
@@ -24,7 +24,10 @@ export default function EmployerDashboard() {
   const [employeeAddress, setEmployeeAddress] = useState('');
   const [salaryPerSecond, setSalaryPerSecond] = useState('0.000001');
   const [loading, setLoading] = useState(false);
+  const [depositing, setDepositing] = useState(false);
   const [txid, setTxid] = useState('');
+  const [depositTxid, setDepositTxid] = useState('');
+  const [depositAmount, setDepositAmount] = useState('0.1');
   const [error, setError] = useState('');
 
   // Calculate projections
@@ -92,6 +95,49 @@ export default function EmployerDashboard() {
       setError(err.message || 'Failed to create payroll');
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Handle deposit to existing payroll
+  const handleDeposit = async () => {
+    if (!wallet.publicKey) {
+      setError('Please connect your wallet first!');
+      return;
+    }
+
+    if (!employeeAddress) {
+      setError('Please enter employee address');
+      return;
+    }
+
+    if (parseFloat(depositAmount) <= 0) {
+      setError('Deposit amount must be greater than 0');
+      return;
+    }
+
+    try {
+      setDepositing(true);
+      setError('');
+      setDepositTxid('');
+
+      console.log('💵 Depositing to existing payroll...');
+      const depositLamports = solToLamports(parseFloat(depositAmount));
+      
+      const signature = await depositDough(
+        connection,
+        wallet,
+        new PublicKey(employeeAddress),
+        depositLamports
+      );
+
+      setDepositTxid(signature);
+      console.log('✅ Deposit successful! Transaction:', signature);
+
+    } catch (err: any) {
+      console.error('❌ Error depositing:', err);
+      setError(err.message || 'Failed to deposit');
+    } finally {
+      setDepositing(false);
     }
   };
 
@@ -285,6 +331,60 @@ export default function EmployerDashboard() {
                 </div>
               )}
             </div>
+
+            {/* Deposit to Existing Payroll */}
+            {txid && (
+              <div className="bg-white rounded-2xl p-8 shadow-md">
+                <h3 className="text-2xl font-bold text-[#2D2D2A] mb-6">
+                  💵 Deposit Funds to Payroll
+                </h3>
+
+                <div className="space-y-4">
+                  <div className="bg-blue-50 rounded-lg p-4 mb-4">
+                    <p className="text-sm text-blue-800">
+                      <strong>Note:</strong> This deposits SOL into the payroll jar you just created.
+                      The employee can then withdraw their accrued salary from this balance.
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Deposit Amount (SOL)
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B35]"
+                      placeholder="0.1"
+                      value={depositAmount}
+                      onChange={(e) => setDepositAmount(e.target.value)}
+                    />
+                  </div>
+
+                  <button
+                    onClick={handleDeposit}
+                    disabled={depositing || parseFloat(depositAmount) <= 0}
+                    className="w-full bg-green-600 hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-bold py-4 px-6 rounded-lg transition-all duration-300 shadow-md hover:shadow-lg"
+                  >
+                    {depositing ? '🔄 Depositing...' : '💵 Deposit SOL (REAL TX)'}
+                  </button>
+
+                  {depositTxid && (
+                    <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+                      <p className="text-green-800 font-medium mb-2">✅ Deposit successful!</p>
+                      <a
+                        href={`https://explorer.solana.com/tx/${depositTxid}?cluster=devnet`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-green-700 hover:text-green-900 text-sm font-medium"
+                      >
+                        🔍 View Deposit on Solana Explorer →
+                      </a>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
 
             {/* Info Cards */}
             <div className="grid md:grid-cols-3 gap-6">

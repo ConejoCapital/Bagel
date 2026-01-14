@@ -255,3 +255,243 @@ export function lamportsToSOL(lamports: number): number {
 export function solToLamports(sol: number): number {
   return Math.floor(sol * web3.LAMPORTS_PER_SOL);
 }
+
+/**
+ * Withdraw accrued salary (get_dough instruction)
+ * REAL TRANSACTION - Employee claims their earnings!
+ * 
+ * IMPORTANT: Uses wallet.sendTransaction() for proper devnet routing
+ */
+export async function withdrawDough(
+  connection: Connection,
+  wallet: WalletContextState,
+  employer: PublicKey
+): Promise<string> {
+  if (!wallet.publicKey || !wallet.sendTransaction) {
+    throw new Error('Wallet not connected');
+  }
+
+  const employee = wallet.publicKey;
+  const [payrollJarPDA] = getPayrollJarPDA(employee, employer);
+
+  // Log connection info for debugging
+  console.log('🔗 Connection endpoint:', connection.rpcEndpoint);
+  console.log('💰 Withdrawing dough...');
+  console.log('Employee:', employee.toBase58());
+  console.log('Employer:', employer.toBase58());
+  console.log('PayrollJar PDA:', payrollJarPDA.toBase58());
+
+  try {
+    // Build the instruction data manually
+    // Instruction discriminator for get_dough (first 8 bytes of sha256("global:get_dough"))
+    const discriminator = Buffer.from([0x7c, 0x84, 0x17, 0xf5, 0x95, 0x6e, 0x91, 0x18]);
+    
+    const data = discriminator; // No additional params needed
+
+    const instruction = new web3.TransactionInstruction({
+      keys: [
+        { pubkey: payrollJarPDA, isSigner: false, isWritable: true },
+        { pubkey: employee, isSigner: true, isWritable: true },
+        { pubkey: employer, isSigner: false, isWritable: true },
+        { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
+      ],
+      programId: BAGEL_PROGRAM_ID,
+      data,
+    });
+
+    // Create transaction
+    const transaction = new web3.Transaction().add(instruction);
+    
+    // Get recent blockhash from our devnet connection
+    const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('confirmed');
+    transaction.recentBlockhash = blockhash;
+    transaction.feePayer = employee;
+
+    console.log('📤 Sending withdraw transaction via wallet.sendTransaction()...');
+    console.log('   Blockhash:', blockhash);
+    
+    // USE sendTransaction - this properly uses the connection's cluster!
+    const txid = await wallet.sendTransaction(transaction, connection, {
+      skipPreflight: false,
+      preflightCommitment: 'confirmed',
+    });
+    
+    console.log('Transaction sent:', txid);
+    
+    // Wait for confirmation
+    console.log('⏳ Waiting for confirmation...');
+    await connection.confirmTransaction({
+      blockhash,
+      lastValidBlockHeight,
+      signature: txid,
+    }, 'confirmed');
+    
+    console.log('✅ Dough withdrawn! Transaction:', txid);
+    return txid;
+  } catch (error: any) {
+    console.error('❌ Failed to withdraw dough:', error);
+    throw new Error(`Failed to withdraw: ${error.message || error.toString()}`);
+  }
+}
+
+/**
+ * Deposit funds to payroll (deposit_dough instruction)
+ * REAL TRANSACTION - Employer adds SOL to employee's payroll
+ * 
+ * IMPORTANT: Uses wallet.sendTransaction() for proper devnet routing
+ */
+export async function depositDough(
+  connection: Connection,
+  wallet: WalletContextState,
+  employee: PublicKey,
+  amountLamports: number
+): Promise<string> {
+  if (!wallet.publicKey || !wallet.sendTransaction) {
+    throw new Error('Wallet not connected');
+  }
+
+  const employer = wallet.publicKey;
+  const [payrollJarPDA] = getPayrollJarPDA(employee, employer);
+
+  // Log connection info for debugging
+  console.log('🔗 Connection endpoint:', connection.rpcEndpoint);
+  console.log('💵 Depositing dough...');
+  console.log('Employer:', employer.toBase58());
+  console.log('Employee:', employee.toBase58());
+  console.log('PayrollJar PDA:', payrollJarPDA.toBase58());
+  console.log('Amount:', amountLamports, 'lamports');
+
+  try {
+    // Build the instruction data manually
+    // Instruction discriminator for deposit_dough (first 8 bytes of sha256("global:deposit_dough"))
+    const discriminator = Buffer.from([0xf2, 0x23, 0xc6, 0x89, 0x52, 0xe1, 0x41, 0x0a]);
+    
+    // Amount as u64 (8 bytes, little-endian)
+    const amountBuffer = Buffer.alloc(8);
+    amountBuffer.writeBigUInt64LE(BigInt(amountLamports));
+    
+    const data = Buffer.concat([discriminator, amountBuffer]);
+
+    const instruction = new web3.TransactionInstruction({
+      keys: [
+        { pubkey: payrollJarPDA, isSigner: false, isWritable: true },
+        { pubkey: employer, isSigner: true, isWritable: true },
+        { pubkey: employee, isSigner: false, isWritable: false },
+        { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
+      ],
+      programId: BAGEL_PROGRAM_ID,
+      data,
+    });
+
+    // Create transaction
+    const transaction = new web3.Transaction().add(instruction);
+    
+    // Get recent blockhash from our devnet connection
+    const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('confirmed');
+    transaction.recentBlockhash = blockhash;
+    transaction.feePayer = employer;
+
+    console.log('📤 Sending deposit transaction via wallet.sendTransaction()...');
+    console.log('   Blockhash:', blockhash);
+    
+    // USE sendTransaction - this properly uses the connection's cluster!
+    const txid = await wallet.sendTransaction(transaction, connection, {
+      skipPreflight: false,
+      preflightCommitment: 'confirmed',
+    });
+    
+    console.log('Transaction sent:', txid);
+    
+    // Wait for confirmation
+    console.log('⏳ Waiting for confirmation...');
+    await connection.confirmTransaction({
+      blockhash,
+      lastValidBlockHeight,
+      signature: txid,
+    }, 'confirmed');
+    
+    console.log('✅ Dough deposited! Transaction:', txid);
+    return txid;
+  } catch (error: any) {
+    console.error('❌ Failed to deposit dough:', error);
+    throw new Error(`Failed to deposit: ${error.message || error.toString()}`);
+  }
+}
+
+/**
+ * Close/cancel a payroll (close_jar instruction)
+ * REAL TRANSACTION - Employer cancels payroll and gets remaining funds back
+ * 
+ * IMPORTANT: Uses wallet.sendTransaction() for proper devnet routing
+ */
+export async function closePayroll(
+  connection: Connection,
+  wallet: WalletContextState,
+  employee: PublicKey
+): Promise<string> {
+  if (!wallet.publicKey || !wallet.sendTransaction) {
+    throw new Error('Wallet not connected');
+  }
+
+  const employer = wallet.publicKey;
+  const [payrollJarPDA] = getPayrollJarPDA(employee, employer);
+
+  // Log connection info for debugging
+  console.log('🔗 Connection endpoint:', connection.rpcEndpoint);
+  console.log('🗑️ Closing payroll jar...');
+  console.log('Employer:', employer.toBase58());
+  console.log('Employee:', employee.toBase58());
+  console.log('PayrollJar PDA:', payrollJarPDA.toBase58());
+
+  try {
+    // Build the instruction data manually
+    // Instruction discriminator for close_jar (first 8 bytes of sha256("global:close_jar"))
+    const discriminator = Buffer.from([0x48, 0xe0, 0xd5, 0x0a, 0x88, 0x7c, 0x12, 0x3b]);
+    
+    const data = discriminator; // No additional params needed
+
+    const instruction = new web3.TransactionInstruction({
+      keys: [
+        { pubkey: payrollJarPDA, isSigner: false, isWritable: true },
+        { pubkey: employer, isSigner: true, isWritable: true },
+        { pubkey: employee, isSigner: false, isWritable: false },
+        { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
+      ],
+      programId: BAGEL_PROGRAM_ID,
+      data,
+    });
+
+    // Create transaction
+    const transaction = new web3.Transaction().add(instruction);
+    
+    // Get recent blockhash from our devnet connection
+    const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('confirmed');
+    transaction.recentBlockhash = blockhash;
+    transaction.feePayer = employer;
+
+    console.log('📤 Sending close transaction via wallet.sendTransaction()...');
+    console.log('   Blockhash:', blockhash);
+    
+    // USE sendTransaction - this properly uses the connection's cluster!
+    const txid = await wallet.sendTransaction(transaction, connection, {
+      skipPreflight: false,
+      preflightCommitment: 'confirmed',
+    });
+    
+    console.log('Transaction sent:', txid);
+    
+    // Wait for confirmation
+    console.log('⏳ Waiting for confirmation...');
+    await connection.confirmTransaction({
+      blockhash,
+      lastValidBlockHeight,
+      signature: txid,
+    }, 'confirmed');
+    
+    console.log('✅ Payroll closed! Transaction:', txid);
+    return txid;
+  } catch (error: any) {
+    console.error('❌ Failed to close payroll:', error);
+    throw new Error(`Failed to close payroll: ${error.message || error.toString()}`);
+  }
+}

@@ -8,7 +8,8 @@ import {
   fetchPayrollJar, 
   calculateAccrued, 
   lamportsToSOL,
-  getPayrollJarPDA 
+  getPayrollJarPDA,
+  withdrawDough
 } from '../lib/bagel-client';
 
 const WalletButton = dynamic(() => import('../components/WalletButton'), {
@@ -30,8 +31,10 @@ export default function EmployeeDashboard() {
   const [payrollData, setPayrollData] = useState<any>(null);
   const [balance, setBalance] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [withdrawing, setWithdrawing] = useState(false);
   const [isStreaming, setIsStreaming] = useState(false);
   const [error, setError] = useState('');
+  const [withdrawTxid, setWithdrawTxid] = useState('');
 
   // Mock salary per second (in a real app, this would be decrypted from Arcium)
   const MOCK_SALARY_PER_SECOND = 1000000; // 0.000001 SOL/sec = 1M lamports/sec
@@ -97,6 +100,54 @@ export default function EmployeeDashboard() {
 
     return () => clearInterval(interval);
   }, [payrollData, isStreaming]);
+
+  // Handle withdraw (REAL TRANSACTION!)
+  const handleWithdraw = async () => {
+    if (!wallet.publicKey || !payrollData) {
+      setError('Wallet not connected or no payroll data');
+      return;
+    }
+
+    try {
+      setWithdrawing(true);
+      setError('');
+      setWithdrawTxid('');
+
+      console.log('💰 Initiating REAL withdraw transaction...');
+      console.log('Employee:', wallet.publicKey.toBase58());
+      console.log('Employer:', payrollData.employer.toBase58());
+
+      // REAL TRANSACTION - sends get_dough instruction to Solana!
+      const txid = await withdrawDough(
+        connection,
+        wallet,
+        payrollData.employer
+      );
+
+      setWithdrawTxid(txid);
+      
+      // Reset balance after successful withdraw
+      setBalance(0);
+      
+      // Re-fetch payroll data to update lastWithdraw timestamp
+      const updatedData = await fetchPayrollJar(
+        connection,
+        wallet.publicKey,
+        payrollData.employer
+      );
+      if (updatedData) {
+        setPayrollData(updatedData);
+      }
+
+      console.log('✅ Withdraw successful! Transaction:', txid);
+
+    } catch (err: any) {
+      console.error('❌ Error withdrawing:', err);
+      setError(err.message || 'Failed to withdraw');
+    } finally {
+      setWithdrawing(false);
+    }
+  };
 
   // Calculate stats
   const getStats = () => {
@@ -234,12 +285,31 @@ export default function EmployeeDashboard() {
                     </button>
 
                     <button
-                      onClick={() => alert('Withdraw instruction coming next! This will send a real get_dough transaction to the Solana program. For this demo, the balance calculation shows how the UI works.')}
-                      className="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg transition-all duration-300"
+                      onClick={handleWithdraw}
+                      disabled={withdrawing || balance === 0}
+                      className="bg-green-600 hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white font-bold py-3 px-6 rounded-lg transition-all duration-300"
                     >
-                      💰 Withdraw (Coming Soon)
+                      {withdrawing ? '🔄 Withdrawing...' : '💰 Withdraw (REAL TX)'}
                     </button>
                   </div>
+
+                  {/* Withdraw Success Display */}
+                  {withdrawTxid && (
+                    <div className="mb-6 p-4 bg-green-50 border-2 border-green-500 rounded-lg">
+                      <h4 className="font-bold text-green-800 mb-2">✅ Withdrawal Successful!</h4>
+                      <p className="text-sm text-green-700 mb-2">
+                        Your accrued salary has been withdrawn to your wallet.
+                      </p>
+                      <a
+                        href={`https://explorer.solana.com/tx/${withdrawTxid}?cluster=devnet`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-block bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded transition-all duration-300 text-sm"
+                      >
+                        🔍 View on Solana Explorer →
+                      </a>
+                    </div>
+                  )}
 
                   {/* Stats Cards */}
                   <div className="grid grid-cols-3 gap-4 mb-6">
