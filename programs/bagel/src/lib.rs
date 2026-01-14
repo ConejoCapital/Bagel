@@ -58,4 +58,10 @@ pub mod bagel {
     pub fn close_jar(ctx: Context<CloseJar>) -> Result<()> {
         instructions::close_jar::handler(ctx)
     }
+
+    /// Claim excess dough (yield profit) from Kamino vault
+    /// 🥯 "Harvest the Yield" - Employer claims yield while keeping principal
+    pub fn claim_excess_dough(ctx: Context<ClaimExcessDough>) -> Result<()> {
+        instructions::claim_excess_dough::handler(ctx)
+    }
 }

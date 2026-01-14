@@ -216,36 +216,78 @@ impl KaminoVaultPosition {
     }
 }
 
-/// Deposit SOL to Kamino vault
+/// Deposit SOL to Kamino Lend V2 Main Market
 /// 
 /// **USE CASE:** Called from deposit_dough to route 90% to yield
 /// 
 /// **FLOW:**
 /// 1. Employer deposits 0.5 SOL
-/// 2. 90% (0.45 SOL) → Kamino vault
-/// 3. 10% (0.05 SOL) → Liquid for payouts
-/// 4. Yield accrues automatically
+/// 2. 90% (0.45 SOL) → Kamino Lend V2 Main Market
+/// 3. Receive kSOL tokens (Kamino SOL lending token)
+/// 4. Wrap kSOL in Arcium C-SPL Confidential Token Account
+/// 5. 10% (0.05 SOL) → Liquid for payouts
+/// 6. Yield accrues automatically
+/// 
+/// **PRODUCTION:** Uses @kamino-finance/klend-sdk
+/// ```ignore
+/// use kamino_finance::klend::deposit;
+/// 
+/// let kSOL_amount = deposit(
+///     ctx,
+///     kamino_main_market,
+///     sol_amount,
+/// )?;
+/// 
+/// // Wrap in Arcium C-SPL
+/// let confidential_account = arcium::wrap_token(
+///     kSOL_amount,
+///     kSOL_mint,
+/// )?;
+/// ```
 pub fn deposit_to_kamino_vault(
     amount: u64,
     vault_account: Pubkey,
 ) -> Result<KaminoVaultPosition> {
-    msg!("🏦 Depositing to Kamino SOL vault");
+    msg!("🏦 Depositing to Kamino Lend V2 Main Market");
     msg!("   Amount: {} lamports (90% of deposit)", amount);
+    msg!("   Market: {}", vault_account);
     
-    // TODO: Call Kamino deposit instruction
+    // TODO: Call Kamino Lend V2 deposit using SDK
     // 
     // use anchor_lang::solana_program::program::invoke;
-    // use kamino::instruction::deposit;
+    // use kamino_finance::klend::instruction::deposit;
     // 
-    // let position_token_account = invoke(
-    //     &deposit(
-    //         kamino_program_id,
-    //         vault_account,
-    //         source_account,
-    //         amount,
-    //     )?,
-    //     &accounts,
+    // // Deposit SOL to Kamino Main Market
+    // let deposit_ix = deposit(
+    //     kamino_program_id,
+    //     kamino_main_market,
+    //     source_sol_account,
+    //     amount,
     // )?;
+    // 
+    // // Execute deposit
+    // let position_token_account = invoke(
+    //     &deposit_ix,
+    //     &[
+    //         source_sol_account,
+    //         kamino_main_market,
+    //         kamino_program,
+    //     ],
+    // )?;
+    // 
+    // // Get kSOL mint and amount
+    // let kSOL_mint = get_kamino_sol_mint(kamino_main_market)?;
+    // let kSOL_amount = get_deposit_amount(position_token_account)?;
+    // 
+    // // Wrap kSOL in Arcium C-SPL Confidential Token Account
+    // let confidential_account = arcium::wrap_token_in_cspl(
+    //     kSOL_amount,
+    //     kSOL_mint,
+    //     employer_key,
+    // )?;
+    // 
+    // msg!("✅ kSOL wrapped in Arcium C-SPL!");
+    // msg!("   Confidential account: {}", confidential_account);
     
     // For now, create mock position
     let position_token_account = Pubkey::default(); // TODO: Get from Kamino deposit
@@ -259,6 +301,7 @@ pub fn deposit_to_kamino_vault(
     msg!("✅ Deposited to Kamino vault!");
     msg!("   Yield starts accruing immediately");
     msg!("   Position token: {}", position.position_token_account);
+    msg!("   ⚠️ MOCK: In production, kSOL will be wrapped in Arcium C-SPL");
     
     Ok(position)
 }

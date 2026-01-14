@@ -99,3 +99,12 @@ pub struct DoughAdded {
     pub amount: u64,
     pub timestamp: i64,
 }
+
+/// Event emitted when yield is claimed
+#[event]
+pub struct YieldClaimed {
+    pub employer: Pubkey,
+    pub bagel_jar: Pubkey,
+    pub yield_amount: u64,
+    pub timestamp: i64,
+}
