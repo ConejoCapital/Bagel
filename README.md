@@ -234,6 +234,20 @@ MIT License - See [LICENSE](./LICENSE) for details
 
 ---
 
+## ⚠️ Build Troubleshooting
+
+**Edition 2024 error:** Run `cargo update -p blake3 --precise 1.8.2`
+
+**Stack Offset error:** We are currently using a minimal version with `anchor-spl` disabled to stay within SBF stack limits (4096 bytes).
+
+**Funding:** Use `solana airdrop 2` or visit [faucet.solana.com](https://faucet.solana.com).
+
+**Next Phase:** Refer to [SDK_INTEGRATION_START.md](./SDK_INTEGRATION_START.md) for Arcium and Inco implementation details.
+
+**Full troubleshooting guide:** See [TROUBLESHOOTING.md](./TROUBLESHOOTING.md)
+
+---
+
 ## Support
 
 - Twitter: [Coming soon]
