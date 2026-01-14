@@ -25,6 +25,9 @@ pub mod arcium;
 // ShadowWire private transfers module
 pub mod shadowwire;
 
+// MagicBlock streaming payments module
+pub mod magicblock;
+
 /// Encrypted u64 type using Arcium C-SPL
 /// 
 /// **RE-EXPORT:** Using Arcium's ConfidentialBalance type
@@ -69,6 +72,9 @@ pub use arcium::{encrypt_salary, decrypt_for_transfer};
 
 // Re-export ShadowWire functions
 pub use shadowwire::{execute_private_payout, initialize_encrypted_balance, ShadowWireTransfer};
+
+// Re-export MagicBlock functions
+pub use magicblock::{initialize_stream, get_stream_balance, claim_streamed_balance, EphemeralSession};
 
 /// Calculate accrued salary using Arcium MPC
 /// 
