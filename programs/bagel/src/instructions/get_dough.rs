@@ -19,7 +19,6 @@ pub fn handler(
     let employee_key = ctx.accounts.employee.key();
     let payroll_jar_account_info = ctx.accounts.payroll_jar.to_account_info();
     let employee_account_info = ctx.accounts.employee.to_account_info();
-    let system_program_account_info = ctx.accounts.system_program.to_account_info();
     
     let jar = &mut ctx.accounts.payroll_jar;
     
@@ -75,8 +74,9 @@ pub fn handler(
     
     msg!("📤 Transferring {} lamports to employee...", accrued);
     
-    // REAL SOL TRANSFER: Use system_instruction::transfer
-    // The PayrollJar PDA signs the transfer using its seeds
+    // REAL SOL TRANSFER: Direct lamport manipulation
+    // Since PayrollJar has data, we can't use SystemProgram.transfer
+    // Instead, we directly modify lamports (accounts with data can transfer lamports directly)
     let seeds = &[
         BAGEL_JAR_SEED,
         employer_key.as_ref(),
@@ -84,21 +84,9 @@ pub fn handler(
         &[bump],
     ];
     
-    let transfer_ix = anchor_lang::solana_program::system_instruction::transfer(
-        &payroll_jar_key,
-        &employee_key,
-        accrued,
-    );
-    
-    anchor_lang::solana_program::program::invoke_signed(
-        &transfer_ix,
-        &[
-            payroll_jar_account_info,
-            employee_account_info,
-            system_program_account_info,
-        ],
-        &[seeds],
-    )?;
+    // Direct lamport transfer - subtract from PayrollJar, add to employee
+    **payroll_jar_account_info.try_borrow_mut_lamports()? -= accrued;
+    **employee_account_info.try_borrow_mut_lamports()? += accrued;
     
     msg!("✅ SOL transferred to employee! {} lamports", accrued);
     
