@@ -37,18 +37,19 @@ pub mod program_ids {
     use anchor_lang::prelude::*;
     
     // MagicBlock Ephemeral Rollups Program ID
-    // TODO: Get from MagicBlock team (devnet + mainnet)
-    // Contact: MagicBlock Discord
+    // Delegation Program ID: DELeGGvXpWV2fqJUhqcF5ZSYMS4JTLjteaAMARRSaeSh
+    // Source: https://docs.magicblock.gg/pages/ephemeral-rollups-ers/introduction/ephemeral-rollup
     // Devnet Endpoint: https://devnet.magicblock.app/
     // SDK: ephemeral-rollups-sdk v0.7.2
-    pub const MAGICBLOCK_PROGRAM_ID: &str = "11111111111111111111111111111111";
+    pub const MAGICBLOCK_PROGRAM_ID: &str = "DELeGGvXpWV2fqJUhqcF5ZSYMS4JTLjteaAMARRSaeSh";
     
     // ShadowWire Private Transfers Program ID
-    // TODO: Get from Radr Labs (devnet + mainnet)
-    // Contact: https://github.com/Radrdotfun/ShadowWire
-    pub const SHADOWWIRE_PROGRAM_ID: &str = "11111111111111111111111111111111";
+    // Mainnet Program ID: GQBqwwoikYh7p6KEUHDUu5r9dHHXx9tMGskAPubmFPzD
+    // Source: https://www.radr.fun/docs/shadowpay
+    // Note: This is mainnet ID - devnet may differ, check ShadowWire docs
+    pub const SHADOWWIRE_PROGRAM_ID: &str = "GQBqwwoikYh7p6KEUHDUu5r9dHHXx9tMGskAPubmFPzD";
     
     // USD1 Token Mint (for ShadowWire private transfers)
-    // TODO: Get from ShadowWire team
+    // TODO: Get from ShadowWire team or their documentation
     pub const USD1_MINT: &str = "11111111111111111111111111111111";
 }

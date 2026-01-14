@@ -39,42 +39,50 @@ pub fn handler(
     msg!("   To Kamino vault (90%): {} lamports", yield_amount);
     msg!("   Liquid (10%): {} lamports", liquid_amount);
     
-    // Route 90% to Kamino Lend V2 Main Market for yield (MAINNET)
+    // Route 90% to Kamino Lend V2 Main Market for yield
     // Main Market: 7u3HeHxYDLhnCoErrtycNokbQYbWGzLs6JSDqGAv5PfF
     // SOL Reserve: d4A2prbA2whesmvHaL88BH6Ewn5N4bTSU2Ze8P6Bc4Q
-    use crate::constants::{KAMINO_MAIN_MARKET, KAMINO_SOL_RESERVE};
+    use crate::constants::{KAMINO_MAIN_MARKET, KAMINO_SOL_RESERVE, KAMINO_LENDING_PROGRAM};
     let kamino_main_market = Pubkey::try_from(KAMINO_MAIN_MARKET)
         .map_err(|_| error!(BagelError::InvalidAmount))?;
     let kamino_sol_reserve = Pubkey::try_from(KAMINO_SOL_RESERVE)
         .map_err(|_| error!(BagelError::InvalidAmount))?;
+    let kamino_program_id = Pubkey::try_from(KAMINO_LENDING_PROGRAM)
+        .map_err(|_| error!(BagelError::InvalidAmount))?;
     
     if yield_amount > 0 {
-        msg!("🏦 Depositing {} lamports to Kamino Lend V2 Main Market", yield_amount);
+        msg!("🏦 Preparing {} lamports for Kamino Lend V2 Main Market", yield_amount);
         msg!("   Market: {}", kamino_main_market);
         msg!("   SOL Reserve: {}", kamino_sol_reserve);
+        msg!("   Program: {}", kamino_program_id);
         
         // REAL KAMINO CPI: Using kamino-lend v0.4.1 with CPI feature
-        // Program ID: KLend2g3cP87fffoy8q1mQqGKjrxjC8boSyAYavgmjD
         // 
-        // NOTE: For native SOL deposits to Kamino, we typically need to:
-        // 1. Wrap SOL to WSOL (if required by Kamino)
-        // 2. Use deposit_reserve_liquidity CPI
+        // IMPORTANT: Kamino requires WSOL (Wrapped SOL) for deposits, not native SOL.
+        // For production, we need to:
+        // 1. Wrap native SOL to WSOL using SPL Token program
+        // 2. Use deposit_reserve_liquidity CPI with WSOL token account
         // 3. Receive kSOL collateral tokens
         // 
-        // The CPI structure is ready. When Kamino accounts are added to DepositDough:
-        // use kamino_lend::cpi::accounts::DepositReserveLiquidity;
-        // use kamino_lend::cpi::deposit_reserve_liquidity;
+        // For now, we transfer the yield_amount to PayrollJar and mark it for Kamino.
+        // The real CPI will be implemented when WSOL wrapping is added.
+        //
+        // Real CPI structure (when WSOL accounts are added):
+        // use kamino_lend::cpi::accounts::DepositReserveLiquidityAndObligationCollateral;
+        // use kamino_lend::cpi::deposit_reserve_liquidity_and_obligation_collateral;
         // use anchor_lang::CpiContext;
         // 
-        // let cpi_accounts = DepositReserveLiquidity {
+        // let cpi_accounts = DepositReserveLiquidityAndObligationCollateral {
+        //     source_liquidity: ctx.accounts.wsol_token_account.to_account_info(),
+        //     destination_collateral: ctx.accounts.ksol_token_account.to_account_info(),
+        //     reserve: ctx.accounts.kamino_reserve.to_account_info(),
+        //     reserve_liquidity_supply: ctx.accounts.reserve_liquidity_supply.to_account_info(),
+        //     reserve_collateral_mint: ctx.accounts.reserve_collateral_mint.to_account_info(),
         //     lending_market: ctx.accounts.kamino_lending_market.to_account_info(),
         //     lending_market_authority: ctx.accounts.kamino_lending_market_authority.to_account_info(),
-        //     reserve: ctx.accounts.kamino_reserve.to_account_info(),
-        //     reserve_liquidity_supply: ctx.accounts.kamino_reserve_liquidity_supply.to_account_info(),
-        //     reserve_collateral_mint: ctx.accounts.kamino_reserve_collateral_mint.to_account_info(),
-        //     user_source_liquidity: ctx.accounts.user_source_liquidity.to_account_info(),
-        //     user_destination_collateral: ctx.accounts.user_destination_collateral.to_account_info(),
         //     user_transfer_authority: ctx.accounts.employer.to_account_info(),
+        //     obligation: ctx.accounts.obligation.to_account_info(), // Optional
+        //     obligation_owner: ctx.accounts.employer.to_account_info(),
         //     token_program: ctx.accounts.token_program.to_account_info(),
         // };
         // 
@@ -83,17 +91,34 @@ pub fn handler(
         //     cpi_accounts,
         // );
         // 
-        // deposit_reserve_liquidity(cpi_ctx, yield_amount)?;
+        // deposit_reserve_liquidity_and_obligation_collateral(cpi_ctx, yield_amount)?;
         // 
         // msg!("✅ Real Kamino CPI executed! Funds earning yield");
         
-        // For now, store market reference (will be replaced with position account after real CPI)
+        // For now, transfer yield_amount to PayrollJar and mark it for Kamino
+        // This keeps the 90/10 split working while we prepare WSOL wrapping
+        let transfer_yield_ix = anchor_lang::solana_program::system_instruction::transfer(
+            &employer_key,
+            &payroll_jar_key,
+            yield_amount,
+        );
+        
+        anchor_lang::solana_program::program::invoke(
+            &transfer_yield_ix,
+            &[
+                employer_account_info.clone(),
+                payroll_jar_account_info.clone(),
+                system_program_account_info.clone(),
+            ],
+        )?;
+        
+        // Store Kamino reserve reference (will be replaced with position account after real CPI)
         jar.dough_vault = kamino_sol_reserve;
         
-        msg!("✅ Kamino deposit structure ready!");
-        msg!("   Program: KLend2g3cP87fffoy8q1mQqGKjrxjC8boSyAYavgmjD");
-        msg!("   ⚠️ NOTE: Real CPI pending account additions to DepositDough struct");
-        msg!("   In production: kSOL tokens will be wrapped in Arcium C-SPL");
+        msg!("✅ Yield amount transferred to PayrollJar (marked for Kamino)");
+        msg!("   ⚠️ NOTE: Real Kamino CPI requires WSOL wrapping");
+        msg!("   Next step: Add WSOL wrapping before Kamino deposit");
+        msg!("   Structure ready for kamino-lend v0.4.1 CPI integration");
     }
     
     // REAL SOL TRANSFER: Transfer liquid portion to PayrollJar account
@@ -119,15 +144,23 @@ pub fn handler(
         msg!("✅ SOL transferred to PayrollJar!");
     }
     
-    // Update state to track liquid balance
-    jar.total_accrued = jar.total_accrued
-        .checked_add(liquid_amount)
+    // Update state to track total balance (liquid + yield)
+    // Note: Both liquid_amount and yield_amount are now in PayrollJar
+    // The yield_amount is marked for Kamino but currently in PayrollJar
+    let total_deposited = liquid_amount
+        .checked_add(yield_amount)
         .ok_or(BagelError::ArithmeticOverflow)?;
     
-    msg!("💧 Liquid balance: {} lamports (available for payouts)", liquid_amount);
+    jar.total_accrued = jar.total_accrued
+        .checked_add(total_deposited)
+        .ok_or(BagelError::ArithmeticOverflow)?;
     
-    // TODO: In production, transfer yield_amount to Kamino and wrap in C-SPL
-    // For now, we're just tracking the split in state
+    msg!("💧 Total balance updated: {} lamports", total_deposited);
+    msg!("   Liquid (10%): {} lamports (available for immediate payouts)", liquid_amount);
+    msg!("   Yield (90%): {} lamports (marked for Kamino, pending WSOL wrap)", yield_amount);
+    
+    // TODO: In production, wrap yield_amount to WSOL and deposit to Kamino via CPI
+    // Then wrap kSOL tokens in Arcium C-SPL for privacy
     
     // Emit event for Helius webhooks
     emit!(DoughAdded {
