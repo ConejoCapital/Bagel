@@ -1,0 +1,38 @@
+# 🔮 Arcium MPC Configuration for Bagel
+# Version: 0.5.4
+# Target: $10,000 Arcium DeFi Bounty
+
+[workspace]
+# Arcium workspace configuration
+members = [
+    "programs/bagel"
+]
+
+[mxe]
+# Multi-party eXecution Environment settings
+name = "bagel-payroll"
+version = "1.0.0"
+cluster_offset = 1078779259  # Devnet cluster for Solana Privacy Hack 2026
+
+[circuits]
+# Circuit definitions
+[[circuits.definitions]]
+name = "payroll"
+path = "encrypted-ixs/circuits/payroll.arcis"
+description = "Privacy-preserving payroll calculation: salary_per_second * elapsed_seconds"
+
+[build]
+# Build configuration
+target = "sbpf-solana-solana"
+anchor_version = "0.32.1"
+
+[deploy]
+# Deployment settings
+rpc_url = "https://devnet.helius-rpc.com/?api-key=06227422-9d57-42de-a7b3-92f1491c58af"
+cluster = "devnet"
+priority_fee_micro_lamports = 1000
+
+[test]
+# Test configuration
+cluster = "devnet"
+validator = "skip"
