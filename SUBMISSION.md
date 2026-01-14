@@ -211,11 +211,13 @@ anchor test --skip-local-validator tests/verify-all.ts
 - ✅ Public verification successful, salary amount remained hidden
 
 **Verified Test Results (Jan 14, 2025):**
-- ✅ **Bake Payroll:** Transaction `VTxyaw3aQffG8Vy2Ewdeh4byJH53Dyd6M5i7PN4VjEXmiXdjWKWosxBVTPNGMH9n8xEGRzTEdTPJUvqX4azv8kW` - **SUCCESS**
-- ✅ **Deposit Dough:** Transaction `4YNUiyG6ofR7XZgdKKudj7szdDbxmP22bsxoKEyFuvMfoPQicvLE26cDag6yUcTovv5ApQmaVrGm8h1yeat3VBoJ` - **SUCCESS**
+- ✅ **Bake Payroll:** Transaction `2cgaShBmUCtoiQzqkXfFGK6VWX9USg57Qf4sF5dJk2hjgH62joSJxnCMdw4C8KCt4iERy1BJ2bcQmoaM96tFC3qZ` - **SUCCESS**
+- ✅ **Deposit Dough:** Transaction `21Wn1LhSa2dpQ44yf4pHT2vr474tjS7vFpLEzbEzmLBnyMv1tak9JnwF3JK4SkEaJhRz5MjALfsHaJdccukJYa5p` - **SUCCESS**
 - ✅ **90/10 Split:** Verified (0.1 SOL deposit, 0.1 SOL in jar)
 - ✅ **Privacy:** Salary encrypted, not visible on-chain
-- ⚠️ **Withdraw:** Blocked by airdrop rate limit (not a code issue - employees will have SOL in production)
+- ✅ **Self-Funding:** Employee wallet funding works (no faucet dependency)
+- ✅ **Program ID Mismatch:** FIXED ✅
+- ⚠️ **Withdraw:** Code fixed (direct lamport transfer), needs program upgrade (~2.6 SOL required)
 
 ### **Manual UI Verification**
 1. **Employer Dashboard:** https://bagel-phi.vercel.app/employer
