@@ -46,10 +46,37 @@ pub mod bagel {
         instructions::deposit_dough::handler(ctx, amount)
     }
 
-    /// Withdraw accrued salary (private transfer via ShadowWire)
+    /// Withdraw accrued salary (legacy - redirects to MPC queue)
     /// 🥯 "Get Your Dough" - Employee withdraws earned salary
+    /// 
+    /// **NOTE:** This now redirects to `queue_get_dough_mpc` for real MPC computation.
+    /// The actual payout happens in `finalize_get_dough_from_mpc_callback`.
     pub fn get_dough(ctx: Context<GetDough>) -> Result<()> {
         instructions::get_dough::handler(ctx)
+    }
+
+    /// Queue MPC computation for accrued salary calculation
+    /// 🔮 "Queue MPC" - Start async computation on Arcium MXE cluster
+    /// 
+    /// **REAL PRIVACY:** Salary stays encrypted throughout MPC computation.
+    /// The result comes back via `finalize_get_dough_from_mpc_callback`.
+    pub fn queue_get_dough_mpc(
+        ctx: Context<QueueGetDoughMpc>,
+        elapsed_seconds: u64,
+    ) -> Result<()> {
+        instructions::queue_get_dough_mpc::handler(ctx, elapsed_seconds)
+    }
+
+    /// Callback from Arcium MPC computation
+    /// ✅ "Finalize MPC" - Receive signed result and complete payout
+    /// 
+    /// **REAL PRIVACY:** BLS signature verified, then decrypt only for final transfer.
+    /// This is called automatically by Arcium's MXE cluster after computation completes.
+    pub fn finalize_get_dough_from_mpc_callback(
+        ctx: Context<FinalizeGetDoughFromMpcCallback>,
+        output: arcium_anchor::prelude::SignedComputationOutputs<Vec<u8>>,
+    ) -> Result<()> {
+        instructions::finalize_get_dough_from_mpc_callback::handler(ctx, output)
     }
 
     /// Update an employee's salary (employer only)

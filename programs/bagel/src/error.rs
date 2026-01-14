@@ -40,4 +40,10 @@ pub enum BagelError {
     
     #[msg("Arithmetic underflow occurred during calculation")]
     ArithmeticUnderflow,
+    
+    #[msg("The payroll is not in a valid state for this operation")]
+    InvalidState,
+    
+    #[msg("MPC computation failed")]
+    ComputationFailed,
 }

@@ -8,10 +8,13 @@ use crate::{constants::*, error::*, privacy::*, state::*};
 
 /// Withdraw accrued salary (get your dough!)
 /// 
-/// This calculates how much salary has accrued since the last withdrawal
-/// and transfers it to the employee.
+/// **UPDATED:** This now redirects to `queue_get_dough_mpc` for real MPC computation.
+/// The actual payout happens asynchronously via `finalize_get_dough_from_mpc_callback`.
 /// 
-/// TODO: Re-enable private transfers via ShadowWire once SPL tokens are restored
+/// **REAL PRIVACY:** Salary calculation happens via Arcium MPC (encrypted computation).
+/// 
+/// **LEGACY:** This instruction is kept for backward compatibility but now
+/// calculates elapsed time and queues the MPC computation instead of computing locally.
 pub fn handler(
     ctx: Context<GetDough>,
 ) -> Result<()> {
