@@ -2,9 +2,6 @@ use anchor_lang::prelude::*;
 use arcium_anchor::prelude::*;
 use crate::{constants::*, error::*, privacy::*, state::*};
 
-// Import Arcium constants for signer PDA
-use arcium_anchor::prelude::{SIGN_PDA_SEED, derive_sign_pda};
-
 // Program modules
 pub mod constants;
 pub mod error;
