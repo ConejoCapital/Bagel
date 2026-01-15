@@ -44,14 +44,11 @@ pub const COMP_DEF_OFFSET_GET_DOUGH: u32 = ARCIUM_CLUSTER_OFFSET as u32;
 #[instruction(computation_offset: u64)]
 pub struct QueueGetDoughMpc<'info> {
     // 1. Payer and sign-PDA (must come first)
-    /// CHECK: Payer for computation fees
-    /// Note: The macro parameter "payer" refers to this field
+    // Payer for computation fees (macro parameter "payer" refers to this field)
     #[account(mut)]
     pub payer: Signer<'info>,
     
-    /// CHECK: Signer PDA account (required by Arcium macro)
-    /// Arcium docs require address = derive_sign_pda!() - this is the canonical pattern
-    /// NOTE: Comma after derive_sign_pda!() is required for proc-macro pattern matching
+    // Signer PDA account required by Arcium queue macro
     #[account(
         init_if_needed,
         space = 9,
@@ -109,7 +106,6 @@ pub struct QueueGetDoughMpc<'info> {
     #[account(mut)]
     pub employee: Signer<'info>,
     
-    /// CHECK: Employer reference needed for PDA derivation
     pub employer: UncheckedAccount<'info>,
     
     #[account(
@@ -120,10 +116,8 @@ pub struct QueueGetDoughMpc<'info> {
     )]
     pub payroll_jar: Account<'info, PayrollJar>,
     
-    /// CHECK: MagicBlock context account
     pub magic_context: UncheckedAccount<'info>,
     
-    /// CHECK: MagicBlock program account
     pub magic_program: UncheckedAccount<'info>,
 }
 
