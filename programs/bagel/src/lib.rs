@@ -2,6 +2,9 @@ use anchor_lang::prelude::*;
 use arcium_anchor::prelude::*;
 use crate::{constants::*, error::*, privacy::*, state::*};
 
+// Import Arcium constants for signer PDA
+use arcium_anchor::prelude::{SIGN_PDA_SEED, derive_sign_pda};
+
 // Program modules
 pub mod constants;
 pub mod error;
@@ -63,8 +66,17 @@ pub struct QueueGetDoughMpc<'info> {
     #[account(mut)]
     pub payer: Signer<'info>,
     
-    // Note: sign_pda_account is automatically added by #[queue_computation_accounts] macro
-    // Do NOT define it manually - the macro will add it with the correct type and constraints
+    /// CHECK: Signer PDA account (required by Arcium macro)
+    /// Must use exact pattern: Account<'info, SignerAccount> with derive_sign_pda!()
+    #[account(
+        init_if_needed,
+        space = 9,
+        payer = payer,
+        seeds = [&SIGN_PDA_SEED],
+        bump,
+        address = derive_sign_pda!()
+    )]
+    pub sign_pda_account: Account<'info, SignerAccount>,
     
     /// CHECK: MXE account (derived PDA)
     #[account(address = derive_mxe_pda!())]
