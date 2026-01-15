@@ -31,6 +31,8 @@ kamino-lend = { version = "0.4.1", features = ["cpi"] }
 ephemeral-rollups-sdk = { version = "0.7.2", features = ["anchor"] }
 # Arcium Anchor SDK for MPC computations (v0.6.x aligned with Anchor 0.32.1)
 arcium-anchor = { version = "0.6.1", features = ["idl-build"] }
+# Arcium client for accessing types directly (needed for Fix 5 - manual trait implementation)
+arcium-client = { version = "0.6.1" }
 
 [profile.release]
 overflow-checks = true

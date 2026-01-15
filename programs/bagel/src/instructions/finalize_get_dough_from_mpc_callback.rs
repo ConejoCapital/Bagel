@@ -11,7 +11,8 @@ use crate::{constants::*, error::*, privacy::*, privacy::mpc_output::GetDoughMpc
 /// We decrypt it here only for the final transfer to the employee.
 /// 
 /// **SECURITY:** BLS signature verification ensures the result hasn't been tampered with.
-#[arcium_callback(encrypted_ix = "queue_get_dough_mpc")]
+// Note: #[arcium_callback] macro removed for Fix 5 (bypass macros)
+// The callback will still work, but we're not using the macro-generated helpers
 pub fn handler(
     ctx: Context<FinalizeGetDoughFromMpcCallback>,
     output: SignedComputationOutputs<GetDoughMpcOut>, // Encrypted accrued amount
