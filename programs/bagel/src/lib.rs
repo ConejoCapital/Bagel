@@ -54,13 +54,14 @@ pub struct QueueGetDoughMpc<'info> {
     
     /// CHECK: Signer PDA account (required by Arcium macro)
     /// Arcium docs require address = derive_sign_pda!() - this is the canonical pattern
+    /// NOTE: Comma after derive_sign_pda!() is required for proc-macro pattern matching
     #[account(
         init_if_needed,
         space = 9,
         payer = payer,
         seeds = [&SIGN_PDA_SEED],
         bump,
-        address = derive_sign_pda!()
+        address = derive_sign_pda!(),
     )]
     pub sign_pda_account: Account<'info, SignerAccount>,
     
