@@ -56,7 +56,7 @@ pub struct QueueGetDoughMpc<'info> {
         payer = payer,
         seeds = [&arcium_anchor::prelude::SIGN_PDA_SEED],
         bump,
-        address = derive_sign_pda!(),
+        address = arcium_anchor::prelude::derive_sign_pda!(),
     )]
     pub sign_pda_account: Account<'info, arcium_anchor::prelude::SignerAccount>,
     
