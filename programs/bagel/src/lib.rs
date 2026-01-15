@@ -1,6 +1,12 @@
 use anchor_lang::prelude::*;
 use arcium_anchor::prelude::*;
-use crate::{constants::*, error::*, privacy::*, state::*};
+// Explicitly import Arcium's SIGN_PDA_SEED to avoid shadowing from wildcard imports
+use arcium_anchor::prelude::SIGN_PDA_SEED;
+// Import only what we need from crate modules to avoid shadowing
+use crate::constants::BAGEL_JAR_SEED;
+use crate::error::BagelError;
+use crate::privacy::mpc_output::QueueGetDoughMpcOutput;
+use crate::state::PayrollJar;
 
 // Program modules
 pub mod constants;
@@ -49,16 +55,16 @@ pub struct QueueGetDoughMpc<'info> {
     pub payer: Signer<'info>,
     
     // Signer PDA account required by Arcium queue macro
-    // Fully qualified to ensure macro sees arcium_anchor::SignerAccount, not arcium_client
+    // Use plain SignerAccount (not fully qualified) - macro expects this exact pattern
     #[account(
         init_if_needed,
         space = 9,
         payer = payer,
-        seeds = [&arcium_anchor::prelude::SIGN_PDA_SEED],
+        seeds = [&SIGN_PDA_SEED],
         bump,
-        address = arcium_anchor::prelude::derive_sign_pda!(),
+        address = derive_sign_pda!(),
     )]
-    pub sign_pda_account: Account<'info, arcium_anchor::prelude::SignerAccount>,
+    pub sign_pda_account: Account<'info, SignerAccount>,
     
     // 2. Arcium-required accounts (in this exact order)
     #[account(address = derive_mxe_pda!())]
