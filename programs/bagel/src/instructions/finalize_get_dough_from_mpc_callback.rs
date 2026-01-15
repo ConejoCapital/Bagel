@@ -1,6 +1,6 @@
 use anchor_lang::prelude::*;
 use arcium_anchor::prelude::*;
-use crate::{constants::*, error::*, privacy::*, state::*};
+use crate::{constants::*, error::*, privacy::*, privacy::mpc_output::GetDoughMpcOut, state::*};
 
 /// Callback from Arcium MPC computation
 /// 
@@ -14,7 +14,7 @@ use crate::{constants::*, error::*, privacy::*, state::*};
 #[arcium_callback(encrypted_ix = "queue_get_dough_mpc")]
 pub fn handler(
     ctx: Context<FinalizeGetDoughFromMpcCallback>,
-    output: SignedComputationOutputs<Vec<u8>>, // Encrypted accrued amount
+    output: SignedComputationOutputs<GetDoughMpcOut>, // Encrypted accrued amount
 ) -> Result<()> {
     let current_time = Clock::get()?.unix_timestamp;
     let payroll_jar = &mut ctx.accounts.payroll_jar;
@@ -26,7 +26,7 @@ pub fn handler(
     match &output {
         SignedComputationOutputs::Success(encrypted_result) => {
             msg!("   ✅ MPC computation succeeded");
-            msg!("   ✅ Encrypted result: {} bytes", encrypted_result.len());
+            msg!("   ✅ Encrypted result: {} bytes", encrypted_result.bytes.len());
             
             // Verify BLS signature from MXE cluster
             // This is done automatically by arcium-anchor, but we log it
@@ -35,7 +35,7 @@ pub fn handler(
             // Decrypt the result for transfer
             // The result is the encrypted accrued amount (32 bytes)
             let encrypted_accrued = EncryptedU64 {
-                ciphertext: encrypted_result.to_vec(),
+                ciphertext: encrypted_result.bytes.to_vec(),
                 encryption_pubkey: None,
             };
             
@@ -71,22 +71,27 @@ pub fn handler(
             
             // ⚡ MAGICBLOCK: Commit ER state before payout
             // This settles the real-time accrued balance from MagicBlock ER back to Solana L1
-            if let (Some(magic_context), Some(magic_program)) = (
-                ctx.accounts.magic_context.as_ref(),
-                ctx.accounts.magic_program.as_ref(),
-            ) {
-                msg!("⚡ Committing MagicBlock ER state to L1...");
-                use ephemeral_rollups_sdk::ephem::commit_accounts;
-                
-                commit_accounts(
-                    ctx.accounts.employee.to_account_info(),
-                    vec![payroll_jar_account_info],
-                    magic_context,
-                    magic_program,
-                )?;
-                
-                msg!("   ✅ ER state committed to L1");
-            }
+            msg!("⚡ Committing MagicBlock ER state to L1...");
+            
+            // Validate MagicBlock program ID
+            use crate::constants::program_ids::MAGICBLOCK_PROGRAM_ID;
+            let expected_magic_program = Pubkey::try_from(MAGICBLOCK_PROGRAM_ID)
+                .map_err(|_| error!(BagelError::InvalidAmount))?;
+            require!(
+                ctx.accounts.magic_program.key() == expected_magic_program,
+                BagelError::InvalidAmount
+            );
+            
+            use ephemeral_rollups_sdk::ephem::commit_accounts;
+            
+            commit_accounts(
+                ctx.accounts.employee.to_account_info(),
+                vec![payroll_jar_account_info],
+                ctx.accounts.magic_context.to_account_info(),
+                ctx.accounts.magic_program.to_account_info(),
+            )?;
+            
+            msg!("   ✅ ER state committed to L1");
             
             // Direct lamport transfer - subtract from PayrollJar, add to employee
             **payroll_jar_account_info.try_borrow_mut_lamports()? -= accrued;
@@ -112,8 +117,8 @@ pub fn handler(
     }
 }
 
-#[callback_accounts("queue_get_dough_mpc")]
 #[derive(Accounts)]
+#[callback_accounts("queue_get_dough_mpc")]
 pub struct FinalizeGetDoughFromMpcCallback<'info> {
     #[account(mut)]
     pub employee: Signer<'info>,
@@ -130,11 +135,13 @@ pub struct FinalizeGetDoughFromMpcCallback<'info> {
     )]
     pub payroll_jar: Account<'info, PayrollJar>,
     
-    /// CHECK: MagicBlock context account (optional - only if ER is active)
-    pub magic_context: Option<UncheckedAccount<'info>>,
+    /// CHECK: MagicBlock context account
+    /// Required for committing ER state back to L1 before payout
+    pub magic_context: UncheckedAccount<'info>,
     
-    /// CHECK: MagicBlock program account (optional - only if ER is active)
-    pub magic_program: Option<UncheckedAccount<'info>>,
+    /// CHECK: MagicBlock program account
+    /// Must equal DELeGGvXpWV2fqJUhqcF5ZSYMS4JTLjteaAMARRSaeSh
+    pub magic_program: UncheckedAccount<'info>,
     
     pub system_program: Program<'info, System>,
 }

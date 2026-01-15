@@ -30,20 +30,46 @@ pub fn handler(
     msg!("   Elapsed seconds: {}", elapsed_seconds);
     msg!("   Encrypted salary: {} bytes", encrypted_salary.ciphertext.len());
     
-    // Build MPC inputs
-    // Input 1: encrypted_salary_per_second (32 bytes)
-    // Input 2: elapsed_seconds (8 bytes, u64)
-    let mut inputs = Vec::new();
-    inputs.extend_from_slice(&encrypted_salary.ciphertext);
+    // Build MPC inputs using ArgBuilder
+    // Input 1: encrypted_salary_per_second (32 bytes) - encrypted data
+    // Input 2: elapsed_seconds (u64) - plaintext scalar
+    use crate::constants::ARCIUM_CLUSTER_OFFSET;
+    use arcium_anchor::prelude::ArgBuilder;
     
-    let elapsed_bytes = elapsed_seconds.to_le_bytes();
-    inputs.extend_from_slice(&elapsed_bytes);
+    // Build arguments using ArgBuilder
+    // The encrypted salary is already encrypted (32 bytes)
+    // We pass it as encrypted data, and elapsed_seconds as plaintext
+    let encrypted_bytes: [u8; 32] = encrypted_salary.ciphertext[0..32]
+        .try_into()
+        .map_err(|_| error!(BagelError::InvalidAmount))?;
     
-    msg!("   ✅ MPC inputs prepared: {} bytes", inputs.len());
+    let args = ArgBuilder::new()
+        .encrypted_u8(encrypted_bytes)  // [u8; 32] - encrypted salary
+        .plaintext_u64(elapsed_seconds) // u64 - elapsed seconds
+        .build();
+    
+    msg!("   ✅ MPC inputs prepared using ArgBuilder");
+    
+    // Build callback instruction using the callback_ix helper
+    // The callback_accounts macro generates this method on the accounts struct
+    use crate::instructions::finalize_get_dough_from_mpc_callback::FinalizeGetDoughFromMpcCallback;
+    
+    let callback_ix = FinalizeGetDoughFromMpcCallback::callback_ix(
+        ARCIUM_CLUSTER_OFFSET,
+        &ctx.accounts.mxe_account,
+        &[], // No custom accounts needed
+    )?;
     
     // Queue the computation with callback
-    // The callback will be: finalize_get_dough_from_mpc_callback
-    queue_computation(&ctx.accounts, inputs)?;
+    queue_computation(
+        &ctx.accounts,
+        ARCIUM_CLUSTER_OFFSET,  // computation_offset
+        args,                    // args: ArgumentList
+        None,                    // callback_url: Option<String> (None for on-chain)
+        vec![callback_ix],       // callback_instructions
+        1,                       // num_callback_txs
+        1000,                    // cu_price_micro (priority fee)
+    )?;
     
     msg!("   ✅ MPC computation queued on Arcium MXE cluster");
     msg!("   🔄 Waiting for callback: finalize_get_dough_from_mpc_callback");
@@ -51,8 +77,8 @@ pub fn handler(
     Ok(())
 }
 
-#[derive(Accounts)]
 #[queue_computation_accounts("queue_get_dough_mpc", payer)]
+#[derive(Accounts)]
 pub struct QueueGetDoughMpc<'info> {
     #[account(mut)]
     pub employee: Signer<'info>,

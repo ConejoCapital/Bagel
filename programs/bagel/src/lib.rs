@@ -74,7 +74,7 @@ pub mod bagel {
     /// This is called automatically by Arcium's MXE cluster after computation completes.
     pub fn finalize_get_dough_from_mpc_callback(
         ctx: Context<FinalizeGetDoughFromMpcCallback>,
-        output: arcium_anchor::prelude::SignedComputationOutputs<Vec<u8>>,
+        output: arcium_anchor::prelude::SignedComputationOutputs<crate::privacy::mpc_output::GetDoughMpcOut>,
     ) -> Result<()> {
         instructions::finalize_get_dough_from_mpc_callback::handler(ctx, output)
     }

@@ -34,6 +34,9 @@ pub mod privacycash;
 // Kamino Finance yield integration module
 pub mod kamino;
 
+// MPC output types
+pub mod mpc_output;
+
 /// Encrypted u64 type using Arcium C-SPL
 /// 
 /// **RE-EXPORT:** Using Arcium's ConfidentialBalance type
