@@ -1,6 +1,5 @@
 use anchor_lang::prelude::*;
 use arcium_anchor::prelude::*;
-use arcium_anchor::traits::QueueCompAccs;
 use crate::{constants::*, error::*, privacy::*, state::*};
 
 /// Queue MPC computation for accrued salary calculation
@@ -14,6 +13,7 @@ use crate::{constants::*, error::*, privacy::*, state::*};
 /// **REAL PRIVACY:** The salary amount stays encrypted throughout the computation.
 pub fn handler(
     ctx: Context<QueueGetDoughMpc>,
+    computation_offset: u64,
     elapsed_seconds: u64,
 ) -> Result<()> {
     let payroll_jar = &ctx.accounts.payroll_jar;
@@ -51,84 +51,30 @@ pub fn handler(
     
     msg!("   ✅ MPC inputs prepared using ArgBuilder");
     
-    // Build callback instruction manually (Fix 5 - bypass macros)
-    // We construct the Anchor Instruction manually, then wrap it as Arcium's CallbackInstruction
-    use crate::arcium_callback_builder::{build_finalize_callback_ix, FinalizeCallbackAccounts};
-    use crate::constants::program_ids::MAGICBLOCK_PROGRAM_ID;
+    // Build callback instruction using macro-generated callback_ix() method
+    // The #[callback_accounts] macro on FinalizeGetDoughFromMpcCallback generates
+    // the CallbackCompAccs trait implementation with callback_ix() method
+    // Import from the re-exported module
+    use super::finalize_get_dough_from_mpc_callback::FinalizeGetDoughFromMpcCallback;
     
-    // Get MagicBlock program ID
-    let magic_program_id = Pubkey::try_from(MAGICBLOCK_PROGRAM_ID)
-        .unwrap_or(Pubkey::default());
+    let callback_ix = FinalizeGetDoughFromMpcCallback::callback_ix(
+        ARCIUM_CLUSTER_OFFSET,
+        &ctx.accounts.mxe_account,
+        &[], // No extra accounts needed
+    )?;
     
-    // Build the callback accounts with the actual pubkeys
-    // Note: magic_context and magic_program will need to be passed or derived
-    // For now, we use placeholders - in production these should be actual accounts
-    let callback_accounts = FinalizeCallbackAccounts {
-        employee: ctx.accounts.employee.key(),
-        employer: ctx.accounts.employer.key(),
-        payroll_jar: ctx.accounts.payroll_jar.key(),
-        magic_context: Pubkey::default(), // TODO: Get actual magic_context account
-        magic_program: magic_program_id,
-        system_program: anchor_lang::solana_program::system_program::ID,
-    };
+    msg!("   ✅ Callback instruction built using macro-generated callback_ix()");
     
-    // Build the Anchor instruction
-    let anchor_cb_ix = build_finalize_callback_ix(
-        ctx.program_id,
-        callback_accounts,
-    );
-    
-    // Wrap as Arcium's CallbackInstruction
-    // CallbackInstruction is re-exported through arcium_anchor::prelude
-    // But it's from arcium_client::idl::arcium::types
-    // Since it's private, we need to use the trait method or construct it via the trait
-    // Actually, let's use the CallbackCompAccs trait method if available
-    // For now, we'll construct it manually using the expected structure
-    // The queue_computation function expects Vec<CallbackInstruction>
-    // Let's check if we can use a simpler approach - just pass the instruction data
-    
-    // Since CallbackInstruction is private, we need to use the trait method
-    // But we removed the macro, so we need to implement CallbackCompAccs manually
-    // OR we can try to construct it using the types that are public
-    
-    // For Fix 5, we need to implement CallbackCompAccs trait for FinalizeGetDoughFromMpcCallback
-    // to get access to callback_ix() method which returns CallbackInstruction
-    // Let's implement that trait manually
-    use arcium_anchor::traits::CallbackCompAccs;
-    use crate::instructions::FinalizeGetDoughFromMpcCallback;
-    use arcium_anchor::prelude::MXEAccount;
-    
-    // We need to implement CallbackCompAccs for the callback struct
-    // For now, let's try calling the trait method directly
-    // The trait requires: callback_ix(computation_offset, mxe_account, extra_accs)
-    // mxe_account needs to be &MXEAccount, not just AccountInfo
-    // This is complex - let's document the issue and provide a workaround
-    
-    // Build callback instruction manually (Fix 5 - bypass macros)
-    // We need to implement CallbackCompAccs trait for FinalizeGetDoughFromMpcCallback
-    // to get the callback_ix() method. For now, let's create a minimal callback instruction
-    // The callback will be populated by Arcium with the computation result
-    
-    // Since CallbackInstruction is private and requires the trait,
-    // and implementing CallbackCompAccs requires MXEAccount which is complex,
-    // let's use a workaround: create an empty callback instruction vector for now
-    // and document that full callback support requires trait implementation
-    
-    msg!("   ⚠️  NOTE: Full callback support requires CallbackCompAccs trait implementation");
-    msg!("   🔄 Using minimal callback setup for now...");
-    
-    // For now, pass empty callback instructions
-    // TODO: Implement CallbackCompAccs trait for FinalizeGetDoughFromMpcCallback
-    // to properly construct CallbackInstruction
-    let callback_instructions: Vec<arcium_client::idl::arcium::types::CallbackInstruction> = vec![]; // Empty for now - will be implemented via trait
+    // Set the signer PDA bump (required by Arcium)
+    ctx.accounts.sign_pda_account.bump = ctx.bumps.get("sign_pda_account").copied().unwrap_or(0);
     
     // Queue the computation with callback
     queue_computation(
         &ctx.accounts,
-        ARCIUM_CLUSTER_OFFSET,  // computation_offset
+        computation_offset,      // computation_offset (from instruction)
         args,                    // args: ArgumentList
         None,                    // callback_url: Option<String> (None for on-chain)
-        callback_instructions,   // callback_instructions (empty for now)
+        vec![callback_ix],       // callback_instructions (generated by macro)
         1,                       // num_callback_txs
         1000,                    // cu_price_micro (priority fee)
     )?;
@@ -139,8 +85,15 @@ pub fn handler(
     Ok(())
 }
 
+/// Queue MPC computation accounts
+/// 
+/// Uses Arcium's #[queue_computation_accounts] macro to generate the QueueCompAccs trait
+/// and ensure all required Arcium accounts are present with correct constraints.
+#[queue_computation_accounts("queue_get_dough_mpc", payer)]
 #[derive(Accounts)]
+#[instruction(computation_offset: u64)]
 pub struct QueueGetDoughMpc<'info> {
+    // Bagel-specific accounts
     #[account(mut)]
     pub employee: Signer<'info>,
     
@@ -155,45 +108,72 @@ pub struct QueueGetDoughMpc<'info> {
     )]
     pub payroll_jar: Account<'info, PayrollJar>,
     
-    /// Arcium computation accounts (manually added - Fix 5)
+    // Arcium accounts (generated by #[queue_computation_accounts] macro)
+    // The macro adds: payer, sign_pda_account, mxe_account, mempool_account,
+    // executing_pool, computation_account, comp_def_account, cluster_account,
+    // pool_account, clock_account, arcium_program, system_program
+    
+    /// CHECK: Payer for computation fees
     #[account(mut)]
     pub payer: Signer<'info>,
     
-    /// CHECK: Arcium program
-    pub arcium_program: UncheckedAccount<'info>,
+    /// CHECK: Signer PDA account (initialized by macro if needed)
+    #[account(
+        init_if_needed,
+        space = 9,
+        payer = payer,
+        seeds = [b"sign_pda"],
+        bump
+    )]
+    pub sign_pda_account: Account<'info, arcium_anchor::prelude::SignerAccount>,
     
-    /// CHECK: MXE account
-    /// Using the deployed MXE account address from constants
-    pub mxe_account: UncheckedAccount<'info>,
+    /// CHECK: MXE account (derived PDA)
+    #[account(address = derive_mxe_pda!())]
+    pub mxe_account: Account<'info, MXEAccount>,
     
-    /// CHECK: Computation definition account
-    pub comp_def_account: UncheckedAccount<'info>,
+    /// CHECK: Mempool account (derived PDA)
+    #[account(
+        mut,
+        address = derive_mempool_pda!(mxe_account, BagelError::InvalidState)
+    )]
+    pub mempool_account: UncheckedAccount<'info>,
     
-    /// CHECK: Computation account (will be created)
-    #[account(mut)]
+    /// CHECK: Executing pool account (derived PDA)
+    #[account(
+        mut,
+        address = derive_execpool_pda!(mxe_account, BagelError::InvalidState)
+    )]
+    pub executing_pool: UncheckedAccount<'info>,
+    
+    /// CHECK: Computation account (derived PDA, will be created)
+    #[account(
+        mut,
+        address = derive_comp_pda!(computation_offset, mxe_account, BagelError::InvalidState)
+    )]
     pub computation_account: UncheckedAccount<'info>,
     
-    /// CHECK: Cluster account
-    /// Using the deployed cluster account address from constants
-    pub cluster_account: UncheckedAccount<'info>,
+    /// CHECK: Computation definition account (derived PDA)
+    #[account(address = derive_comp_def_pda!(ARCIUM_CLUSTER_OFFSET as u32))]
+    pub comp_def_account: Account<'info, ComputationDefinitionAccount>,
     
-    /// CHECK: Signer PDA for Arcium
-    #[account(mut)]
-    pub sign_pda_account: UncheckedAccount<'info>,
+    /// CHECK: Cluster account (derived PDA)
+    #[account(
+        mut,
+        address = derive_cluster_pda!(mxe_account, BagelError::InvalidState)
+    )]
+    pub cluster_account: Account<'info, Cluster>,
     
-    /// CHECK: Instructions sysvar
-    #[account(address = anchor_lang::solana_program::sysvar::instructions::ID)]
-    pub instructions_sysvar: UncheckedAccount<'info>,
+    /// CHECK: Fee pool account
+    #[account(
+        mut,
+        address = arcium_anchor::prelude::ARCIUM_FEE_POOL_ACCOUNT_ADDRESS
+    )]
+    pub pool_account: Account<'info, FeePool>,
     
-    /// CHECK: Clock sysvar (for QueueComputation)
-    #[account(address = anchor_lang::solana_program::sysvar::clock::ID)]
-    pub clock: UncheckedAccount<'info>,
-    
-    /// CHECK: Mempool account (for QueueComputation)
-    pub mempool: UncheckedAccount<'info>,
-    
-    /// CHECK: Pool account (for QueueComputation)
-    pub pool_account: UncheckedAccount<'info>,
+    /// CHECK: Clock account
+    #[account(address = arcium_anchor::prelude::ARCIUM_CLOCK_ACCOUNT_ADDRESS)]
+    pub clock_account: Account<'info, ClockAccount>,
     
     pub system_program: Program<'info, System>,
+    pub arcium_program: Program<'info, Arcium>,
 }

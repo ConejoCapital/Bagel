@@ -1,4 +1,5 @@
 use anchor_lang::prelude::*;
+use arcium_anchor::prelude::*;
 
 // Program modules
 pub mod constants;
@@ -6,7 +7,6 @@ pub mod error;
 pub mod instructions;
 pub mod privacy; // Privacy SDK integration layer
 pub mod state;
-pub mod arcium_callback_builder; // Manual callback instruction builder (Fix 5)
 
 // Re-export for convenience
 pub use constants::*;
@@ -21,8 +21,10 @@ declare_id!("8rgaVvV6m3SSaVJfJ2VNoBk67frTWbCS3WDBjrk7S6gU");
 // This allows the PayrollJar to stream on MagicBlock ER for sub-second precision
 use ephemeral_rollups_sdk::anchor::{ephemeral, commit, delegate};
 
+// 🔮 ARCIUM: Use #[arcium_program] instead of #[program] for Arcium integration
+// This generates the necessary client account helpers and callback instruction builders
 #[ephemeral]
-#[program]
+#[arcium_program]
 pub mod bagel {
     use super::*;
 
@@ -63,9 +65,10 @@ pub mod bagel {
     /// The result comes back via `finalize_get_dough_from_mpc_callback`.
     pub fn queue_get_dough_mpc(
         ctx: Context<QueueGetDoughMpc>,
+        computation_offset: u64,
         elapsed_seconds: u64,
     ) -> Result<()> {
-        instructions::queue_get_dough_mpc::handler(ctx, elapsed_seconds)
+        instructions::queue_get_dough_mpc::handler(ctx, computation_offset, elapsed_seconds)
     }
 
     /// Callback from Arcium MPC computation
