@@ -300,7 +300,7 @@ pub mod bagel {
     /// This is called automatically by Arcium's MXE cluster after computation completes.
     /// 
     /// **NOTE:** Logic is inlined here to avoid Context<T> delegation across modules.
-    #[arcium_callback(encrypted_ix = "queue_get_dough_mpc")]
+    /// Note: #[arcium_callback] macro removed - callback logic is fully inlined here
     pub fn finalize_get_dough_from_mpc_callback(
         ctx: Context<FinalizeGetDoughFromMpcCallback>,
         output: arcium_anchor::prelude::SignedComputationOutputs<crate::privacy::mpc_output::GetDoughMpcOut>,
