@@ -92,6 +92,8 @@ pub fn handler(
 /// 
 /// Uses Arcium's #[queue_computation_accounts] macro to generate the QueueCompAccs trait
 /// and ensure all required Arcium accounts are present with correct constraints.
+/// 
+/// **Macro Order:** Must be macro → derive → instruction (per Arcium docs)
 #[queue_computation_accounts("queue_get_dough_mpc", payer)]
 #[derive(Accounts)]
 #[instruction(computation_offset: u64)]

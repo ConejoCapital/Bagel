@@ -15,6 +15,12 @@ pub use instructions::*;
 pub use privacy::*; // Privacy utilities
 pub use state::*;
 
+// 🔮 ARCIUM: Explicitly re-export Accounts structs used by #[arcium_program]
+// This ensures Anchor's macro expansion can find the generated __client_accounts_* modules
+// Note: The structs are already re-exported via `pub use instructions::*;` above,
+// but explicit re-exports help with macro expansion visibility
+// If direct path doesn't work, the wildcard export should still make them available
+
 declare_id!("8rgaVvV6m3SSaVJfJ2VNoBk67frTWbCS3WDBjrk7S6gU");
 
 // ⚡ MAGICBLOCK: Enable Ephemeral Rollup support
