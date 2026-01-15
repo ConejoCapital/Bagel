@@ -50,11 +50,13 @@ pub fn handler(
     
     msg!("   ✅ MPC inputs prepared using ArgBuilder");
     
-    // Build callback instruction using the callback_ix helper
-    // The callback_accounts macro generates this method on the accounts struct
-    use crate::instructions::finalize_get_dough_from_mpc_callback::FinalizeGetDoughFromMpcCallback;
+    // Build callback instruction using the callback_ix trait method
+    // The callback_accounts macro implements CallbackCompAccs trait
+    use arcium_anchor::traits::CallbackCompAccs;
     
-    let callback_ix = FinalizeGetDoughFromMpcCallback::callback_ix(
+    // The macro should implement CallbackCompAccs for FinalizeGetDoughFromMpcCallback
+    // We call the trait method directly
+    let callback_ix = <crate::instructions::finalize_get_dough_from_mpc_callback::FinalizeGetDoughFromMpcCallback as CallbackCompAccs>::callback_ix(
         ARCIUM_CLUSTER_OFFSET,
         &ctx.accounts.mxe_account,
         &[], // No custom accounts needed
