@@ -1,0 +1,6 @@
+# Rust toolchain configuration for Arcium compatibility
+# Arcium migration docs recommend Rust 1.89.0+ for edition2024 support
+[toolchain]
+channel = "1.89.0"
+components = ["rustfmt", "clippy"]
+profile = "minimal"

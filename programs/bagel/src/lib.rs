@@ -127,9 +127,12 @@ pub struct QueueGetDoughMpc<'info> {
 /// 
 /// Uses #[callback_accounts] macro to generate CallbackCompAccs trait implementation
 /// which provides the callback_ix() method for building callback instructions.
+/// 
+/// **Naming Requirement:** Must be named `{InstructionName}Callback` where InstructionName
+/// matches the encrypted_ix name in #[queue_computation_accounts].
 #[callback_accounts("queue_get_dough_mpc")]
 #[derive(Accounts)]
-pub struct FinalizeGetDoughFromMpcCallback<'info> {
+pub struct QueueGetDoughMpcCallback<'info> {
     #[account(mut)]
     pub employee: Signer<'info>,
     
@@ -217,7 +220,7 @@ pub mod bagel {
     /// 🥯 "Get Your Dough" - Employee withdraws earned salary
     /// 
     /// **NOTE:** This now redirects to `queue_get_dough_mpc` for real MPC computation.
-    /// The actual payout happens in `finalize_get_dough_from_mpc_callback`.
+    /// The actual payout happens in `queue_get_dough_mpc_callback`.
     pub fn get_dough(ctx: Context<GetDough>) -> Result<()> {
         instructions::get_dough::handler(ctx)
     }
@@ -265,7 +268,7 @@ pub mod bagel {
         msg!("   ✅ MPC inputs prepared using ArgBuilder");
         
         // Build callback instruction using macro-generated callback_ix() method
-        let callback_ix = FinalizeGetDoughFromMpcCallback::callback_ix(
+        let callback_ix = QueueGetDoughMpcCallback::callback_ix(
             computation_offset,
             &ctx.accounts.mxe_account,
             &[], // No extra accounts needed
@@ -288,7 +291,7 @@ pub mod bagel {
         )?;
         
         msg!("   ✅ MPC computation queued on Arcium MXE cluster");
-        msg!("   🔄 Waiting for callback: finalize_get_dough_from_mpc_callback");
+        msg!("   🔄 Waiting for callback: queue_get_dough_mpc_callback");
         
         Ok(())
     }
@@ -300,9 +303,12 @@ pub mod bagel {
     /// This is called automatically by Arcium's MXE cluster after computation completes.
     /// 
     /// **NOTE:** Logic is inlined here to avoid Context<T> delegation across modules.
-    /// Note: #[arcium_callback] macro removed - callback logic is fully inlined here
-    pub fn finalize_get_dough_from_mpc_callback(
-        ctx: Context<FinalizeGetDoughFromMpcCallback>,
+    /// 
+    /// **Arcium Requirement:** Callback function must use #[arcium_callback(encrypted_ix = "...")]
+    /// and the struct must be named {InstructionName}Callback.
+    #[arcium_callback(encrypted_ix = "queue_get_dough_mpc")]
+    pub fn queue_get_dough_mpc_callback(
+        ctx: Context<QueueGetDoughMpcCallback>,
         output: arcium_anchor::prelude::SignedComputationOutputs<crate::privacy::mpc_output::GetDoughMpcOut>,
     ) -> Result<()> {
         let current_time = Clock::get()?.unix_timestamp;
