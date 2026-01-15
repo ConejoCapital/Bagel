@@ -23,6 +23,7 @@ use ephemeral_rollups_sdk::anchor::{ephemeral, commit, delegate};
 
 // 🔮 ARCIUM: Use #[arcium_program] instead of #[program] for Arcium integration
 // This generates the necessary client account helpers and callback instruction builders
+// Note: #[arcium_program] includes #[program], so we don't need both
 #[ephemeral]
 #[arcium_program]
 pub mod bagel {
