@@ -15,6 +15,10 @@ pub mod instructions;
 pub mod privacy; // Privacy SDK integration layer
 pub mod state;
 
+// Minimal test module for Arcium macro isolation
+#[cfg(test)]
+mod test_minimal_arcium;
+
 // Re-export for convenience (but avoid wildcard re-exports that might shadow Arcium types)
 pub use constants::*;
 pub use error::*;
