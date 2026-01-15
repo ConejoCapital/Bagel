@@ -49,15 +49,16 @@ pub struct QueueGetDoughMpc<'info> {
     pub payer: Signer<'info>,
     
     // Signer PDA account required by Arcium queue macro
+    // Fully qualified to ensure macro sees arcium_anchor::SignerAccount, not arcium_client
     #[account(
         init_if_needed,
         space = 9,
         payer = payer,
-        seeds = [&SIGN_PDA_SEED],
+        seeds = [&arcium_anchor::prelude::SIGN_PDA_SEED],
         bump,
         address = derive_sign_pda!(),
     )]
-    pub sign_pda_account: Account<'info, SignerAccount>,
+    pub sign_pda_account: Account<'info, arcium_anchor::prelude::SignerAccount>,
     
     // 2. Arcium-required accounts (in this exact order)
     #[account(address = derive_mxe_pda!())]
