@@ -5,6 +5,7 @@ pub mod deposit_dough;
 pub mod get_dough;
 pub mod update_salary;
 pub mod queue_get_dough_mpc;
+pub mod queue_get_dough_mpc_impl; // Manual QueueCompAccs implementation
 pub mod finalize_get_dough_from_mpc_callback;
 
 pub use bake_payroll::*;

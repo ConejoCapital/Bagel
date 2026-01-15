@@ -118,7 +118,6 @@ pub fn handler(
 }
 
 #[derive(Accounts)]
-#[callback_accounts("queue_get_dough_mpc")]
 pub struct FinalizeGetDoughFromMpcCallback<'info> {
     #[account(mut)]
     pub employee: Signer<'info>,

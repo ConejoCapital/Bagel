@@ -6,6 +6,7 @@ pub mod error;
 pub mod instructions;
 pub mod privacy; // Privacy SDK integration layer
 pub mod state;
+pub mod arcium_callback_builder; // Manual callback instruction builder (Fix 5)
 
 // Re-export for convenience
 pub use constants::*;
