@@ -19,7 +19,7 @@ idl-build = ["anchor-lang/idl-build", "arcium-anchor/idl-build"]
 
 [dependencies]
 # Anchor 0.32.1 (required for Arcium and MagicBlock compatibility)
-anchor-lang = "0.32.1"
+anchor-lang = { version = "0.32.1", features = ["init-if-needed"] }
 anchor-spl = "0.32.1"
 # Pin to Edition 2021 compatible versions (Solana 2.3.13 toolchain)
 blake3 = "=1.8.2"

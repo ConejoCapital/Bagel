@@ -53,13 +53,14 @@ pub struct QueueGetDoughMpc<'info> {
     pub payer: Signer<'info>,
     
     /// CHECK: Signer PDA account (required by Arcium macro)
-    /// Note: Do NOT use address = derive_sign_pda!() - seeds and bump derive it implicitly
+    /// Arcium docs require address = derive_sign_pda!() - this is the canonical pattern
     #[account(
         init_if_needed,
-        payer = payer,
         space = 9,
+        payer = payer,
         seeds = [&SIGN_PDA_SEED],
-        bump
+        bump,
+        address = derive_sign_pda!()
     )]
     pub sign_pda_account: Account<'info, SignerAccount>,
     

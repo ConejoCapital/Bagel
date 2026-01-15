@@ -1,6 +1,7 @@
 [workspace]
 members = [
-    "programs/bagel"
+    "programs/*",
+    "encrypted-ixs"
 ]
 resolver = "2"
 
