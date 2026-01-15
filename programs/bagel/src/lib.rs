@@ -15,11 +15,12 @@ pub mod instructions;
 pub mod privacy; // Privacy SDK integration layer
 pub mod state;
 
-// Re-export for convenience
+// Re-export for convenience (but avoid wildcard re-exports that might shadow Arcium types)
 pub use constants::*;
 pub use error::*;
 pub use instructions::*;
-pub use privacy::*; // Privacy utilities
+// Do NOT re-export privacy::* as it might shadow Arcium types
+// Explicitly re-export only what's needed from privacy module
 pub use state::*;
 
 // 🔮 ARCIUM: Explicitly re-export Accounts structs used by #[arcium_program]
