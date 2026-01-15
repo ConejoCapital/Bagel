@@ -1,6 +1,7 @@
 use anchor_lang::prelude::*;
-// Explicitly import Arcium types to avoid shadowing
-use arcium_anchor::prelude::{SignerAccount, SIGN_PDA_SEED, derive_sign_pda, *};
+use arcium_anchor::prelude::*;
+// Explicitly import Arcium constants to avoid shadowing
+use arcium_anchor::prelude::SIGN_PDA_SEED;
 // Import only what we need from crate modules to avoid shadowing
 use crate::constants::BAGEL_JAR_SEED;
 use crate::error::BagelError;
