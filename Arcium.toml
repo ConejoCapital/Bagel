@@ -17,9 +17,11 @@ cluster_offset = 1078779259  # Devnet cluster
 
 [circuits]
 # Circuit definitions
+# NOTE: Circuit name must match the encrypted_ix name used in #[queue_computation_accounts]
+# Path now points to the Arcis module in encrypted-ixs/src/lib.rs
 [[circuits.definitions]]
-name = "payroll"
-path = "encrypted-ixs/circuits/payroll.arcis"
+name = "queue_get_dough_mpc"
+path = "encrypted-ixs/src/lib.rs"
 description = "Privacy-preserving payroll calculation: salary_per_second * elapsed_seconds"
 
 [build]

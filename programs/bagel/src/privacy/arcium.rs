@@ -79,16 +79,23 @@ impl ConfidentialBalance {
     /// )?;
     /// ```
     pub fn decrypt(&self) -> Result<u64> {
+        // Handle both 8-byte (old) and 32-byte (new) ciphertext formats
+        // The first 8 bytes contain the encrypted amount
         if self.ciphertext.len() < 8 {
             return err!(ErrorCode::DecryptionFailed);
         }
         
+        // Extract first 8 bytes (the encrypted amount)
+        // In production, this would use real RescueCipher decryption
         let bytes: [u8; 8] = self.ciphertext[0..8]
             .try_into()
             .map_err(|_| error!(ErrorCode::DecryptionFailed))?;
         
+        // MOCK: For now, interpret bytes as little-endian u64
+        // In production, this would decrypt using the shared secret
         let amount = u64::from_le_bytes(bytes);
-        msg!("⚠️ MOCK: Decrypted {} (NOT SECURE!)", amount);
+        msg!("⚠️ MOCK: Decrypted {} (NOT SECURE! - Real decryption pending)", amount);
+        msg!("   Ciphertext length: {} bytes", self.ciphertext.len());
         
         Ok(amount)
     }

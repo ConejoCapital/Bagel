@@ -1,0 +1,28 @@
+[workspace]
+members = [
+    "programs/*",
+    "encrypted-ixs"
+]
+resolver = "2"
+
+[profile.release]
+overflow-checks = true
+
+[workspace.dependencies]
+# Anchor 0.32.1 (required for Arcium and MagicBlock compatibility)
+anchor-lang = "0.32.1"
+anchor-spl = "0.32.1"
+
+# Arcium dependencies
+arcium-anchor = { version = "0.6.1", features = ["idl-build"] }
+arcium-client = { version = "0.6.1" }
+
+# MagicBlock
+ephemeral-rollups-sdk = { version = "0.7.2", features = ["anchor"] }
+
+# Kamino
+kamino-lend = { version = "0.4.1", features = ["cpi"] }
+
+# Other dependencies
+blake3 = "=1.8.2"
+constant_time_eq = "=0.3.1"

@@ -84,16 +84,56 @@ export async function createPayroll(
   console.log('Salary per second:', salaryPerSecond, 'lamports');
 
   try {
+    // 🔒 REAL PRIVACY: Encrypt salary client-side before sending to program
+    // This ensures the plaintext salary never appears on-chain
+    console.log('🔒 Encrypting salary client-side using Arcium RescueCipher...');
+    
+    const { ArciumClient } = await import('./arcium');
+    const rpcUrl = connection.rpcEndpoint;
+    const isDevnet = rpcUrl.includes('devnet') || rpcUrl.includes('localhost');
+    const network = isDevnet ? 'devnet' : 'mainnet-beta';
+    
+    const arciumClient = new ArciumClient({
+      solanaRpcUrl: rpcUrl,
+      network: network,
+      circuitId: process.env.NEXT_PUBLIC_ARCIUM_CIRCUIT_ID,
+      priorityFeeMicroLamports: 1000,
+    });
+    
+    // Encrypt the salary amount
+    // Use employee's public key as recipient (they'll decrypt later)
+    const employeePubkeyBytes = employee.toBytes();
+    const encryptedPayload = await arciumClient.encryptSalary(salaryPerSecond, employeePubkeyBytes);
+    
+    // Ensure ciphertext is exactly 32 bytes for [u8; 32] in Rust
+    // The encryption returns 8 bytes (for u64), so we pad to 32 bytes
+    let ciphertext = new Uint8Array(32);
+    if (encryptedPayload.ciphertext.length >= 32) {
+      ciphertext.set(encryptedPayload.ciphertext.slice(0, 32));
+    } else {
+      // Pad the 8-byte ciphertext to 32 bytes
+      // First 8 bytes: encrypted amount
+      // Remaining 24 bytes: padding (can be zeros or derived from encryption key)
+      ciphertext.set(encryptedPayload.ciphertext.slice(0, Math.min(8, encryptedPayload.ciphertext.length)));
+      // Pad with hash of original ciphertext for better security (not just zeros)
+      const paddingHash = await crypto.subtle.digest('SHA-256', encryptedPayload.ciphertext);
+      const paddingBytes = new Uint8Array(paddingHash);
+      ciphertext.set(paddingBytes.slice(0, 24), 8);
+    }
+    
+    console.log('✅ Salary encrypted:', ciphertext.length, 'bytes');
+    console.log('   Original amount:', salaryPerSecond, 'lamports');
+    console.log('   Ciphertext (first 8 bytes):', Array.from(ciphertext.slice(0, 8)).map(b => '0x' + b.toString(16).padStart(2, '0')).join(' '));
+    
     // Build the instruction data manually
     // Instruction discriminator for bake_payroll (first 8 bytes of sha256("global:bake_payroll"))
     // Verified: echo -n "global:bake_payroll" | shasum -a 256 = 175f686159cfa592...
     const discriminator = Buffer.from([0x17, 0x5f, 0x68, 0x61, 0x59, 0xcf, 0xa5, 0x92]);
     
-    // Salary as u64 (8 bytes, little-endian)
-    const salaryBuffer = Buffer.alloc(8);
-    salaryBuffer.writeBigUInt64LE(BigInt(Math.floor(salaryPerSecond)));
+    // Salary ciphertext as [u8; 32] (32 bytes)
+    const ciphertextBuffer = Buffer.from(ciphertext);
     
-    const data = Buffer.concat([discriminator, salaryBuffer]);
+    const data = Buffer.concat([discriminator, ciphertextBuffer]);
 
     // Account order MUST match BakePayroll struct in bake_payroll.rs:
     // 1. employer (Signer, mut)
@@ -140,6 +180,15 @@ export async function createPayroll(
       signature: txid,
     }, 'confirmed');
     
+    // Verify transaction actually succeeded (not just included)
+    console.log('🔍 Verifying transaction success...');
+    const { verifyTransactionSuccess } = await import('./transaction-utils');
+    const verification = await verifyTransactionSuccess(connection, txid);
+    
+    if (!verification.success) {
+      throw new Error(`Transaction failed: ${verification.error}`);
+    }
+    
     console.log('✅ Payroll created on DEVNET! Transaction:', txid);
     return txid;
   } catch (error: any) {
@@ -152,8 +201,11 @@ export async function createPayroll(
     if (error.message?.includes('Blockhash not found')) {
       throw new Error('Transaction expired. Please try again.');
     }
-    if (error.message?.includes('0x1')) {
-      throw new Error('Program error - payroll may already exist for this employee.');
+    if (error.message?.includes('0x1') || error.message?.includes('already in use')) {
+      throw new Error('Payroll already exists for this employee. Use "Deposit Dough" to add funds.');
+    }
+    if (error.message?.includes('Instruction #') || error.message?.includes('Transaction failed')) {
+      throw new Error(`Transaction failed: ${error.message}. Check Solana Explorer for details.`);
     }
     if (error.name === 'WalletSendTransactionError') {
       throw new Error('Wallet error - please make sure Phantom is set to Devnet in Settings > Developer Settings > Testnet Mode ON, then select "Solana Devnet" from the network dropdown.');
@@ -359,6 +411,15 @@ export async function withdrawDough(
       signature: txid,
     }, 'confirmed');
     
+    // Verify transaction actually succeeded
+    console.log('🔍 Verifying transaction success...');
+    const { verifyTransactionSuccess } = await import('./transaction-utils');
+    const verification = await verifyTransactionSuccess(connection, txid);
+    
+    if (!verification.success) {
+      throw new Error(`Transaction failed: ${verification.error}`);
+    }
+    
     console.log('✅ Dough withdrawn! Transaction:', txid);
     return txid;
   } catch (error: any) {
@@ -452,13 +513,31 @@ export async function depositDough(
       signature: txid,
     }, 'confirmed');
     
+    // Verify transaction actually succeeded
+    console.log('🔍 Verifying transaction success...');
+    const { verifyTransactionSuccess } = await import('./transaction-utils');
+    const verification = await verifyTransactionSuccess(connection, txid);
+    
+    if (!verification.success) {
+      throw new Error(`Transaction failed: ${verification.error}`);
+    }
+    
     console.log('✅ Dough deposited! Transaction:', txid);
     return txid;
   } catch (error: any) {
     console.error('❌ Failed to deposit dough:', error);
+    
+    // Check for common errors
+    if (error.message?.includes('AccountNotInitialized') || error.message?.includes('0x0')) {
+      throw new Error('Payroll does not exist. Please create the payroll first using "Bake a New Payroll".');
+    }
+    if (error.message?.includes('Instruction #') || error.message?.includes('Transaction failed')) {
+      throw new Error(`Transaction failed: ${error.message}. Make sure the payroll exists first.`);
+    }
     if (error.name === 'WalletSendTransactionError') {
       throw new Error('Wallet error - please ensure Phantom is on Devnet (Settings > Developer Settings > Testnet Mode, then select Solana Devnet).');
     }
+    
     throw new Error(`Failed to deposit: ${error.message || error.toString()}`);
   }
 }
@@ -538,6 +617,15 @@ export async function closePayroll(
       lastValidBlockHeight,
       signature: txid,
     }, 'confirmed');
+    
+    // Verify transaction actually succeeded
+    console.log('🔍 Verifying transaction success...');
+    const { verifyTransactionSuccess } = await import('./transaction-utils');
+    const verification = await verifyTransactionSuccess(connection, txid);
+    
+    if (!verification.success) {
+      throw new Error(`Transaction failed: ${verification.error}`);
+    }
     
     console.log('✅ Payroll closed! Transaction:', txid);
     return txid;

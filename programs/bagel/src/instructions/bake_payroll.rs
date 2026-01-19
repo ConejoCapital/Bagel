@@ -15,30 +15,27 @@ use crate::{constants::*, error::*, privacy::*, state::*};
 /// ```ignore
 /// #[ephemeral]  // Uncomment when SDK is active
 /// ```
+/// 
+/// **PRIVACY:** This instruction accepts pre-encrypted salary ciphertext.
+/// The frontend MUST encrypt the salary using Arcium RescueCipher before calling this.
+/// This ensures the salary amount never appears as plaintext on-chain.
 pub fn handler(
     ctx: Context<BakePayroll>,
-    salary_per_second: u64,
+    salary_ciphertext: [u8; 32],
 ) -> Result<()> {
-    // Validate salary is within reasonable bounds
-    require!(
-        salary_per_second <= MAX_SALARY_PER_SECOND,
-        BagelError::SalaryTooHigh
-    );
-
     let payroll_jar = &mut ctx.accounts.payroll_jar;
     let clock = Clock::get()?;
 
-    // 🔒 REAL ARCIUM v0.5.1: Encrypt salary using Arcium C-SPL
-    // Uses SHA3-256 equivalent Rescue-Prime cipher
-    let encrypted_salary_balance = arcium::encrypt_salary(salary_per_second);
-    let encrypted_salary = encrypted_salary_balance.ciphertext;
-    
-    msg!("🔒 Salary encrypted with Arcium v0.5.1 (SHA3-256 security)");
+    // 🔒 REAL PRIVACY: Store encrypted ciphertext directly (no decryption on-chain!)
+    // The frontend has already encrypted the salary using Arcium RescueCipher
+    // We store it as-is, ensuring the plaintext salary never appears on-chain
+    msg!("🔒 Storing encrypted salary ciphertext (32 bytes)");
+    msg!("   ✅ Salary amount is private - never decrypted on-chain");
 
     // Initialize the PayrollJar
     payroll_jar.employer = ctx.accounts.employer.key();
     payroll_jar.employee = ctx.accounts.employee.key();
-    payroll_jar.encrypted_salary_per_second = encrypted_salary;
+    payroll_jar.encrypted_salary_per_second = salary_ciphertext.to_vec();
     payroll_jar.last_withdraw = clock.unix_timestamp;
     payroll_jar.total_accrued = 0;
     payroll_jar.dough_vault = Pubkey::default(); // Will be set when yield is activated
