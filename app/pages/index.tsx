@@ -51,7 +51,7 @@ export default function Home() {
             ) : (
               <div className="grid md:grid-cols-2 gap-6 max-w-4xl mx-auto">
                 {/* Employer Card */}
-                <Link href="/employer">
+                <Link href="/dashboard">
                   <div className="card hover:shadow-xl transition-shadow cursor-pointer">
                     <div className="text-4xl mb-4">👔</div>
                     <h3 className="text-2xl font-bold mb-2">I'm an Employer</h3>

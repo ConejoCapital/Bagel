@@ -91,7 +91,7 @@ export default function Landing() {
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          className="min-h-screen bg-white"
+          className="min-h-screen bg-[#F7F7F2]"
         >
           {/* ============================================
               SCROLL MORPH HERO - FIRST THING USERS SEE
@@ -107,7 +107,7 @@ export default function Landing() {
             initial={{ y: -100 }}
             animate={{ y: 0 }}
             transition={{ type: 'spring', stiffness: 100, damping: 20 }}
-            className="fixed top-0 left-0 right-0 bg-white/95 backdrop-blur-sm border-b border-gray-100 z-50"
+            className="fixed top-0 left-0 right-0 bg-[#F7F7F2]/95 backdrop-blur-sm border-b border-gray-100 z-50"
           >
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
               <div className="flex justify-between items-center h-16">
@@ -159,7 +159,7 @@ export default function Landing() {
                     Documentation
                   </Link>
                   <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-                    <Link href="/" className="btn-primary text-sm flex items-center gap-2">
+                    <Link href="/dashboard" className="btn-primary text-sm flex items-center gap-2">
                       Launch App
                       <ArrowRight size={16} />
                     </Link>
@@ -196,7 +196,7 @@ export default function Landing() {
                       <a href="https://github.com/ConejoCapital/Bagel" className="text-gray-600 hover:text-bagel-dark text-sm font-medium flex items-center gap-1">
                         <Github size={16} /> GitHub
                       </a>
-                      <Link href="/" className="btn-primary text-sm text-center">Launch App</Link>
+                      <Link href="/dashboard" className="btn-primary text-sm text-center">Launch App</Link>
                     </div>
                   </motion.div>
                 )}
@@ -207,7 +207,7 @@ export default function Landing() {
           {/* ============================================
               HERO SECTION
           ============================================ */}
-          <section className="pt-32 pb-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-white to-bagel-cream/30">
+          <section className="pt-32 pb-20 px-4 sm:px-6 lg:px-8 bg-[#F7F7F2]">
             <div className="max-w-7xl mx-auto">
               <div className="grid lg:grid-cols-2 gap-12 items-center">
                 {/* Hero Copy */}
@@ -246,7 +246,7 @@ export default function Landing() {
 
                   <motion.div variants={fadeInUp} className="flex flex-col sm:flex-row gap-4">
                     <motion.div whileHover={{ scale: 1.02, y: -2 }} whileTap={{ scale: 0.98 }}>
-                      <Link href="/" className="btn-primary text-center px-8 py-4 text-base flex items-center justify-center gap-2">
+                      <Link href="/dashboard" className="btn-primary text-center px-8 py-4 text-base flex items-center justify-center gap-2">
                         Launch App
                         <ArrowRight size={18} />
                       </Link>
@@ -295,11 +295,11 @@ export default function Landing() {
                   transition={{ duration: 0.8, delay: 0.3 }}
                   className="relative"
                 >
-                  <div className="absolute inset-0 bg-gradient-to-r from-bagel-orange/20 to-bagel-sesame/20 rounded-3xl blur-3xl" />
+                  <div className="absolute inset-0 bg-gradient-to-r from-bagel-orange/20 to-bagel-sesame/20 rounded-lg blur-3xl" />
                   <motion.div
                     whileHover={{ y: -5 }}
                     transition={{ type: 'spring', stiffness: 300 }}
-                    className="relative bg-white rounded-2xl shadow-2xl overflow-hidden border border-gray-100"
+                    className="relative bg-white rounded-md shadow-2xl overflow-hidden border border-gray-100"
                   >
                     {/* Mock Dashboard Header */}
                     <div className="bg-bagel-cream px-6 py-4 border-b border-gray-100">
@@ -342,11 +342,11 @@ export default function Landing() {
                       </div>
 
                       <div className="grid grid-cols-2 gap-4 mb-6">
-                        <div className="bg-bagel-cream/50 rounded-xl p-4">
+                        <div className="bg-bagel-cream/50 rounded p-4">
                           <div className="text-sm text-gray-500 mb-1">Rate</div>
                           <div className="font-semibold text-bagel-dark">0.0031 SOL/sec</div>
                         </div>
-                        <div className="bg-bagel-cream/50 rounded-xl p-4">
+                        <div className="bg-bagel-cream/50 rounded p-4">
                           <div className="text-sm text-gray-500 mb-1">Yield Bonus</div>
                           <div className="font-semibold text-bagel-orange">+0.42 SOL</div>
                         </div>
@@ -355,7 +355,7 @@ export default function Landing() {
                       <motion.button
                         whileHover={{ scale: 1.02 }}
                         whileTap={{ scale: 0.98 }}
-                        className="w-full bg-bagel-orange text-white py-3 rounded-xl font-semibold flex items-center justify-center gap-2"
+                        className="w-full bg-bagel-orange text-white py-3 rounded font-semibold flex items-center justify-center gap-2"
                       >
                         <Shield size={18} />
                         Withdraw Privately
@@ -369,7 +369,7 @@ export default function Landing() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.8 }}
                     whileHover={{ scale: 1.05 }}
-                    className="absolute -bottom-4 -left-4 bg-white rounded-xl shadow-lg p-4 border border-gray-100"
+                    className="absolute -bottom-4 -left-4 bg-white rounded shadow-lg p-4 border border-gray-100"
                   >
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
@@ -424,7 +424,7 @@ export default function Landing() {
                     viewport={{ once: true }}
                     transition={{ delay: i * 0.1 }}
                     whileHover={{ y: -5, scale: 1.02 }}
-                    className="bg-white/5 backdrop-blur rounded-xl p-6 border border-white/10"
+                    className="bg-white/5 backdrop-blur rounded p-6 border border-white/10"
                   >
                     <item.icon className="w-8 h-8 text-bagel-orange mb-3 mx-auto" />
                     <h4 className="font-semibold text-white mb-2">{item.title}</h4>
@@ -438,7 +438,7 @@ export default function Landing() {
           {/* ============================================
               FEATURES
           ============================================ */}
-          <section id="features" className="py-24 px-4 sm:px-6 lg:px-8 bg-white">
+          <section id="features" className="py-24 px-4 sm:px-6 lg:px-8 bg-[#F7F7F2]">
             <div className="max-w-7xl mx-auto">
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
@@ -497,11 +497,11 @@ export default function Landing() {
                     viewport={{ once: true }}
                     transition={{ delay: i * 0.1 }}
                     whileHover={{ y: -5 }}
-                    className="group bg-gradient-to-br from-bagel-cream to-white rounded-2xl p-8 border border-gray-100 hover:shadow-xl transition-all duration-300"
+                    className="group bg-gradient-to-br from-bagel-cream to-white rounded-md p-8 border border-gray-100 hover:shadow-xl transition-all duration-300"
                   >
                     <motion.div
                       whileHover={{ scale: 1.1, rotate: 5 }}
-                      className={`w-14 h-14 ${feature.color} rounded-2xl flex items-center justify-center mb-6`}
+                      className={`w-14 h-14 ${feature.color} rounded-md flex items-center justify-center mb-6`}
                     >
                       <feature.icon className={`w-7 h-7 ${feature.iconColor}`} />
                     </motion.div>
@@ -556,7 +556,7 @@ export default function Landing() {
                     )}
                     <motion.div
                       whileHover={{ y: -5 }}
-                      className="relative bg-white rounded-2xl p-6 border border-gray-100 hover:shadow-lg transition-shadow"
+                      className="relative bg-white rounded-md p-6 border border-gray-100 hover:shadow-lg transition-shadow"
                     >
                       <motion.div
                         whileHover={{ scale: 1.1, rotate: 10 }}
@@ -577,7 +577,7 @@ export default function Landing() {
           {/* ============================================
               KEY BENEFITS
           ============================================ */}
-          <section className="py-24 px-4 sm:px-6 lg:px-8 bg-white">
+          <section className="py-24 px-4 sm:px-6 lg:px-8 bg-[#F7F7F2]">
             <div className="max-w-7xl mx-auto">
               <div className="grid lg:grid-cols-2 gap-16 items-center">
                 <motion.div
@@ -624,7 +624,7 @@ export default function Landing() {
                   initial={{ opacity: 0, x: 30 }}
                   whileInView={{ opacity: 1, x: 0 }}
                   viewport={{ once: true }}
-                  className="bg-gradient-to-br from-bagel-cream to-white rounded-3xl p-8 border border-gray-100"
+                  className="bg-gradient-to-br from-bagel-cream to-white rounded-lg p-8 border border-gray-100"
                 >
                   <div className="grid grid-cols-2 gap-6">
                     {[
@@ -640,7 +640,7 @@ export default function Landing() {
                         viewport={{ once: true }}
                         transition={{ delay: i * 0.1 }}
                         whileHover={{ scale: 1.02 }}
-                        className="bg-white rounded-2xl p-6 shadow-sm"
+                        className="bg-white rounded-md p-6 shadow-sm"
                       >
                         <div className="text-3xl font-bold text-bagel-orange mb-2">{stat.value}</div>
                         <div className="text-sm text-gray-600">{stat.label}</div>
@@ -650,7 +650,7 @@ export default function Landing() {
 
                   <motion.div
                     whileHover={{ scale: 1.01 }}
-                    className="mt-8 p-6 bg-bagel-dark rounded-2xl"
+                    className="mt-8 p-6 bg-bagel-dark rounded-md"
                   >
                     <div className="flex items-center gap-3 mb-4">
                       <div className="w-8 h-8 bg-bagel-orange rounded-full flex items-center justify-center">
@@ -691,7 +691,7 @@ export default function Landing() {
                 initial={{ opacity: 0, y: 30 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
-                className="bg-white/5 backdrop-blur rounded-3xl border border-white/10 p-8 md:p-12"
+                className="bg-white/5 backdrop-blur rounded-lg border border-white/10 p-8 md:p-12"
               >
                 <div className="grid md:grid-cols-3 gap-8 mb-12">
                   {[
@@ -710,7 +710,7 @@ export default function Landing() {
                     >
                       <motion.div
                         whileHover={{ scale: 1.05 }}
-                        className={`${layer.color} rounded-2xl p-6 mb-4`}
+                        className={`${layer.color} rounded-md p-6 mb-4`}
                       >
                         <div className="text-2xl mb-2">{layer.icon}</div>
                         <div className="text-white font-semibold">{layer.title}</div>
@@ -747,7 +747,7 @@ export default function Landing() {
           {/* ============================================
               DEVELOPER EXPERIENCE
           ============================================ */}
-          <section className="py-24 px-4 sm:px-6 lg:px-8 bg-white">
+          <section className="py-24 px-4 sm:px-6 lg:px-8 bg-[#F7F7F2]">
             <div className="max-w-7xl mx-auto">
               <div className="grid lg:grid-cols-2 gap-16 items-center">
                 {/* Code Preview */}
@@ -757,7 +757,7 @@ export default function Landing() {
                   viewport={{ once: true }}
                   className="order-2 lg:order-1"
                 >
-                  <div className="bg-bagel-dark rounded-2xl overflow-hidden shadow-2xl">
+                  <div className="bg-bagel-dark rounded-md overflow-hidden shadow-2xl">
                     <div className="flex items-center gap-2 px-4 py-3 bg-black/20">
                       <div className="w-3 h-3 rounded-full bg-red-500" />
                       <div className="w-3 h-3 rounded-full bg-yellow-500" />
@@ -820,7 +820,7 @@ const tx = await withdrawPrivately(
                         transition={{ delay: i * 0.1 }}
                         className="flex gap-4"
                       >
-                        <div className="flex-shrink-0 w-10 h-10 bg-bagel-cream rounded-xl flex items-center justify-center">
+                        <div className="flex-shrink-0 w-10 h-10 bg-bagel-cream rounded flex items-center justify-center">
                           <item.icon className="w-5 h-5 text-bagel-orange" />
                         </div>
                         <div>
@@ -914,7 +914,7 @@ const tx = await withdrawPrivately(
 
               <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12">
                 <motion.div whileHover={{ scale: 1.02, y: -2 }} whileTap={{ scale: 0.98 }}>
-                  <Link href="/" className="btn-primary px-10 py-4 text-lg flex items-center justify-center gap-2">
+                  <Link href="/dashboard" className="btn-primary px-10 py-4 text-lg flex items-center justify-center gap-2">
                     Launch App
                     <ArrowRight size={20} />
                   </Link>
