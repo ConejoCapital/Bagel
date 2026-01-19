@@ -116,7 +116,7 @@ export async function createPayroll(
       // Remaining 24 bytes: padding (can be zeros or derived from encryption key)
       ciphertext.set(encryptedPayload.ciphertext.slice(0, Math.min(8, encryptedPayload.ciphertext.length)));
       // Pad with hash of original ciphertext for better security (not just zeros)
-      const paddingHash = await crypto.subtle.digest('SHA-256', encryptedPayload.ciphertext);
+      const paddingHash = await crypto.subtle.digest('SHA-256', new Uint8Array(encryptedPayload.ciphertext).buffer);
       const paddingBytes = new Uint8Array(paddingHash);
       ciphertext.set(paddingBytes.slice(0, 24), 8);
     }
