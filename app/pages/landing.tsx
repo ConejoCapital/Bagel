@@ -965,7 +965,7 @@ const tx = await withdrawPrivately(
                   <ul className="space-y-3">
                     <li><Link href="/docs" className="text-gray-400 hover:text-white transition-colors text-sm">Documentation</Link></li>
                     <li><a href="https://github.com/ConejoCapital/Bagel" className="text-gray-400 hover:text-white transition-colors text-sm flex items-center gap-1"><Github size={14} /> GitHub</a></li>
-                    <li><a href="https://explorer.solana.com/address/8rgaVvV6m3SSaVJfJ2VNoBk67frTWbCS3WDBjrk7S6gU?cluster=devnet" className="text-gray-400 hover:text-white transition-colors text-sm flex items-center gap-1"><ExternalLink size={14} /> Solana Explorer</a></li>
+                    <li><a href="https://explorer.solana.com/address/J45uxvT26szuQcmxvs5NRgtAMornKM9Ga9WaQ58bKUNE?cluster=devnet" className="text-gray-400 hover:text-white transition-colors text-sm flex items-center gap-1"><ExternalLink size={14} /> Solana Explorer</a></li>
                   </ul>
                 </div>
 

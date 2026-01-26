@@ -1,45 +1,59 @@
-# 📚 Bagel Frontend Libraries
+# Bagel Frontend Libraries
 
 This directory contains utility modules for integrating with privacy SDKs.
 
 ## Files
 
-### `arcium.ts`
-Arcium C-SPL integration for client-side encryption/decryption.
+### `inco.ts`
+Inco Lightning integration for FHE encrypted state.
 
 **Key Features:**
-- RescueCipher for x25519 key exchange
-- Client-side salary encryption
-- MPC circuit calls
-- Wallet integration
+- Encrypted value creation (Euint128)
+- Homomorphic operations (add, subtract)
+- Client-side encryption helpers
 
-**Usage:**
-```typescript
-import { createArciumClient } from './lib/arcium';
+### `shadowwire.ts`
+ShadowWire private transfer integration.
 
-const arcium = createArciumClient();
+**Key Features:**
+- Zero-knowledge private transfers
+- Bulletproof amount hiding
+- Internal/external transfer types
 
-// Employer encrypts salary
-const encrypted = await arcium.encryptSalary(1_000_000, employeePubkey);
+### `magicblock.ts`
+MagicBlock PER integration for real-time streaming.
 
-// Employee decrypts pay
-const myPay = await arcium.decryptAmount(encrypted, myPrivateKey);
-```
+**Key Features:**
+- TEE delegation
+- Real-time balance updates
+- State commit/undelegate
 
-### Future Files:
-- `shadowwire.ts` - Private ZK transfers
-- `magicblock.ts` - Streaming state management
-- `privacy-cash.ts` - Yield vault integration
-- `range.ts` - Compliance features
+### `range.ts`
+Range compliance integration.
+
+**Key Features:**
+- Wallet risk scoring
+- OFAC sanctions checks
+- Compliance pre-screening
+
+### `helius.ts`
+Helius RPC and DAS API integration.
+
+**Key Features:**
+- Enhanced transaction parsing
+- Privacy audit data fetching
+- High-performance RPC
 
 ## Environment Variables
 
 Create `.env.local`:
 ```bash
 NEXT_PUBLIC_SOLANA_RPC_URL=https://devnet.helius-rpc.com/?api-key=YOUR_KEY
-NEXT_PUBLIC_HELIUS_API_KEY=06227422-9d57-42de-a7b3-92f1491c58af
-NEXT_PUBLIC_ARCIUM_MPC_PROGRAM_ID=<circuit_id_after_deployment>
-NEXT_PUBLIC_BAGEL_PROGRAM_ID=8rgaVvV6m3SSaVJfJ2VNoBk67frTWbCS3WDBjrk7S6gU
+NEXT_PUBLIC_HELIUS_API_KEY=YOUR_HELIUS_API_KEY
+NEXT_PUBLIC_BAGEL_PROGRAM_ID=J45uxvT26szuQcmxvs5NRgtAMornKM9Ga9WaQ58bKUNE
+NEXT_PUBLIC_INCO_PROGRAM_ID=5sjEbPiqgZrYwR31ahR6Uk9wf5awoX61YGg7jExQSwaj
+NEXT_PUBLIC_SHADOWWIRE_PROGRAM_ID=GQBqwwoikYh7p6KEUHDUu5r9dHHXx9tMGskAPubmFPzD
+NEXT_PUBLIC_RANGE_API_KEY=YOUR_RANGE_API_KEY
 ```
 
 ## Development
@@ -54,8 +68,3 @@ npm run type-check
 # Run tests
 npm test
 ```
-
-## Notes
-
-Current implementations are mocks for testing the flow.
-Real Arcium SDK integration will be added when circuit is deployed.

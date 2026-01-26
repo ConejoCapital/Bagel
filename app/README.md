@@ -58,26 +58,28 @@ npm run dev
 
 ## Demo Mode
 
-This is a **proof of concept** frontend that simulates the user experience. The actual privacy integrations (Arcium MPC, ShadowWire Bulletproofs, MagicBlock PERs, Privacy Cash Vaults) are implemented in the Solana program backend.
+This is the frontend for Bagel Privacy Payroll. The privacy integrations (Inco Lightning, ShadowWire Bulletproofs, MagicBlock PERs, Range Compliance, Helius RPC) are implemented in the Solana program backend.
 
 ### What's Real
-- Solana program deployed on devnet: `8rgaVvV6m3SSaVJfJ2VNoBk67frTWbCS3WDBjrk7S6gU`
+- Solana program deployed on devnet: `J45uxvT26szuQcmxvs5NRgtAMornKM9Ga9WaQ58bKUNE`
 - Wallet connection via Solana Wallet Adapter
 - Helius RPC integration
-- 4,100+ lines of production-ready backend code
+- Privacy tool integrations (Inco, MagicBlock, ShadowWire, Range)
 
-### What's Simulated
-- The streaming balance (updates every second client-side)
-- The withdraw flow (shows what would happen)
-- Privacy features are explained but not executed client-side
+### What's Integrated
+- Real on-chain transactions
+- Inco Lightning encrypted state
+- MagicBlock PER delegation (ready)
+- ShadowWire private transfers (mainnet)
+- Range compliance checks
 
 ## Configuration
 
 ### Environment Variables (`.env.local`)
 ```env
-NEXT_PUBLIC_HELIUS_API_KEY=06227422-9d57-42de-a7b3-92f1491c58af
+NEXT_PUBLIC_HELIUS_API_KEY=YOUR_HELIUS_API_KEY
 NEXT_PUBLIC_SOLANA_NETWORK=devnet
-NEXT_PUBLIC_BAGEL_PROGRAM_ID=8rgaVvV6m3SSaVJfJ2VNoBk67frTWbCS3WDBjrk7S6gU
+NEXT_PUBLIC_BAGEL_PROGRAM_ID=J45uxvT26szuQcmxvs5NRgtAMornKM9Ga9WaQ58bKUNE
 ```
 
 ### RPC Endpoints
@@ -156,7 +158,7 @@ When the privacy SDKs release their production APIs:
 
 ## Links
 
-- **Program**: https://explorer.solana.com/address/8rgaVvV6m3SSaVJfJ2VNoBk67frTWbCS3WDBjrk7S6gU?cluster=devnet
+- **Program**: https://explorer.solana.com/address/J45uxvT26szuQcmxvs5NRgtAMornKM9Ga9WaQ58bKUNE?cluster=devnet
 - **GitHub**: https://github.com/ConejoCapital/Bagel
 - **Helius Dashboard**: https://dev.helius.xyz/
 

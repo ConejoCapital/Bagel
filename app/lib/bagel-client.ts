@@ -1,8 +1,8 @@
 /**
- * 🥯 Bagel Program Client
+ * Bagel Program Client
  * 
  * REAL interaction with the deployed Solana program on devnet!
- * Program ID: 8rgaVvV6m3SSaVJfJ2VNoBk67frTWbCS3WDBjrk7S6gU
+ * Program ID: J45uxvT26szuQcmxvs5NRgtAMornKM9Ga9WaQ58bKUNE
  */
 
 import { AnchorProvider, Program, web3, BN } from '@coral-xyz/anchor';
@@ -10,8 +10,8 @@ import { Connection, PublicKey, SystemProgram } from '@solana/web3.js';
 import { WalletContextState } from '@solana/wallet-adapter-react';
 // IDL will be generated later - for now we'll use instruction builders
 
-// Deployed program ID on devnet
-export const BAGEL_PROGRAM_ID = new PublicKey('8rgaVvV6m3SSaVJfJ2VNoBk67frTWbCS3WDBjrk7S6gU');
+// Deployed program ID on devnet (correct version)
+export const BAGEL_PROGRAM_ID = new PublicKey('J45uxvT26szuQcmxvs5NRgtAMornKM9Ga9WaQ58bKUNE');
 
 // PDA seeds
 const BAGEL_JAR_SEED = Buffer.from('bagel_jar');

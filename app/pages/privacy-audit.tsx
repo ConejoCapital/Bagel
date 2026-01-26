@@ -23,7 +23,7 @@ const WalletButton = dynamic(() => import('../components/WalletButton'), {
 });
 
 // Bagel Program ID
-const BAGEL_PROGRAM_ID = process.env.NEXT_PUBLIC_BAGEL_PROGRAM_ID || '8rgaVvV6m3SSaVJfJ2VNoBk67frTWbCS3WDBjrk7S6gU';
+const BAGEL_PROGRAM_ID = process.env.NEXT_PUBLIC_BAGEL_PROGRAM_ID || 'J45uxvT26szuQcmxvs5NRgtAMornKM9Ga9WaQ58bKUNE';
 
 interface TransactionData {
   signature: string;

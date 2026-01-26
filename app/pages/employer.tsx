@@ -414,7 +414,7 @@ export default function EmployerDashboard() {
                     <div>
                       <p className="text-sm font-medium text-gray-700">Program Used:</p>
                       <p className="font-mono text-xs bg-white p-2 rounded mt-1">
-                        🥯 Bagel Program: 8rgaVvV6m3SSaVJfJ2VNoBk67frTWbCS3WDBjrk7S6gU
+                        Bagel Program: J45uxvT26szuQcmxvs5NRgtAMornKM9Ga9WaQ58bKUNE
                       </p>
                     </div>
 
