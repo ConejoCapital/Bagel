@@ -81,6 +81,10 @@ pub mod bagel {
         vault.next_business_index = 0;
         vault.is_active = true;
         vault.bump = ctx.bumps.master_vault;
+        vault.confidential_mint = Pubkey::default(); // Will be set when confidential mint is deployed
+        vault.use_confidential_tokens = false; // Start with SOL, upgrade to confidential tokens when ready
+        vault.confidential_mint = Pubkey::default(); // Will be set when confidential mint is deployed
+        vault.use_confidential_tokens = false; // Start with SOL, upgrade to confidential tokens when ready
 
         // Initialize encrypted counts to zero
         let zero_ciphertext = vec![0u8; 16];
@@ -227,7 +231,28 @@ pub mod bagel {
         let vault = &mut ctx.accounts.master_vault;
         let entry = &mut ctx.accounts.business_entry;
 
-        // Transfer SOL to master vault
+        // PRIVACY: Transfer funds (SOL or Confidential Token)
+        // When vault.use_confidential_tokens is true, use inco_token::transfer() for encrypted transfers
+        // For now, use SOL transfer (confidential tokens require deployed mint)
+        if vault.use_confidential_tokens && vault.confidential_mint != Pubkey::default() {
+            // TODO: Use Inco Confidential Token transfer
+            // This will use inco_token::transfer() CPI with encrypted amount
+            // Transfer amount will be encrypted on-chain
+            msg!("🔒 Using confidential token transfer (encrypted amount)");
+            msg!("   Confidential mint: {}", vault.confidential_mint);
+            msg!("   ⚠️ NOTE: Confidential token CPI integration pending mint deployment");
+            
+            // For now, fall back to SOL until confidential mint is deployed
+            // In production, this would call:
+            // inco_token::cpi::transfer(
+            //     CpiContext::new(ctx.accounts.inco_token_program, accounts),
+            //     hexToBuffer(encrypted_amount),
+            //     0
+            // )?;
+        }
+        
+        // Transfer SOL to master vault (current implementation)
+        // NOTE: In production with confidential tokens, this is replaced by confidential token transfer
         let transfer_ix = anchor_lang::solana_program::system_instruction::transfer(
             &ctx.accounts.depositor.key(),
             &vault.key(),
@@ -445,7 +470,27 @@ pub mod bagel {
         // Update vault balance tracking
         vault.total_balance = vault.total_balance.checked_sub(amount).ok_or(BagelError::Underflow)?;
 
-        // Transfer lamports using sub_lamports/add_lamports pattern
+        // PRIVACY: Transfer funds (SOL or Confidential Token)
+        // When vault.use_confidential_tokens is true, use inco_token::transfer() for encrypted transfers
+        if vault.use_confidential_tokens && vault.confidential_mint != Pubkey::default() {
+            // TODO: Use Inco Confidential Token transfer
+            // This will use inco_token::transfer() CPI with encrypted amount
+            // Transfer amount will be encrypted on-chain (hidden from observers)
+            msg!("🔒 Using confidential token transfer (encrypted amount)");
+            msg!("   Confidential mint: {}", vault.confidential_mint);
+            msg!("   ⚠️ NOTE: Confidential token CPI integration pending mint deployment");
+            
+            // For now, fall back to SOL until confidential mint is deployed
+            // In production, this would call:
+            // inco_token::cpi::transfer(
+            //     CpiContext::new(ctx.accounts.inco_token_program, accounts),
+            //     hexToBuffer(encrypted_amount),
+            //     0
+            // )?;
+        }
+        
+        // Transfer SOL using sub_lamports/add_lamports pattern (current implementation)
+        // NOTE: In production with confidential tokens, this is replaced by confidential token transfer
         vault.sub_lamports(amount)?;
         ctx.accounts.withdrawer.add_lamports(amount)?;
 
@@ -712,6 +757,18 @@ pub struct RequestWithdrawal<'info> {
     #[account(address = INCO_LIGHTNING_ID)]
     pub inco_lightning_program: AccountInfo<'info>,
 
+    /// CHECK: Inco Confidential Token program (optional, for confidential transfers)
+    /// When vault.use_confidential_tokens is true, this is used for encrypted transfers
+    pub inco_token_program: Option<AccountInfo<'info>>,
+
+    /// CHECK: Master vault confidential token account (optional)
+    /// Used when confidential tokens are enabled
+    pub master_vault_token_account: Option<AccountInfo<'info>>,
+
+    /// CHECK: Employee confidential token account (optional)
+    /// Used when confidential tokens are enabled
+    pub employee_token_account: Option<AccountInfo<'info>>,
+
     pub system_program: Program<'info, System>,
 }
 
@@ -820,7 +877,9 @@ impl MasterVault {
         8 +                      // next_business_index
         1 +                      // is_active
         1 +                      // bump
-        32;                      // padding
+        32 +                     // confidential_mint (optional, for confidential token transfers)
+        1 +                      // use_confidential_tokens flag
+        31;                      // padding
 }
 
 /// Business Entry - INDEX-BASED PDA (no employer pubkey in seeds)

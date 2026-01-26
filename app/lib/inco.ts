@@ -355,3 +355,108 @@ export function getIncoClient(connection: Connection): IncoClient {
 export { encryptValue, decrypt, hexToBuffer };
 
 export default IncoClient;
+
+// ============================================================
+// Confidential SPL Token Functions
+// ============================================================
+
+/**
+ * Confidential Token Account Operations
+ * 
+ * These functions handle confidential SPL token operations using Inco's
+ * Confidential SPL Token program for encrypted transfers.
+ */
+
+/**
+ * Initialize a confidential token account
+ * 
+ * @param connection - Solana connection
+ * @param mint - Confidential token mint
+ * @param owner - Account owner
+ * @returns Token account public key
+ */
+export async function initializeConfidentialAccount(
+  connection: Connection,
+  mint: PublicKey,
+  owner: PublicKey
+): Promise<PublicKey> {
+  // TODO: Use Inco Confidential Token program's initialize_account instruction
+  // For now, return a placeholder
+  console.log('🔒 Initializing confidential token account...');
+  console.log('   Mint:', mint.toBase58());
+  console.log('   Owner:', owner.toBase58());
+  console.log('   ⚠️ NOTE: Requires Inco Confidential Token program deployment');
+  
+  // In production, this would derive the token account PDA or create it
+  // using inco_token::initialize_account or inco_token::create_idempotent
+  throw new Error('Confidential token account initialization requires Inco Confidential Token program deployment');
+}
+
+/**
+ * Transfer confidential tokens
+ * 
+ * @param connection - Solana connection
+ * @param source - Source token account
+ * @param destination - Destination token account
+ * @param encryptedAmount - Encrypted transfer amount (from encryptValue)
+ * @returns Transaction signature
+ */
+export async function transferConfidential(
+  connection: Connection,
+  source: PublicKey,
+  destination: PublicKey,
+  encryptedAmount: string // Hex-encoded ciphertext from encryptValue
+): Promise<string> {
+  // TODO: Use Inco Confidential Token program's transfer instruction
+  // This will use inco_token::transfer() with encrypted amount
+  console.log('🔒 Transferring confidential tokens...');
+  console.log('   Source:', source.toBase58());
+  console.log('   Destination:', destination.toBase58());
+  console.log('   Amount: ENCRYPTED (hidden on-chain)');
+  console.log('   ⚠️ NOTE: Requires Inco Confidential Token program deployment');
+  
+  throw new Error('Confidential token transfer requires Inco Confidential Token program deployment');
+}
+
+/**
+ * Get confidential token balance
+ * 
+ * @param connection - Solana connection
+ * @param tokenAccount - Token account to query
+ * @returns Encrypted balance handle
+ */
+export async function getConfidentialBalance(
+  connection: Connection,
+  tokenAccount: PublicKey
+): Promise<string> {
+  // TODO: Fetch token account and extract encrypted balance handle
+  // The balance is stored as Euint128 (encrypted)
+  console.log('🔒 Getting confidential token balance...');
+  console.log('   Account:', tokenAccount.toBase58());
+  console.log('   ⚠️ NOTE: Balance is encrypted, requires decryption to view');
+  
+  throw new Error('Confidential balance retrieval requires Inco Confidential Token program deployment');
+}
+
+/**
+ * Decrypt confidential token balance
+ * 
+ * @param handle - Encrypted balance handle
+ * @param wallet - Wallet for authorization
+ * @returns Decrypted balance
+ */
+export async function decryptConfidentialBalance(
+  handle: string,
+  wallet: {
+    publicKey: PublicKey;
+    signMessage: (message: Uint8Array) => Promise<Uint8Array>;
+  }
+): Promise<bigint> {
+  // Use Inco's attested decryption
+  const result = await decrypt([handle], {
+    address: wallet.publicKey,
+    signMessage: wallet.signMessage,
+  });
+  
+  return result.plaintexts[0] || BigInt(0);
+}

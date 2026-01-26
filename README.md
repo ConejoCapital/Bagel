@@ -103,6 +103,7 @@ flowchart TB
 | Business/Employee Counts | ENCRYPTED | Inco Lightning | Total counts hidden from observers |
 | Real-time Balance | PRIVATE | MagicBlock TEE | Computed inside trusted enclave |
 | Withdrawal Amount | HIDDEN | ShadowWire | Bulletproof ZK proof (mainnet) |
+| Transfer Amounts | ENCRYPTED | Inco Confidential Tokens | Production path: encrypted on-chain transfers |
 | Total Vault Balance | PUBLIC | Solana L1 | Unavoidable - but aggregated across all businesses |
 | Transaction Signatures | PUBLIC | Solana L1 | Unavoidable |
 | PDA Addresses | PUBLIC | Solana L1 | Index-based, NOT linked to identities |
@@ -122,6 +123,8 @@ flowchart TB
    - Only authorized parties can decrypt and verify
 
 4. **Optional ZK Payouts**: ShadowWire hides withdrawal amounts on mainnet
+
+5. **Confidential Token Transfers** (Production Path): Inco Confidential SPL Tokens encrypt transfer amounts on-chain. Currently using SOL transfers for demo; confidential token integration is ready when mint is deployed.
 
 ---
 

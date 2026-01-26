@@ -192,6 +192,11 @@ export async function registerBusiness(
 
 /**
  * Deposit funds to business
+ * 
+ * PRIVACY NOTE: Currently uses SOL transfers (public on-chain).
+ * Production path: Use Inco Confidential SPL Token for encrypted transfers.
+ * When confidential mint is deployed, this will use confidential token transfers
+ * where the transfer amount is encrypted on-chain.
  */
 export async function deposit(
   connection: Connection,
@@ -206,7 +211,9 @@ export async function deposit(
   const [masterVaultPDA] = getMasterVaultPDA();
   const [businessEntryPDA] = getBusinessEntryPDA(masterVaultPDA, entryIndex);
   
-  // Encrypt amount
+  // Encrypt amount for encrypted balance tracking
+  // NOTE: Transfer amount itself is still public (SOL transfer)
+  // Production: Will use confidential token transfer where amount is encrypted
   const encryptedAmount = await encryptForInco(amountLamports);
   
   // Build instruction data: discriminator + amount (u64) + encrypted_amount (Vec<u8>)
@@ -318,6 +325,13 @@ export async function addEmployee(
 
 /**
  * Request withdrawal (employee withdraws accrued salary)
+ * 
+ * PRIVACY NOTE: Currently uses SOL transfers (public on-chain).
+ * Production path: Use Inco Confidential SPL Token for encrypted transfers.
+ * When confidential mint is deployed, this will use confidential token transfers
+ * where the transfer amount is encrypted on-chain.
+ * 
+ * ShadowWire integration (mainnet): Can add ZK proofs to hide amounts further.
  */
 export async function requestWithdrawal(
   connection: Connection,
@@ -335,7 +349,9 @@ export async function requestWithdrawal(
   const [businessEntryPDA] = getBusinessEntryPDA(masterVaultPDA, entryIndex);
   const [employeeEntryPDA] = getEmployeeEntryPDA(businessEntryPDA, employeeIndex);
   
-  // Encrypt amount
+  // Encrypt amount for encrypted balance tracking
+  // NOTE: Transfer amount itself is still public (SOL transfer)
+  // Production: Will use confidential token transfer where amount is encrypted
   const encryptedAmount = await encryptForInco(amountLamports);
   
   // Build instruction data: discriminator + amount (u64) + encrypted_amount (Vec<u8>) + use_shadowwire (bool)

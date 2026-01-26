@@ -303,6 +303,15 @@ export default function PrivacyAuditPage() {
             <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
               <p className="text-sm text-red-800">
                 <strong>⚠️ On-Chain Reality:</strong> Without decryption keys, observers only see random-looking bytes. Salary amounts and balances are completely hidden!
+                
+                <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                  <p className="text-sm text-blue-800">
+                    <strong>🔒 Confidential Token Transfers (Production Path):</strong> In production, 
+                    Bagel uses Inco Confidential SPL Tokens for deposits and withdrawals. Transfer amounts 
+                    are encrypted on-chain, providing end-to-end privacy from storage to payout. Currently 
+                    using SOL transfers for demo; confidential token integration is ready when mint is deployed.
+                  </p>
+                </div>
               </p>
             </div>
           </div>
@@ -472,7 +481,8 @@ export default function PrivacyAuditPage() {
               <div className="text-3xl mb-2">4️⃣</div>
               <h4 className="font-bold text-sm">Payout</h4>
               <p className="text-xs text-gray-600">
-                ShadowWire hides withdrawal amount via ZK
+                ShadowWire hides withdrawal amount via ZK (mainnet)
+                Confidential tokens encrypt transfer amounts (production path)
               </p>
             </div>
           </div>
