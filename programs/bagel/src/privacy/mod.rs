@@ -9,8 +9,7 @@
 //! Real-time streaming: MagicBlock PER (Devnet)
 //! Compliance: Range API
 //!
-//! **SECURITY WARNING:** Using mock encryption for demo!
-//! Production will use real Inco Lightning encryption.
+//! **PRODUCTION:** Uses real Inco Lightning encryption on-chain.
 
 use anchor_lang::prelude::*;
 
@@ -69,7 +68,7 @@ pub use inco::{encrypt_salary, decrypt_for_transfer, calculate_accrued_mpc};
 pub use shadowwire::{execute_private_payout, initialize_encrypted_balance, ShadowWireTransfer};
 
 // Re-export MagicBlock functions
-pub use magicblock::{delegate_payroll_jar, commit_and_undelegate, get_er_balance, ERConfig};
+pub use magicblock::{delegate_employee_entry, commit_and_undelegate, get_er_balance, ERConfig};
 
 /// Calculate accrued salary using Inco encrypted computation
 ///

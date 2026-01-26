@@ -9,15 +9,15 @@
 //! **KEY FEATURES:**
 //! - Real-time balance updates (sub-second precision)
 //! - State hidden in TEE (Intel TDX)
-//! - Delegate PayrollJar to PER for streaming
+//! - Delegate EmployeeEntry to PER for streaming
 //! - Commit state back to L1 on withdrawal
 //!
 //! **HOW IT WORKS:**
-//! 1. Employer creates payroll → PayrollJar delegated to PER
+//! 1. Employee added → EmployeeEntry delegated to PER
 //! 2. Salary accrues in real-time in TEE (state is private!)
 //! 3. Employee authenticates with TEE to view balance
 //! 4. Employee withdraws → State committed back to L1
-//! 5. ShadowWire payout executed
+//! 5. Confidential token transfer executed
 //!
 //! **NETWORK:** Devnet
 //! **TEE RPC:** https://tee.magicblock.app
@@ -31,7 +31,7 @@ use crate::constants::{
 
 /// MagicBlock PER Configuration
 ///
-/// Configuration for delegating PayrollJar to a Private Ephemeral Rollup
+/// Configuration for delegating EmployeeEntry to a Private Ephemeral Rollup
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct ERConfig {
     /// TEE validator public key
@@ -76,9 +76,9 @@ impl ERConfig {
     }
 }
 
-/// Delegate PayrollJar to MagicBlock Ephemeral Rollup
+/// Delegate EmployeeEntry to MagicBlock Ephemeral Rollup
 /// 
-/// This moves the PayrollJar account to the ER for real-time streaming.
+/// This moves the EmployeeEntry account to the ER for real-time streaming.
 /// 
 /// **CURRENT:** Mock implementation
 /// **PRODUCTION:** Will use ephemeral-rollups-sdk
@@ -92,13 +92,18 @@ impl ERConfig {
 ///     &er_config,
 /// )?;
 /// ```
-pub fn delegate_payroll_jar(
-    _ctx: &Context<DelegatePayrollJar>,
+/// Delegate EmployeeEntry to MagicBlock Ephemeral Rollup
+/// 
+/// **NOTE:** This is a helper function. The actual delegation is handled
+/// by the ephemeral-rollups-sdk via the #[delegate] macro in lib.rs.
+/// This function provides configuration utilities.
+pub fn delegate_employee_entry(
+    _ctx: &Context<DelegateEmployeeEntry>,
     er_config: ERConfig,
 ) -> Result<()> {
     use crate::constants::program_ids::MAGICBLOCK_PROGRAM_ID;
     
-    msg!("⚡ Delegating PayrollJar to MagicBlock Ephemeral Rollup");
+    msg!("⚡ Delegating EmployeeEntry to MagicBlock Ephemeral Rollup");
     msg!("   Program: {}", MAGICBLOCK_PROGRAM_ID);
     msg!("   Validator: {}", er_config.validator);
     msg!("   Lifetime: {} seconds", er_config.lifetime);
@@ -136,7 +141,7 @@ pub fn delegate_payroll_jar(
     //     ],
     // )?;
     
-    msg!("✅ PayrollJar delegation configured for MagicBlock ER");
+    msg!("✅ EmployeeEntry delegation configured for MagicBlock ER");
     msg!("   Program ID: {} (active)", MAGICBLOCK_PROGRAM_ID);
     msg!("   NOTE: Full CPI requires account context in instruction");
     msg!("   SDK v0.7.2 ready for integration");
@@ -144,7 +149,7 @@ pub fn delegate_payroll_jar(
     Ok(())
 }
 
-/// Commit ER state and undelegate PayrollJar
+/// Commit ER state and undelegate EmployeeEntry
 /// 
 /// This commits the final accrued balance from the ER back to Solana L1
 /// and undelegates the account.
@@ -163,10 +168,14 @@ pub fn delegate_payroll_jar(
 ///     &[payroll_jar],
 /// )?;
 /// ```
+/// Commit ER state and undelegate EmployeeEntry
+/// 
+/// **NOTE:** This is a helper function. The actual commit is handled
+/// by the ephemeral-rollups-sdk via commit_and_undelegate_accounts in lib.rs.
 pub fn commit_and_undelegate(
     _ctx: &Context<CommitAndUndelegate>,
 ) -> Result<()> {
-    msg!("⚡ Committing ER state and undelegating PayrollJar");
+    msg!("⚡ Committing ER state and undelegating EmployeeEntry");
     
     // REAL MAGICBLOCK CPI: Commit ER state and undelegate
     // Uses commit_and_undelegate_accounts from ephemeral-rollups-sdk v0.7.2
@@ -195,7 +204,7 @@ pub fn commit_and_undelegate(
     // msg!("✅ ER state committed to L1 and undelegated!");
     
     msg!("✅ ER state committed to L1 (mock - will use real SDK)");
-    msg!("   PayrollJar undelegated and back on Solana L1");
+    msg!("   EmployeeEntry undelegated and back on Solana L1");
     
     Ok(())
 }
@@ -204,30 +213,36 @@ pub fn commit_and_undelegate(
 /// 
 /// Queries the Ephemeral Rollup for the current accrued balance.
 /// 
-/// **CURRENT:** Mock - returns state value
-/// **PRODUCTION:** Will query ER RPC endpoint
+/// **NOTE:** This is a helper function. The actual delegation is handled
+/// by the ephemeral-rollups-sdk via the #[delegate] macro in lib.rs.
+/// 
+/// **PRODUCTION:** Will query ER RPC endpoint for real-time balance
 pub fn get_er_balance(
-    payroll_jar: &Account<PayrollJar>,
+    _employee_entry_key: Pubkey,
 ) -> Result<u64> {
     // TODO: Query ER RPC for real-time balance
     // 
     // let er_rpc = "https://devnet.magicblock.app/";
-    // let balance = query_er_account(er_rpc, payroll_jar.key())?;
+    // let balance = query_er_account(er_rpc, employee_entry_key)?;
     // 
     // return balance;
     
-    // Mock: Return current state (in production, this would be from ER)
-    Ok(payroll_jar.total_accrued)
+    // Note: Actual balance is encrypted in EmployeeEntry.encrypted_accrued
+    // This function would query the ER and return the decrypted value
+    Ok(0) // Placeholder - actual balance is encrypted
 }
 
-/// Accounts for delegating PayrollJar to ER
+/// Accounts for delegating EmployeeEntry to ER
+/// 
+/// **NOTE:** This is a helper struct. The actual delegation is handled
+/// by the ephemeral-rollups-sdk via the #[delegate] macro in lib.rs.
 #[derive(Accounts)]
-pub struct DelegatePayrollJar<'info> {
+pub struct DelegateEmployeeEntry<'info> {
     #[account(mut)]
     pub employer: Signer<'info>,
     
     #[account(mut)]
-    pub payroll_jar: Account<'info, PayrollJar>,
+    pub employee_entry: AccountInfo<'info>,
     
     /// CHECK: MagicBlock Delegation Program
     pub delegation_program: UncheckedAccount<'info>,
@@ -236,15 +251,16 @@ pub struct DelegatePayrollJar<'info> {
 }
 
 /// Accounts for committing and undelegating
+/// 
+/// **NOTE:** This is a helper struct. The actual commit is handled
+/// by the ephemeral-rollups-sdk via commit_and_undelegate_accounts in lib.rs.
 #[derive(Accounts)]
 pub struct CommitAndUndelegate<'info> {
     #[account(mut)]
-    pub payroll_jar: Account<'info, PayrollJar>,
+    pub employee_entry: AccountInfo<'info>,
     
     /// CHECK: MagicBlock Delegation Program
     pub delegation_program: UncheckedAccount<'info>,
     
     pub system_program: Program<'info, System>,
 }
-
-use crate::state::PayrollJar;
