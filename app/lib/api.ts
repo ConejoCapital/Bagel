@@ -49,14 +49,13 @@ export class BagelClient {
   }
 
   /**
-   * Initialize employer vault (create payroll)
+   * Initialize employer vault (register business and add employee)
    * 
    * @param employeeAddress - Employee's wallet address
    * @param salaryPerSecond - Salary in lamports per second
-   * @returns Transaction signature
+   * @returns Transaction signature (for backward compatibility, returns txid string)
    * 
-   * **PRIVACY:** This method encrypts the salary client-side before sending to the program.
-   * The plaintext salary never appears on-chain.
+   * **PRIVACY:** This method encrypts the salary via Inco Lightning on-chain.
    */
   async initEmployer(
     employeeAddress: string,
@@ -71,28 +70,41 @@ export class BagelClient {
     console.log('   Salary:', salaryPerSecond, 'lamports/second');
     console.log('   [ENCRYPTED] Salary will be encrypted via Inco Lightning before on-chain storage');
 
-    // Use existing createPayroll function (now encrypts client-side)
-    const signature = await bagelClient.createPayroll(
+    // Step 1: Register business (if not already registered)
+    let entryIndex: number;
+    try {
+      entryIndex = await bagelClient.getCurrentBusinessIndex(this.connection);
+      console.log('   Business already registered with index:', entryIndex);
+    } catch {
+      // Business not registered, register it
+      console.log('   Registering new business...');
+      const result = await bagelClient.registerBusiness(this.connection, this.wallet);
+      entryIndex = result.entryIndex;
+      console.log('   Business registered with index:', entryIndex);
+    }
+
+    // Step 2: Add employee
+    console.log('   Adding employee...');
+    const employeeResult = await bagelClient.addEmployee(
       this.connection,
       this.wallet,
+      entryIndex,
       new PublicKey(employeeAddress),
       salaryPerSecond
     );
 
-    console.log('[SUCCESS] Employer vault initialized:', signature);
+    console.log('[SUCCESS] Employer vault initialized');
+    console.log('   Entry Index:', entryIndex);
+    console.log('   Employee Index:', employeeResult.employeeIndex);
     console.log('   [ENCRYPTED] Salary stored as Inco Euint128 ciphertext on-chain');
-    return signature;
+    
+    return employeeResult.txid;
   }
 
   /**
-   * Deposit dough to payroll (with WSOL wrapping for Kamino)
+   * Deposit dough to business
    * 
-   * Handles:
-   * 1. Checking user has enough SOL
-   * 2. Wrapping native SOL to WSOL (if needed for Kamino)
-   * 3. Calling deposit_dough instruction
-   * 
-   * @param employeeAddress - Employee's wallet address
+   * @param employeeAddress - Employee address (for backward compatibility, but entryIndex is used)
    * @param amountSOL - Amount in SOL (will be converted to lamports)
    * @returns Transaction signature
    */
@@ -104,10 +116,18 @@ export class BagelClient {
       throw new Error('Wallet not connected');
     }
 
+    // Get entry index (business must be registered first)
+    let businessEntryIndex: number;
+    try {
+      businessEntryIndex = await bagelClient.getCurrentBusinessIndex(this.connection);
+    } catch {
+      throw new Error('Business not registered. Please initialize employer vault first.');
+    }
+
     const amountLamports = Math.floor(amountSOL * LAMPORTS_PER_SOL);
     console.log('Depositing to Master Vault...');
     console.log('   Amount:', amountSOL, 'SOL (', amountLamports, 'lamports)');
-    console.log('   Employee:', employeeAddress);
+    console.log('   Business Entry Index:', businessEntryIndex);
 
     // Check balance
     const balance = await this.connection.getBalance(this.wallet.publicKey);
@@ -120,10 +140,10 @@ export class BagelClient {
       );
     }
 
-    const signature = await bagelClient.depositDough(
+    const signature = await bagelClient.deposit(
       this.connection,
       this.wallet,
-      new PublicKey(employeeAddress),
+      businessEntryIndex,
       amountLamports
     );
 
@@ -211,7 +231,7 @@ export class BagelClient {
   }
 
   /**
-   * Bake payroll (encrypts salary via Inco Lightning)
+   * Bake payroll (register business and add employee)
    * 
    * @param employeeAddress - Employee's wallet address
    * @param salaryPerSecond - Salary in lamports per second
@@ -221,35 +241,19 @@ export class BagelClient {
     employeeAddress: string,
     salaryPerSecond: number
   ): Promise<string> {
-    if (!this.wallet.publicKey) {
-      throw new Error('Wallet not connected');
-    }
-
-    console.log('Creating payroll with Inco Lightning encryption...');
-    console.log('   Employee:', employeeAddress);
-    console.log('   Salary:', salaryPerSecond, 'lamports/second');
-
-    // Create payroll (this encrypts salary via Inco Lightning CPI)
-    const signature = await bagelClient.createPayroll(
-      this.connection,
-      this.wallet,
-      new PublicKey(employeeAddress),
-      salaryPerSecond
-    );
-
-    // Salary is encrypted on-chain via Inco Lightning
-    console.log('[SUCCESS] Payroll created (salary encrypted via Inco)');
-
-    return signature;
+    // Use initEmployer which does the same thing
+    return await this.initEmployer(employeeAddress, salaryPerSecond);
   }
 
   /**
    * Withdraw salary (handles ShadowWire proof + MagicBlock undelegate + withdrawal)
    * 
-   * @param employerAddress - Employer's wallet address
+   * @param employerAddress - Employer address (for backward compatibility, but indices are needed)
    * @returns Transaction signature
    */
-  async withdrawSalary(employerAddress: string): Promise<string> {
+  async withdrawSalary(
+    employerAddress: string
+  ): Promise<string> {
     if (!this.wallet.publicKey) {
       throw new Error('Wallet not connected');
     }
@@ -257,6 +261,11 @@ export class BagelClient {
     console.log('Withdrawing salary...');
     console.log('   Employee:', this.wallet.publicKey.toBase58());
     console.log('   Employer:', employerAddress);
+    console.warn('   NOTE: New architecture requires entryIndex and employeeIndex. Using default amount.');
+
+    // In the new architecture, we need entryIndex and employeeIndex
+    // For backward compatibility, we'll throw an error asking for these
+    throw new Error('Withdrawal requires business entry index and employee index. Please use requestWithdrawal directly with these indices.');
 
     // Check if privacy features are enabled
     const SHADOW_WIRE_ENABLED = process.env.NEXT_PUBLIC_SHADOWWIRE_ENABLED === 'true';
@@ -274,49 +283,29 @@ export class BagelClient {
       }
     }
 
-    // Step 2: ShadowWire - Private transfer (optional)
-    // ShadowWire can hide withdrawal amounts on mainnet
-    if (SHADOW_WIRE_ENABLED && this.wallet.signMessage) {
-      try {
-        console.log('   [SHADOWWIRE] Preparing private transfer...');
-        // ShadowWire transfer would be executed separately after withdrawal
-        // For now, we proceed with direct withdrawal
-      } catch (err) {
-        console.warn('   [WARNING] ShadowWire setup failed, continuing with direct withdrawal:', err);
-      }
-    }
-
-    // Step 3: Execute withdrawal
-    // The withdrawal uses Inco Lightning for encrypted balance updates
-    console.log('   [INCO] Executing withdrawal with encrypted balance update...');
-    const signature = await bagelClient.withdrawDough(
-      this.connection,
-      this.wallet,
-      new PublicKey(employerAddress)
-    );
-
-    console.log('[SUCCESS] Salary withdrawn:', signature);
-    console.log('   View on Explorer: https://explorer.solana.com/tx/' + signature + '?cluster=devnet');
-    
-    return signature;
+    // This method is deprecated - use requestWithdrawal directly
+    throw new Error('This method is deprecated. Use requestWithdrawal with entryIndex and employeeIndex.');
   }
 
   /**
    * Get payroll information
    * 
-   * @param employeeAddress - Employee's wallet address
-   * @param employerAddress - Employer's wallet address
-   * @returns Payroll account data
+   * NOTE: In the new index-based architecture, payrolls cannot be fetched by employee/employer pubkeys.
+   * This method is deprecated and returns null.
+   * 
+   * @param employeeAddress - Employee address (deprecated, not used)
+   * @param employerAddress - Employer address (deprecated, not used)
+   * @returns Payroll account data (always null in new architecture)
    */
   async getPayroll(
     employeeAddress: string,
     employerAddress: string
   ): Promise<any> {
-    return await bagelClient.fetchPayrollJar(
-      this.connection,
-      new PublicKey(employeeAddress),
-      new PublicKey(employerAddress)
-    );
+    // In the new architecture, we would need to read the EmployeeEntry account
+    // This requires the business entry PDA and employee entry PDA
+    // For backward compatibility, return null
+    console.warn('getPayroll: New architecture requires entryIndex and employeeIndex. This method returns null.');
+    return null;
   }
 
   /**
@@ -328,7 +317,9 @@ export class BagelClient {
    */
   calculateAccrued(lastWithdraw: number, salaryPerSecond: number): number {
     const currentTime = Math.floor(Date.now() / 1000);
-    return bagelClient.calculateAccrued(lastWithdraw, salaryPerSecond, currentTime);
+    const elapsed = currentTime - lastWithdraw;
+    if (elapsed <= 0) return 0;
+    return elapsed * salaryPerSecond;
   }
 
   /**

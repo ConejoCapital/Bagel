@@ -103,7 +103,9 @@ export class ShadowWireClient {
     }
     
     try {
-      const balance = await this.client.getBalance(wallet, token);
+      // Cast token to the expected union type
+      const tokenType = token as 'SOL' | 'USDC' | 'USD1' | 'RADR' | 'BONK' | 'ORE' | 'JIM' | 'GODL' | 'HUSTLE' | 'ZEC' | 'CRT' | 'BLACKCOIN' | 'GIL' | 'ANON' | 'WLFI' | 'AOL' | 'IQLABS';
+      const balance = await this.client.getBalance(wallet, tokenType);
       return {
         available: balance.available,
         pool_address: balance.pool_address,

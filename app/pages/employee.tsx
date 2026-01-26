@@ -36,10 +36,20 @@ export default function EmployeeDashboard() {
   // Note: In the new architecture, employees need their business entry index and employee index
   // These should be provided by the employer when they add the employee
 
-  // Handle withdraw (REAL TRANSACTION!)
+  // Handle withdrawal
   const handleWithdraw = async () => {
-    if (!wallet.publicKey || !payrollData) {
-      setError('Wallet not connected or no payroll data');
+    if (!wallet.publicKey) {
+      setError('Wallet not connected');
+      return;
+    }
+
+    if (!businessEntryIndex || !employeeIndex) {
+      setError('Please enter your business entry index and employee index (provided by your employer)');
+      return;
+    }
+
+    if (parseFloat(withdrawAmount) <= 0) {
+      setError('Withdrawal amount must be greater than 0');
       return;
     }
 
@@ -48,32 +58,25 @@ export default function EmployeeDashboard() {
       setError('');
       setWithdrawTxid('');
 
-      console.log('💰 Initiating REAL withdraw transaction...');
+      console.log('💰 Initiating withdrawal...');
       console.log('Employee:', wallet.publicKey.toBase58());
-      console.log('Employer:', payrollData.employer.toBase58());
+      console.log('Business Entry Index:', businessEntryIndex);
+      console.log('Employee Index:', employeeIndex);
+      console.log('Amount:', withdrawAmount, 'SOL');
 
-      // REAL TRANSACTION - sends get_dough instruction to Solana!
-      const txid = await withdrawDough(
+      const amountLamports = solToLamports(parseFloat(withdrawAmount));
+
+      // REAL TRANSACTION - sends request_withdrawal instruction to Solana!
+      const txid = await requestWithdrawal(
         connection,
         wallet,
-        payrollData.employer
+        parseInt(businessEntryIndex),
+        parseInt(employeeIndex),
+        amountLamports,
+        false // useShadowwire - set to true for mainnet
       );
 
       setWithdrawTxid(txid);
-      
-      // Reset balance after successful withdraw
-      setBalance(0);
-      
-      // Re-fetch payroll data to update lastWithdraw timestamp
-      const updatedData = await fetchPayrollJar(
-        connection,
-        wallet.publicKey,
-        payrollData.employer
-      );
-      if (updatedData) {
-        setPayrollData(updatedData);
-      }
-
       console.log('✅ Withdraw successful! Transaction:', txid);
 
     } catch (err: any) {
@@ -83,17 +86,6 @@ export default function EmployeeDashboard() {
       setWithdrawing(false);
     }
   };
-
-  // Calculate stats
-  const getStats = () => {
-    const salarySOL = lamportsToSOL(MOCK_SALARY_PER_SECOND);
-    const daily = salarySOL * 86400;
-    const hourly = salarySOL * 3600;
-    
-    return { hourly, daily, perSecond: salarySOL };
-  };
-
-  const stats = getStats();
 
   return (
     <div className="min-h-screen bg-[#F7F7F2]">

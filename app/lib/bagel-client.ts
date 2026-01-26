@@ -117,7 +117,8 @@ async function encryptForInco(value: number): Promise<Buffer> {
   // Add some entropy for uniqueness
   const timestamp = Buffer.from(Date.now().toString());
   const combined = Buffer.concat([buffer.slice(0, 8), timestamp]);
-  const hashBuffer = await crypto.subtle.digest('SHA-256', combined);
+  // Convert Buffer to Uint8Array for crypto.subtle.digest
+  const hashBuffer = await crypto.subtle.digest('SHA-256', new Uint8Array(combined));
   const hash = Buffer.from(hashBuffer);
   hash.copy(buffer, 8, 0, 8);
   return buffer;
@@ -127,7 +128,9 @@ async function encryptForInco(value: number): Promise<Buffer> {
  * Hash pubkey to create encrypted ID (using Web Crypto API)
  */
 async function hashPubkey(pubkey: PublicKey): Promise<Buffer> {
-  const hashBuffer = await crypto.subtle.digest('SHA-256', pubkey.toBuffer());
+  const pubkeyBuffer = pubkey.toBuffer();
+  // Convert Buffer to Uint8Array for crypto.subtle.digest
+  const hashBuffer = await crypto.subtle.digest('SHA-256', new Uint8Array(pubkeyBuffer));
   return Buffer.from(hashBuffer).slice(0, 16);
 }
 

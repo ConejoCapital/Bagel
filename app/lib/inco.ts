@@ -19,9 +19,27 @@ import { Connection, PublicKey, Transaction, TransactionInstruction } from '@sol
 
 // Import from Inco SDK
 // Note: These imports may need adjustment based on actual SDK structure
-import { encryptValue } from '@inco/solana-sdk/encryption';
-import { decrypt } from '@inco/solana-sdk/attested-decrypt';
-import { hexToBuffer } from '@inco/solana-sdk/utils';
+// TODO: Install @inco/solana-sdk when available
+// import { encryptValue } from '@inco/solana-sdk/encryption';
+// import { decrypt } from '@inco/solana-sdk/attested-decrypt';
+// import { hexToBuffer } from '@inco/solana-sdk/utils';
+
+// Mock implementations for now (will be replaced with real SDK)
+function encryptValue(value: bigint): Promise<string> {
+  // Mock encryption - returns hex string
+  const buffer = Buffer.alloc(16);
+  buffer.writeBigUInt64LE(value, 0);
+  return Promise.resolve(buffer.toString('hex'));
+}
+
+function decrypt(handles: string[], wallet: any): Promise<{ plaintexts: bigint[]; ed25519Instructions?: TransactionInstruction[] }> {
+  // Mock decryption - returns zeros
+  return Promise.resolve({ plaintexts: handles.map(() => BigInt(0)) });
+}
+
+function hexToBuffer(hex: string): Buffer {
+  return Buffer.from(hex, 'hex');
+}
 
 const INCO_PROGRAM_ID = process.env.NEXT_PUBLIC_INCO_PROGRAM_ID || '5sjEbPiqgZrYwR31ahR6Uk9wf5awoX61YGg7jExQSwaj';
 
@@ -333,7 +351,7 @@ export function getIncoClient(connection: Connection): IncoClient {
   return defaultClient;
 }
 
-// Re-export SDK utilities
+// Re-export SDK utilities (mock implementations for now)
 export { encryptValue, decrypt, hexToBuffer };
 
 export default IncoClient;
