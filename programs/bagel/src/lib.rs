@@ -34,6 +34,10 @@ use inco_lightning::cpi::{e_add, e_sub, new_euint128};
 use inco_lightning::types::Euint128;
 use inco_lightning::ID as INCO_LIGHTNING_ID;
 
+// Inco Confidential Token SDK
+use inco_token::cpi::accounts::IncoTransfer;
+use inco_token::cpi::transfer;
+
 // MagicBlock Ephemeral Rollups SDK
 use ephemeral_rollups_sdk::anchor::{delegate, ephemeral};
 use ephemeral_rollups_sdk::cpi::DelegateConfig;
@@ -81,8 +85,6 @@ pub mod bagel {
         vault.next_business_index = 0;
         vault.is_active = true;
         vault.bump = ctx.bumps.master_vault;
-        vault.confidential_mint = Pubkey::default(); // Will be set when confidential mint is deployed
-        vault.use_confidential_tokens = false; // Start with SOL, upgrade to confidential tokens when ready
         vault.confidential_mint = Pubkey::default(); // Will be set when confidential mint is deployed
         vault.use_confidential_tokens = false; // Start with SOL, upgrade to confidential tokens when ready
 
@@ -233,42 +235,65 @@ pub mod bagel {
 
         // PRIVACY: Transfer funds (SOL or Confidential Token)
         // When vault.use_confidential_tokens is true, use inco_token::transfer() for encrypted transfers
-        // For now, use SOL transfer (confidential tokens require deployed mint)
         if vault.use_confidential_tokens && vault.confidential_mint != Pubkey::default() {
-            // TODO: Use Inco Confidential Token transfer
-            // This will use inco_token::transfer() CPI with encrypted amount
-            // Transfer amount will be encrypted on-chain
+            // Use Inco Confidential Token transfer with encrypted amount
             msg!("🔒 Using confidential token transfer (encrypted amount)");
             msg!("   Confidential mint: {}", vault.confidential_mint);
-            msg!("   ⚠️ NOTE: Confidential token CPI integration pending mint deployment");
             
-            // For now, fall back to SOL until confidential mint is deployed
-            // In production, this would call:
-            // inco_token::cpi::transfer(
-            //     CpiContext::new(ctx.accounts.inco_token_program, accounts),
-            //     hexToBuffer(encrypted_amount),
-            //     0
-            // )?;
-        }
-        
-        // Transfer SOL to master vault (current implementation)
-        // NOTE: In production with confidential tokens, this is replaced by confidential token transfer
-        let transfer_ix = anchor_lang::solana_program::system_instruction::transfer(
-            &ctx.accounts.depositor.key(),
-            &vault.key(),
-            amount,
-        );
-        
-        anchor_lang::solana_program::program::invoke(
-            &transfer_ix,
-            &[
-                ctx.accounts.depositor.to_account_info(),
-                vault.to_account_info(),
-                ctx.accounts.system_program.to_account_info(),
-            ],
-        )?;
+            // Verify token accounts are provided
+            require!(
+                ctx.accounts.depositor_token_account.is_some() 
+                    && ctx.accounts.master_vault_token_account.is_some(),
+                BagelError::InvalidState
+            );
+            require!(
+                ctx.accounts.inco_token_program.is_some(),
+                BagelError::InvalidState
+            );
 
-        vault.total_balance = vault.total_balance.checked_add(amount).ok_or(BagelError::Overflow)?;
+            let depositor_token = ctx.accounts.depositor_token_account.as_ref().unwrap();
+            let vault_token = ctx.accounts.master_vault_token_account.as_ref().unwrap();
+            let inco_token_program = ctx.accounts.inco_token_program.as_ref().unwrap();
+
+            // Build CPI context for confidential token transfer
+            // Note: Authority must be writable for Inco token transfer
+            let depositor_info = ctx.accounts.depositor.to_account_info();
+            // Ensure depositor is marked as writable (it should be from Deposit struct)
+            let cpi_accounts = IncoTransfer {
+                source: depositor_token.to_account_info(),
+                destination: vault_token.to_account_info(),
+                authority: depositor_info,
+                inco_lightning_program: ctx.accounts.inco_lightning_program.to_account_info(),
+                system_program: ctx.accounts.system_program.to_account_info(),
+            };
+            let cpi_ctx = CpiContext::new(
+                inco_token_program.to_account_info(),
+                cpi_accounts,
+            );
+
+            // Transfer with encrypted amount (input_type = 0 for hex-encoded ciphertext)
+            transfer(cpi_ctx, encrypted_amount.clone(), 0)?;
+
+            msg!("✅ Confidential token transfer completed");
+        } else {
+            // Transfer SOL to master vault (fallback when confidential tokens not enabled)
+            let transfer_ix = anchor_lang::solana_program::system_instruction::transfer(
+                &ctx.accounts.depositor.key(),
+                &vault.key(),
+                amount,
+            );
+            
+            anchor_lang::solana_program::program::invoke(
+                &transfer_ix,
+                &[
+                    ctx.accounts.depositor.to_account_info(),
+                    vault.to_account_info(),
+                    ctx.accounts.system_program.to_account_info(),
+                ],
+            )?;
+
+            vault.total_balance = vault.total_balance.checked_add(amount).ok_or(BagelError::Overflow)?;
+        }
 
         // Update business encrypted balance via homomorphic addition
         let cpi_accounts1 = Operation {
@@ -467,32 +492,57 @@ pub mod bagel {
             BagelError::InsufficientFunds
         );
 
-        // Update vault balance tracking
-        vault.total_balance = vault.total_balance.checked_sub(amount).ok_or(BagelError::Underflow)?;
-
         // PRIVACY: Transfer funds (SOL or Confidential Token)
         // When vault.use_confidential_tokens is true, use inco_token::transfer() for encrypted transfers
         if vault.use_confidential_tokens && vault.confidential_mint != Pubkey::default() {
-            // TODO: Use Inco Confidential Token transfer
-            // This will use inco_token::transfer() CPI with encrypted amount
-            // Transfer amount will be encrypted on-chain (hidden from observers)
+            // Use Inco Confidential Token transfer with encrypted amount
             msg!("🔒 Using confidential token transfer (encrypted amount)");
             msg!("   Confidential mint: {}", vault.confidential_mint);
-            msg!("   ⚠️ NOTE: Confidential token CPI integration pending mint deployment");
             
-            // For now, fall back to SOL until confidential mint is deployed
-            // In production, this would call:
-            // inco_token::cpi::transfer(
-            //     CpiContext::new(ctx.accounts.inco_token_program, accounts),
-            //     hexToBuffer(encrypted_amount),
-            //     0
-            // )?;
+            // Verify token accounts are provided
+            require!(
+                ctx.accounts.master_vault_token_account.is_some() 
+                    && ctx.accounts.employee_token_account.is_some(),
+                BagelError::InvalidState
+            );
+            require!(
+                ctx.accounts.inco_token_program.is_some(),
+                BagelError::InvalidState
+            );
+
+            let vault_token = ctx.accounts.master_vault_token_account.as_ref().unwrap();
+            let employee_token = ctx.accounts.employee_token_account.as_ref().unwrap();
+            let inco_token_program = ctx.accounts.inco_token_program.as_ref().unwrap();
+
+            // Build CPI context for confidential token transfer
+            // Note: Authority is the master vault PDA (signed via seeds)
+            let bump = vault.bump;
+            let seeds: &[&[&[u8]]] = &[&[MASTER_VAULT_SEED, &[bump]]];
+            let cpi_accounts = IncoTransfer {
+                source: vault_token.to_account_info(),
+                destination: employee_token.to_account_info(),
+                authority: vault.to_account_info(),
+                inco_lightning_program: ctx.accounts.inco_lightning_program.to_account_info(),
+                system_program: ctx.accounts.system_program.to_account_info(),
+            };
+            let cpi_ctx = CpiContext::new_with_signer(
+                inco_token_program.to_account_info(),
+                cpi_accounts,
+                seeds,
+            );
+
+            // Transfer with encrypted amount (input_type = 0 for hex-encoded ciphertext)
+            transfer(cpi_ctx, encrypted_amount.clone(), 0)?;
+
+            msg!("✅ Confidential token withdrawal completed");
+        } else {
+            // Update vault balance tracking (for SOL mode)
+            vault.total_balance = vault.total_balance.checked_sub(amount).ok_or(BagelError::Underflow)?;
+            
+            // Transfer SOL using sub_lamports/add_lamports pattern (fallback when confidential tokens not enabled)
+            vault.sub_lamports(amount)?;
+            ctx.accounts.withdrawer.add_lamports(amount)?;
         }
-        
-        // Transfer SOL using sub_lamports/add_lamports pattern (current implementation)
-        // NOTE: In production with confidential tokens, this is replaced by confidential token transfer
-        vault.sub_lamports(amount)?;
-        ctx.accounts.withdrawer.add_lamports(amount)?;
 
         // Update encrypted accrued balance via Inco Lightning CPI
         let cpi_accounts = Operation {
@@ -538,6 +588,160 @@ pub mod bagel {
             // Amount NOT included for privacy
         });
 
+        Ok(())
+    }
+
+    /// Configure confidential token mint for private transfers
+    ///
+    /// Sets the confidential mint address and enables confidential token mode.
+    /// Once enabled, deposits and withdrawals will use encrypted token transfers.
+    pub fn configure_confidential_mint(
+        ctx: Context<ConfigureConfidentialMint>,
+        mint: Pubkey,
+        enable: bool,
+    ) -> Result<()> {
+        let vault = &mut ctx.accounts.master_vault;
+        
+        require!(
+            ctx.accounts.authority.key() == vault.authority,
+            BagelError::Unauthorized
+        );
+
+        vault.confidential_mint = mint;
+        vault.use_confidential_tokens = enable;
+
+        msg!("🔒 Confidential token mint configured");
+        msg!("   Mint: {}", mint);
+        msg!("   Enabled: {}", enable);
+
+        emit!(ConfidentialMintConfigured {
+            mint,
+            enabled: enable,
+            timestamp: Clock::get()?.unix_timestamp,
+        });
+
+        Ok(())
+    }
+
+    /// Close Master Vault account (for migration/testing)
+    /// Transfers remaining lamports to authority
+    pub fn close_vault(ctx: Context<CloseVault>) -> Result<()> {
+        let vault = &ctx.accounts.master_vault;
+        
+        require!(
+            ctx.accounts.authority.key() == vault.authority,
+            BagelError::Unauthorized
+        );
+
+        require!(
+            vault.total_balance == 0,
+            BagelError::InvalidState
+        );
+
+        let authority = &mut ctx.accounts.authority;
+        let vault_account = &ctx.accounts.master_vault.to_account_info();
+        
+        **authority.to_account_info().try_borrow_mut_lamports()? += vault_account.lamports();
+        **vault_account.try_borrow_mut_lamports()? = 0;
+
+        msg!("🗑️  Master Vault closed");
+
+        Ok(())
+    }
+
+    /// Migrate MasterVault from old structure to new structure
+    /// 
+    /// Reads old format manually and writes new format with additional fields
+    /// This allows upgrading existing vaults without losing data
+    pub fn migrate_vault(ctx: Context<MigrateVault>) -> Result<()> {
+        let vault_info = &mut ctx.accounts.master_vault;
+        let authority = &ctx.accounts.authority;
+        
+        // Verify PDA seeds match (this validates the account is the correct vault)
+        let (expected_vault, _bump) = Pubkey::find_program_address(
+            &[MASTER_VAULT_SEED],
+            ctx.program_id,
+        );
+        require!(
+            vault_info.key() == expected_vault,
+            BagelError::InvalidState
+        );
+        
+        // Read old data and extract all fields before any mutations
+        let old_data_len = vault_info.data_len();
+        let old_data = vault_info.try_borrow_data()?;
+        
+        if old_data.len() < 40 {
+            return Err(BagelError::InvalidState.into());
+        }
+        
+        let old_authority = Pubkey::try_from(&old_data[8..40])
+            .map_err(|_| BagelError::InvalidState)?;
+        
+        require!(
+            authority.key() == old_authority,
+            BagelError::Unauthorized
+        );
+        
+        // Check if already migrated (new structure has 162 bytes)
+        if old_data.len() >= 162 {
+            msg!("✅ Vault already migrated");
+            return Ok(());
+        }
+        
+        // Extract all old data fields into owned values
+        let old_authority_bytes: [u8; 32] = old_data[8..40].try_into()
+            .map_err(|_| BagelError::InvalidState)?;
+        let old_total_balance = u64::from_le_bytes(
+            old_data[40..48].try_into().map_err(|_| BagelError::InvalidState)?
+        );
+        let old_encrypted_business_count: [u8; 16] = old_data[48..64].try_into()
+            .map_err(|_| BagelError::InvalidState)?;
+        let old_encrypted_employee_count: [u8; 16] = old_data[64..80].try_into()
+            .map_err(|_| BagelError::InvalidState)?;
+        let old_next_business_index = u64::from_le_bytes(
+            old_data[80..88].try_into().map_err(|_| BagelError::InvalidState)?
+        );
+        let old_is_active = old_data[88];
+        let old_bump = old_data[89];
+        
+        drop(old_data); // Release borrow before realloc
+        
+        // Resize account if needed
+        let new_size = MasterVault::LEN;
+        if old_data_len < new_size {
+            // Realloc with zero-initialization for new space
+            vault_info.realloc(new_size, false)?;
+        }
+        
+        // Write new format
+        let mut new_data = vault_info.try_borrow_mut_data()?;
+        
+        // Discriminator (8 bytes) - keep existing (already set)
+        // Authority (32 bytes) - copy from old
+        new_data[8..40].copy_from_slice(&old_authority_bytes);
+        // Total balance (8 bytes) - copy from old
+        new_data[40..48].copy_from_slice(&old_total_balance.to_le_bytes());
+        // Encrypted business count (16 bytes) - copy from old
+        new_data[48..64].copy_from_slice(&old_encrypted_business_count);
+        // Encrypted employee count (16 bytes) - copy from old
+        new_data[64..80].copy_from_slice(&old_encrypted_employee_count);
+        // Next business index (8 bytes) - copy from old
+        new_data[80..88].copy_from_slice(&old_next_business_index.to_le_bytes());
+        // Is active (1 byte) - copy from old
+        new_data[88] = old_is_active;
+        // Bump (1 byte) - copy from old
+        new_data[89] = old_bump;
+        // Confidential mint (32 bytes) - set to default (Pubkey::default())
+        new_data[90..122].fill(0);
+        // Use confidential tokens (1 byte) - set to false
+        new_data[122] = 0;
+        // Padding (31 bytes) - already zeroed by realloc
+        
+        msg!("✅ Vault migrated successfully");
+        msg!("   Old size: {} bytes", old_data_len);
+        msg!("   New size: {} bytes", new_size);
+        
         Ok(())
     }
 
@@ -688,6 +892,45 @@ pub struct Deposit<'info> {
     #[account(address = INCO_LIGHTNING_ID)]
     pub inco_lightning_program: AccountInfo<'info>,
 
+    /// CHECK: Inco Confidential Token program (optional, for confidential transfers)
+    /// When vault.use_confidential_tokens is true, this is used for encrypted transfers
+    pub inco_token_program: Option<AccountInfo<'info>>,
+
+    /// CHECK: Depositor confidential token account (optional)
+    /// Used when confidential tokens are enabled
+    pub depositor_token_account: Option<AccountInfo<'info>>,
+
+    /// CHECK: Master vault confidential token account (optional)
+    /// Used when confidential tokens are enabled
+    pub master_vault_token_account: Option<AccountInfo<'info>>,
+
+    pub system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
+pub struct CloseVault<'info> {
+    #[account(mut)]
+    pub authority: Signer<'info>,
+
+    #[account(
+        mut,
+        seeds = [MASTER_VAULT_SEED],
+        bump = master_vault.bump,
+        close = authority, // Close account and send lamports to authority
+    )]
+    pub master_vault: Account<'info, MasterVault>,
+}
+
+#[derive(Accounts)]
+pub struct MigrateVault<'info> {
+    #[account(mut)]
+    pub authority: Signer<'info>,
+
+    /// CHECK: Master vault PDA - we'll verify the bump from old data
+    /// CHECK: Master vault PDA - verified manually in instruction
+    #[account(mut)]
+    pub master_vault: AccountInfo<'info>, // Use AccountInfo to avoid deserialization
+
     pub system_program: Program<'info, System>,
 }
 
@@ -770,6 +1013,19 @@ pub struct RequestWithdrawal<'info> {
     pub employee_token_account: Option<AccountInfo<'info>>,
 
     pub system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
+pub struct ConfigureConfidentialMint<'info> {
+    #[account(mut)]
+    pub authority: Signer<'info>,
+
+    #[account(
+        mut,
+        seeds = [MASTER_VAULT_SEED],
+        bump = master_vault.bump,
+    )]
+    pub master_vault: Account<'info, MasterVault>,
 }
 
 #[delegate]
@@ -866,6 +1122,12 @@ pub struct MasterVault {
     
     /// Bump seed
     pub bump: u8,
+    
+    /// Confidential token mint address (for confidential transfers)
+    pub confidential_mint: Pubkey,
+    
+    /// Whether to use confidential tokens for transfers
+    pub use_confidential_tokens: bool,
 }
 
 impl MasterVault {
@@ -877,7 +1139,7 @@ impl MasterVault {
         8 +                      // next_business_index
         1 +                      // is_active
         1 +                      // bump
-        32 +                     // confidential_mint (optional, for confidential token transfers)
+        32 +                     // confidential_mint
         1 +                      // use_confidential_tokens flag
         31;                      // padding
 }
@@ -1022,6 +1284,13 @@ pub struct CommittedFromTee {
     pub timestamp: i64,
 }
 
+#[event]
+pub struct ConfidentialMintConfigured {
+    pub mint: Pubkey,
+    pub enabled: bool,
+    pub timestamp: i64,
+}
+
 // ============================================================
 // Errors
 // ============================================================
@@ -1057,6 +1326,9 @@ pub enum BagelError {
 
     #[msg("Entry is not active")]
     PayrollInactive,
+
+    #[msg("Invalid state for this operation")]
+    InvalidState,
 
     #[msg("Identity verification failed")]
     IdentityVerificationFailed,

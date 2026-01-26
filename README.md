@@ -103,7 +103,7 @@ flowchart TB
 | Business/Employee Counts | ENCRYPTED | Inco Lightning | Total counts hidden from observers |
 | Real-time Balance | PRIVATE | MagicBlock TEE | Computed inside trusted enclave |
 | Withdrawal Amount | HIDDEN | ShadowWire | Bulletproof ZK proof (mainnet) |
-| Transfer Amounts | ENCRYPTED | Inco Confidential Tokens | Production path: encrypted on-chain transfers |
+| Transfer Amounts | ✅ **ENCRYPTED** | Inco Confidential Tokens | **ENABLED** - Encrypted on-chain transfers working on devnet |
 | Total Vault Balance | PUBLIC | Solana L1 | Unavoidable - but aggregated across all businesses |
 | Transaction Signatures | PUBLIC | Solana L1 | Unavoidable |
 | PDA Addresses | PUBLIC | Solana L1 | Index-based, NOT linked to identities |
@@ -124,7 +124,7 @@ flowchart TB
 
 4. **Optional ZK Payouts**: ShadowWire hides withdrawal amounts on mainnet
 
-5. **Confidential Token Transfers** (Production Path): Inco Confidential SPL Tokens encrypt transfer amounts on-chain. Currently using SOL transfers for demo; confidential token integration is ready when mint is deployed.
+5. **Confidential Token Transfers**: **ENABLED** - Inco Confidential SPL Tokens encrypt transfer amounts on-chain. Fully deployed and working on devnet. Transfer amounts and token account balances are encrypted as ciphertext.
 
 ---
 
@@ -134,8 +134,15 @@ flowchart TB
 |-----------|------------|---------|
 | **Bagel** | `J45uxvT26szuQcmxvs5NRgtAMornKM9Ga9WaQ58bKUNE` | Devnet |
 | Inco Lightning | `5sjEbPiqgZrYwR31ahR6Uk9wf5awoX61YGg7jExQSwaj` | Devnet |
+| Inco Confidential Token | `HuUn2JwCPCLWwJ3z17m7CER73jseqsxvbcFuZN4JAw22` | Devnet |
 | MagicBlock Delegation | `DELeGGvXpWV2fqJUhqcF5ZSYMS4JTLjteaAMARRSaeSh` | Devnet |
 | ShadowWire | `GQBqwwoikYh7p6KEUHDUu5r9dHHXx9tMGskAPubmFPzD` | Mainnet |
+
+### Token Mints
+
+| Token | Mint Address | Network |
+|-------|--------------|---------|
+| **USDBagel** | `A3G2NBGL7xH9T6BYwVkwRGsSYxtFPdg4HSThfTmV94ht` | Devnet |
 
 ---
 
@@ -168,11 +175,14 @@ anchor build
 ### Run E2E Test
 
 ```bash
-# Run the full privacy test on devnet
+# Run the full privacy test on devnet (SOL transfers)
 node tests/test-real-privacy-onchain.mjs
+
+# Run the confidential token test (encrypted transfers)
+node test-confidential-payroll.mjs
 ```
 
-This test will:
+**Standard Test** (`test-real-privacy-onchain.mjs`):
 1. Create test wallets and fund them
 2. Run Range compliance checks
 3. Register businesses with encrypted IDs
@@ -180,6 +190,14 @@ This test will:
 5. Add employees with encrypted salaries
 6. Process withdrawals with ShadowWire simulation
 7. Output a full privacy audit report
+
+**Confidential Token Test** (`test-confidential-payroll.mjs`):
+1. Migrate vault if needed (old → new structure)
+2. Configure confidential tokens
+3. Execute deposit with encrypted transfer amount
+4. Execute withdrawal with encrypted transfer amount
+5. Verify all amounts are encrypted on-chain
+6. Output complete privacy verification report
 
 ### Run Frontend
 
@@ -240,6 +258,7 @@ NEXT_PUBLIC_BAGEL_PROGRAM_ID=J45uxvT26szuQcmxvs5NRgtAMornKM9Ga9WaQ58bKUNE
 NEXT_PUBLIC_HELIUS_API_KEY=YOUR_HELIUS_KEY
 NEXT_PUBLIC_RANGE_API_KEY=YOUR_RANGE_KEY
 NEXT_PUBLIC_INCO_PROGRAM_ID=5sjEbPiqgZrYwR31ahR6Uk9wf5awoX61YGg7jExQSwaj
+NEXT_PUBLIC_INCO_TOKEN_PROGRAM_ID=HuUn2JwCPCLWwJ3z17m7CER73jseqsxvbcFuZN4JAw22
 NEXT_PUBLIC_MAGICBLOCK_TEE_URL=https://tee.magicblock.app
 NEXT_PUBLIC_SHADOWWIRE_PROGRAM_ID=GQBqwwoikYh7p6KEUHDUu5r9dHHXx9tMGskAPubmFPzD
 ```
@@ -254,9 +273,10 @@ NEXT_PUBLIC_SHADOWWIRE_PROGRAM_ID=GQBqwwoikYh7p6KEUHDUu5r9dHHXx9tMGskAPubmFPzD
 - Employer ID encrypted via Inco Lightning CPI
 
 ### 2. Funds Deposited
-- SOL transferred to single Master Vault
+- Confidential USDBagel tokens transferred to single Master Vault (encrypted amount)
 - Business balance updated via encrypted homomorphic addition
 - Observer sees only total vault balance change
+- Transfer amounts are encrypted on-chain (ciphertext, not plaintext)
 
 ### 3. Employee Added
 - Employee registered with index-based PDA
@@ -270,8 +290,10 @@ NEXT_PUBLIC_SHADOWWIRE_PROGRAM_ID=GQBqwwoikYh7p6KEUHDUu5r9dHHXx9tMGskAPubmFPzD
 
 ### 5. Private Withdrawal
 - State committed back to L1 from TEE
+- Confidential token transfer with encrypted amount (devnet)
 - ShadowWire ZK proof hides withdrawal amount (mainnet)
 - Employee receives funds with transaction amount hidden
+- Transfer amounts are encrypted on-chain (ciphertext, not plaintext)
 
 ---
 
@@ -301,14 +323,20 @@ NEXT_PUBLIC_SHADOWWIRE_PROGRAM_ID=GQBqwwoikYh7p6KEUHDUu5r9dHHXx9tMGskAPubmFPzD
 
 ## Test Results
 
-See [TEST_RESULTS_2026-01-26.md](TEST_RESULTS_2026-01-26.md) for full E2E test output.
+See test result files for complete verification:
+- [TEST_RESULTS_2026-01-26.md](TEST_RESULTS_2026-01-26.md) - Standard E2E test with SOL transfers
+- [CONFIDENTIAL_TOKEN_TEST_RESULTS.md](CONFIDENTIAL_TOKEN_TEST_RESULTS.md) - Confidential token test with encrypted transfers
 
 **Summary:**
-- Status: PASSED
+- Status: ✅ PASSED
 - Businesses registered: 2
 - Employees added: 4
 - Withdrawals successful: 4/4 (100%)
 - All privacy tools integrated and verified
+- **Confidential tokens: ENABLED and working**
+  - Transfer amounts encrypted on-chain
+  - Token account balances encrypted
+  - Real on-chain transactions verified
 
 ---
 

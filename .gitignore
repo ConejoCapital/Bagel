@@ -6,6 +6,8 @@ node_modules/
 # Testing
 coverage/
 *.log
+test-run-*.log
+deploy-*.log
 
 # Next.js
 .next/
@@ -34,6 +36,9 @@ yarn-error.log*
 # Keep example files
 !.env.local.example
 !.env.example
+
+# Confidential token configuration (contains deployment keys)
+.confidential-token-config
 
 # Vercel
 .vercel

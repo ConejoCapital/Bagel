@@ -16,15 +16,6 @@ pub const MAX_SALARY_PER_SECOND: u64 = 50_000_000; // ~$50/second max
 /// Minimum time between withdrawals (anti-spam)
 pub const MIN_WITHDRAW_INTERVAL: i64 = 60; // 1 minute
 
-/// Kamino Finance Lend V2 (Devnet & Mainnet)
-/// Program ID: KLend2g3cP87fffoy8q1mQqGKjrxjC8boSyAYavgmjD
-/// Main Market: 7u3HeHxYDLhnCoErrtycNokbQYbWGzLs6JSDqGAv5PfF
-/// SOL Reserve: d4A2prbA2whesmvHaL88BH6Ewn5N4bTSU2Ze8P6Bc4Q
-/// USDC Reserve: D6q6wuQSrifJKZYpR1M8R4YawnLDtDsMmWM1NbBmgJ59
-pub const KAMINO_LENDING_PROGRAM: &str = "KLend2g3cP87fffoy8q1mQqGKjrxjC8boSyAYavgmjD";
-pub const KAMINO_MAIN_MARKET: &str = "7u3HeHxYDLhnCoErrtycNokbQYbWGzLs6JSDqGAv5PfF";
-pub const KAMINO_SOL_RESERVE: &str = "d4A2prbA2whesmvHaL88BH6Ewn5N4bTSU2Ze8P6Bc4Q";
-pub const KAMINO_USDC_RESERVE: &str = "D6q6wuQSrifJKZYpR1M8R4YawnLDtDsMmWM1NbBmgJ59";
 
 /// ═══════════════════════════════════════════════════════════════
 /// LEAN BAGEL STACK - Privacy Hackathon 2026

@@ -193,16 +193,21 @@ export async function registerBusiness(
 /**
  * Deposit funds to business
  * 
- * PRIVACY NOTE: Currently uses SOL transfers (public on-chain).
- * Production path: Use Inco Confidential SPL Token for encrypted transfers.
- * When confidential mint is deployed, this will use confidential token transfers
- * where the transfer amount is encrypted on-chain.
+ * PRIVACY: Uses SOL transfers (public) or Confidential Token transfers (encrypted) based on vault configuration.
+ * When confidential tokens are enabled, transfer amounts are encrypted on-chain.
+ * 
+ * @param depositorTokenAccount - Optional confidential token account for depositor (required if confidential tokens enabled)
+ * @param vaultTokenAccount - Optional confidential token account for master vault (required if confidential tokens enabled)
+ * @param incoTokenProgram - Optional Inco Confidential Token program ID (from env if not provided)
  */
 export async function deposit(
   connection: Connection,
   wallet: WalletContextState,
   entryIndex: number,
-  amountLamports: number
+  amountLamports: number,
+  depositorTokenAccount?: PublicKey,
+  vaultTokenAccount?: PublicKey,
+  incoTokenProgram?: PublicKey
 ): Promise<string> {
   if (!wallet.publicKey || !wallet.signTransaction) {
     throw new Error('Wallet not connected');
@@ -211,9 +216,7 @@ export async function deposit(
   const [masterVaultPDA] = getMasterVaultPDA();
   const [businessEntryPDA] = getBusinessEntryPDA(masterVaultPDA, entryIndex);
   
-  // Encrypt amount for encrypted balance tracking
-  // NOTE: Transfer amount itself is still public (SOL transfer)
-  // Production: Will use confidential token transfer where amount is encrypted
+  // Encrypt amount for encrypted balance tracking and/or confidential transfer
   const encryptedAmount = await encryptForInco(amountLamports);
   
   // Build instruction data: discriminator + amount (u64) + encrypted_amount (Vec<u8>)
@@ -223,14 +226,34 @@ export async function deposit(
   encLen.writeUInt32LE(encryptedAmount.length);
   const data = Buffer.concat([DISCRIMINATORS.deposit, amountBuf, encLen, encryptedAmount]);
   
+  // Build instruction keys
+  const keys = [
+    { pubkey: wallet.publicKey, isSigner: true, isWritable: true }, // depositor
+    { pubkey: masterVaultPDA, isSigner: false, isWritable: true }, // master_vault
+    { pubkey: businessEntryPDA, isSigner: false, isWritable: true }, // business_entry
+    { pubkey: INCO_LIGHTNING_ID, isSigner: false, isWritable: false }, // inco_lightning_program
+  ];
+
+  // Add optional confidential token accounts if provided
+  if (depositorTokenAccount && vaultTokenAccount) {
+    const INCO_TOKEN_PROGRAM_ID = incoTokenProgram || 
+      (process.env.NEXT_PUBLIC_INCO_TOKEN_PROGRAM_ID 
+        ? new PublicKey(process.env.NEXT_PUBLIC_INCO_TOKEN_PROGRAM_ID)
+        : null);
+    
+    if (INCO_TOKEN_PROGRAM_ID) {
+      keys.push(
+        { pubkey: INCO_TOKEN_PROGRAM_ID, isSigner: false, isWritable: false }, // inco_token_program (optional)
+        { pubkey: depositorTokenAccount, isSigner: false, isWritable: true }, // depositor_token_account (optional)
+        { pubkey: vaultTokenAccount, isSigner: false, isWritable: true }, // master_vault_token_account (optional)
+      );
+    }
+  }
+
+  keys.push({ pubkey: SystemProgram.programId, isSigner: false, isWritable: false }); // system_program
+  
   const instruction = new TransactionInstruction({
-    keys: [
-      { pubkey: wallet.publicKey, isSigner: true, isWritable: true }, // depositor
-      { pubkey: masterVaultPDA, isSigner: false, isWritable: true }, // master_vault
-      { pubkey: businessEntryPDA, isSigner: false, isWritable: true }, // business_entry
-      { pubkey: INCO_LIGHTNING_ID, isSigner: false, isWritable: false }, // inco_lightning_program
-      { pubkey: SystemProgram.programId, isSigner: false, isWritable: false }, // system_program
-    ],
+    keys,
     programId: BAGEL_PROGRAM_ID,
     data,
   });
@@ -326,12 +349,14 @@ export async function addEmployee(
 /**
  * Request withdrawal (employee withdraws accrued salary)
  * 
- * PRIVACY NOTE: Currently uses SOL transfers (public on-chain).
- * Production path: Use Inco Confidential SPL Token for encrypted transfers.
- * When confidential mint is deployed, this will use confidential token transfers
- * where the transfer amount is encrypted on-chain.
+ * PRIVACY: Uses SOL transfers (public) or Confidential Token transfers (encrypted) based on vault configuration.
+ * When confidential tokens are enabled, transfer amounts are encrypted on-chain.
  * 
  * ShadowWire integration (mainnet): Can add ZK proofs to hide amounts further.
+ * 
+ * @param vaultTokenAccount - Optional confidential token account for master vault (required if confidential tokens enabled)
+ * @param employeeTokenAccount - Optional confidential token account for employee (required if confidential tokens enabled)
+ * @param incoTokenProgram - Optional Inco Confidential Token program ID (from env if not provided)
  */
 export async function requestWithdrawal(
   connection: Connection,
@@ -339,7 +364,10 @@ export async function requestWithdrawal(
   entryIndex: number,
   employeeIndex: number,
   amountLamports: number,
-  useShadowwire: boolean = false
+  useShadowwire: boolean = false,
+  vaultTokenAccount?: PublicKey,
+  employeeTokenAccount?: PublicKey,
+  incoTokenProgram?: PublicKey
 ): Promise<string> {
   if (!wallet.publicKey || !wallet.signTransaction) {
     throw new Error('Wallet not connected');
@@ -349,9 +377,7 @@ export async function requestWithdrawal(
   const [businessEntryPDA] = getBusinessEntryPDA(masterVaultPDA, entryIndex);
   const [employeeEntryPDA] = getEmployeeEntryPDA(businessEntryPDA, employeeIndex);
   
-  // Encrypt amount for encrypted balance tracking
-  // NOTE: Transfer amount itself is still public (SOL transfer)
-  // Production: Will use confidential token transfer where amount is encrypted
+  // Encrypt amount for encrypted balance tracking and/or confidential transfer
   const encryptedAmount = await encryptForInco(amountLamports);
   
   // Build instruction data: discriminator + amount (u64) + encrypted_amount (Vec<u8>) + use_shadowwire (bool)
@@ -363,15 +389,35 @@ export async function requestWithdrawal(
   shadowwireBuf.writeUInt8(useShadowwire ? 1 : 0);
   const data = Buffer.concat([DISCRIMINATORS.request_withdrawal, amountBuf, encLen, encryptedAmount, shadowwireBuf]);
   
+  // Build instruction keys
+  const keys = [
+    { pubkey: wallet.publicKey, isSigner: true, isWritable: true }, // withdrawer
+    { pubkey: masterVaultPDA, isSigner: false, isWritable: true }, // master_vault
+    { pubkey: businessEntryPDA, isSigner: false, isWritable: true }, // business_entry
+    { pubkey: employeeEntryPDA, isSigner: false, isWritable: true }, // employee_entry
+    { pubkey: INCO_LIGHTNING_ID, isSigner: false, isWritable: false }, // inco_lightning_program
+  ];
+
+  // Add optional confidential token accounts if provided
+  if (vaultTokenAccount && employeeTokenAccount) {
+    const INCO_TOKEN_PROGRAM_ID = incoTokenProgram || 
+      (process.env.NEXT_PUBLIC_INCO_TOKEN_PROGRAM_ID 
+        ? new PublicKey(process.env.NEXT_PUBLIC_INCO_TOKEN_PROGRAM_ID)
+        : null);
+    
+    if (INCO_TOKEN_PROGRAM_ID) {
+      keys.push(
+        { pubkey: INCO_TOKEN_PROGRAM_ID, isSigner: false, isWritable: false }, // inco_token_program (optional)
+        { pubkey: vaultTokenAccount, isSigner: false, isWritable: true }, // master_vault_token_account (optional)
+        { pubkey: employeeTokenAccount, isSigner: false, isWritable: true }, // employee_token_account (optional)
+      );
+    }
+  }
+
+  keys.push({ pubkey: SystemProgram.programId, isSigner: false, isWritable: false }); // system_program
+  
   const instruction = new TransactionInstruction({
-    keys: [
-      { pubkey: wallet.publicKey, isSigner: true, isWritable: true }, // withdrawer
-      { pubkey: masterVaultPDA, isSigner: false, isWritable: true }, // master_vault
-      { pubkey: businessEntryPDA, isSigner: false, isWritable: true }, // business_entry
-      { pubkey: employeeEntryPDA, isSigner: false, isWritable: true }, // employee_entry
-      { pubkey: INCO_LIGHTNING_ID, isSigner: false, isWritable: false }, // inco_lightning_program
-      { pubkey: SystemProgram.programId, isSigner: false, isWritable: false }, // system_program
-    ],
+    keys,
     programId: BAGEL_PROGRAM_ID,
     data,
   });

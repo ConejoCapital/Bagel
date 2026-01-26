@@ -30,6 +30,12 @@ inco-lightning = { version = "0.1.4", features = ["cpi"] }
 # Devnet RPC: https://devnet.magicblock.app/
 ephemeral-rollups-sdk = { version = "0.8.3", features = ["anchor"] }
 
+# Inco Confidential SPL Token SDK
+# Source: https://github.com/Inco-fhevm/lightning-rod-solana
+# Used for confidential token transfers (encrypted amounts on-chain)
+# Note: Program must be deployed separately before use
+inco-token = { git = "https://github.com/Inco-fhevm/lightning-rod-solana.git", features = ["cpi"] }
+
 [profile.release]
 overflow-checks = true
 lto = "fat"

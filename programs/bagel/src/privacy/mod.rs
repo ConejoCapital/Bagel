@@ -23,9 +23,6 @@ pub mod shadowwire;
 // MagicBlock streaming payments module
 pub mod magicblock;
 
-// MPC output types (legacy, may be removed if unused)
-pub mod mpc_output;
-
 /// Encrypted u64 type using Inco SVM
 ///
 /// **LEAN BAGEL:** Using Inco's ConfidentialBalance type

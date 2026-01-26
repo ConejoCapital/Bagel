@@ -2,7 +2,7 @@
 # 🚀 Deploy Bagel to Solana Mainnet
 #
 # This script builds and deploys the Bagel program to Solana Mainnet
-# with Kamino Finance and Arcium integrations.
+# with confidential token support.
 #
 # Prerequisites:
 #   - Mainnet SOL in wallet (~1-2 SOL recommended)
@@ -121,10 +121,11 @@ fi
 # Summary
 echo -e "${GREEN}🎉 Deployment Complete!${NC}\n"
 echo -e "${BLUE}📋 Next Steps:${NC}"
-echo -e "   1. Deploy Arcium circuit to mainnet"
-echo -e "   2. Update NEXT_PUBLIC_ARCIUM_CIRCUIT_ID in app/.env.local"
-echo -e "   3. Update NEXT_PUBLIC_SOLANA_NETWORK=mainnet in app/.env.local"
-echo -e "   4. Test with small amounts first"
-echo -e "   5. Monitor transactions closely\n"
+echo -e "   1. Deploy Inco Confidential Token Program to mainnet"
+echo -e "   2. Initialize confidential token mint"
+echo -e "   3. Configure Bagel program with confidential mint"
+echo -e "   4. Update NEXT_PUBLIC_SOLANA_NETWORK=mainnet in app/.env.local"
+echo -e "   5. Test with small amounts first"
+echo -e "   6. Monitor transactions closely\n"
 echo -e "${BLUE}🔗 Explorer:${NC}"
 echo -e "   https://explorer.solana.com/address/$PROGRAM_ID?cluster=mainnet\n"
