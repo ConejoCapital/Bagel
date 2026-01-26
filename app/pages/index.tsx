@@ -130,7 +130,7 @@ export default function Home() {
         <footer className="mt-16 py-8 border-t border-gray-200">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center text-gray-600">
             <p className="text-sm">
-              Built for Solana Privacy Hackathon 2026 • Powered by Arcium, ShadowWire, MagicBlock & Privacy Cash
+              Built for Solana Privacy Hackathon 2026 • Powered by Inco, ShadowWire, MagicBlock & Range
             </p>
             <p className="text-xs mt-2">
               Simple payroll, private paydays, and a little extra cream cheese 🥯

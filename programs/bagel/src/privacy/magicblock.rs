@@ -123,10 +123,10 @@ pub fn delegate_employee_entry(
     // 
     // let magicblock_program = Pubkey::try_from(MAGICBLOCK_PROGRAM_ID)?;
     // 
-    // // Delegate PayrollJar to MagicBlock ER for real-time streaming
+    // // Delegate EmployeeEntry to MagicBlock ER for real-time streaming
     // let delegate_ix = delegate(
     //     magicblock_program,
-    //     ctx.accounts.payroll_jar.key(),
+    //     ctx.accounts.employee_entry.key(),
     //     er_config.validator,
     //     er_config.lifetime,
     //     er_config.sync_frequency,

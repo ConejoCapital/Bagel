@@ -484,8 +484,8 @@ export default function Landing() {
                   {
                     icon: DollarSign,
                     title: 'Automated Yield',
-                    desc: 'Idle payroll funds earn 5-10% APY through Kamino vaults. Yield is split 80/20 between employees and employers automatically.',
-                    powered: 'Kamino Finance',
+                    desc: 'Idle payroll funds can be delegated to yield-generating strategies. Yield is split between employees and employers automatically.',
+                    powered: 'Yield Strategies',
                     color: 'bg-green-100',
                     iconColor: 'text-green-600'
                   },
@@ -538,7 +538,7 @@ export default function Landing() {
 
               <div className="grid md:grid-cols-4 gap-8">
                 {[
-                  { step: '01', title: 'Create Payroll', desc: 'Employer creates a PayrollJar with encrypted salary rate and employee address.', icon: '📝' },
+                  { step: '01', title: 'Create Payroll', desc: 'Employer registers a business and adds employees with encrypted salary rates.', icon: '📝' },
                   { step: '02', title: 'Deposit Funds', desc: 'Funds are deposited and automatically split: 90% to yield vault, 10% liquid.', icon: '💰' },
                   { step: '03', title: 'Stream in Real-Time', desc: 'Salary streams per-second. Employee watches balance grow continuously.', icon: '⚡' },
                   { step: '04', title: 'Withdraw Privately', desc: 'Employee withdraws with ZK proof. Transfer amount stays completely hidden.', icon: '🔒' },
@@ -875,7 +875,7 @@ const tx = await withdrawPrivately(
                   { name: 'Inco Lightning', type: 'FHE Encryption' },
                   { name: 'ShadowWire', type: 'Bulletproofs' },
                   { name: 'MagicBlock', type: 'Ephemeral Rollups' },
-                  { name: 'Kamino', type: 'DeFi Yield' },
+                  { name: 'Yield Strategies', type: 'DeFi Integration' },
                 ].map((partner, i) => (
                   <motion.div
                     key={partner.name}

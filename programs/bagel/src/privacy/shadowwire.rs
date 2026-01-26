@@ -300,7 +300,7 @@ pub fn execute_private_payout(
 
 /// Helper function: Initialize ShadowWire encrypted balance
 /// 
-/// **USE CASE:** When creating a new PayrollJar, initialize ShadowWire balance
+/// **USE CASE:** When creating a new EmployeeEntry, initialize ShadowWire balance
 pub fn initialize_encrypted_balance(
     owner: Pubkey,
     mint: Pubkey,

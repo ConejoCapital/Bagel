@@ -108,7 +108,7 @@ export function useBagel(employeeAddress?: string, employerAddress?: string): Us
     if (!payrollData || !bagel) return;
 
     // For now, we'll use a mock salary per second
-    // In production, this would be decrypted from Arcium
+    // In production, this would be decrypted from Inco Lightning
     const MOCK_SALARY_PER_SECOND = 27_777; // From verification test
 
     const interval = setInterval(() => {

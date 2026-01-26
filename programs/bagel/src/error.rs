@@ -11,10 +11,10 @@ pub enum BagelError {
     #[msg("You must wait longer between withdrawals")]
     WithdrawTooSoon,
     
-    #[msg("Insufficient funds in the BagelJar")]
+    #[msg("Insufficient funds in the master vault")]
     InsufficientFunds,
     
-    #[msg("The payroll has not accrued any dough yet")]
+    #[msg("The payroll has not accrued any funds yet")]
     NoAccruedDough,
     
     #[msg("Only the employer can perform this action")]
@@ -23,7 +23,7 @@ pub enum BagelError {
     #[msg("Only the employee can perform this action")]
     UnauthorizedEmployee,
     
-    #[msg("The BagelJar is paused for maintenance")]
+    #[msg("The system is paused for maintenance")]
     SystemPaused,
     
     #[msg("Encryption operation failed")]

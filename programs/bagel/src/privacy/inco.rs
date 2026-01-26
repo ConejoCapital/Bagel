@@ -126,8 +126,8 @@ impl Ebool {
 
 /// Confidential Balance using Inco Euint128
 ///
-/// Drop-in replacement for Arcium's ConfidentialBalance.
-/// Provides the same interface but uses Inco's encryption.
+/// Provides encrypted balance storage using Inco Lightning's FHE encryption.
+/// All balance operations are performed on encrypted data.
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Default)]
 pub struct ConfidentialBalance {
     /// Encrypted amount using Inco Euint128
