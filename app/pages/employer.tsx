@@ -4,7 +4,7 @@ import Head from 'next/head';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import { useState, useEffect } from 'react';
-import { createPayroll, depositDough, closePayroll, solToLamports, lamportsToSOL, getPayrollJarPDA } from '../lib/bagel-client';
+import { registerBusiness, addEmployee, deposit, getCurrentBusinessIndex, getCurrentEmployeeIndex, getBusinessEntryPDA, getMasterVaultPDA, solToLamports, lamportsToSOL } from '../lib/bagel-client';
 import { rangeClient, ComplianceResult } from '../lib/range';
 
 const WalletButton = dynamic(() => import('../components/WalletButton'), {
@@ -31,18 +31,36 @@ export default function EmployerDashboard() {
   const [depositAmount, setDepositAmount] = useState('0.1');
   const [error, setError] = useState('');
   
+  // Track business and employee indices
+  const [businessEntryIndex, setBusinessEntryIndex] = useState<number | null>(null);
+  const [employeeIndices, setEmployeeIndices] = useState<Map<string, number>>(new Map());
+  
   // Range Compliance State
   const [complianceStatus, setComplianceStatus] = useState<ComplianceResult | null>(null);
   const [checkingCompliance, setCheckingCompliance] = useState(false);
 
-  // Check compliance when wallet connects
+  // Check compliance and load business index when wallet connects
   useEffect(() => {
     if (wallet.publicKey) {
       checkWalletCompliance();
+      loadBusinessIndex();
     } else {
       setComplianceStatus(null);
+      setBusinessEntryIndex(null);
     }
   }, [wallet.publicKey]);
+
+  // Load current business index from on-chain
+  const loadBusinessIndex = async () => {
+    if (!wallet.publicKey) return;
+    try {
+      const index = await getCurrentBusinessIndex(connection);
+      setBusinessEntryIndex(index);
+    } catch (err) {
+      console.log('No business registered yet or vault not initialized');
+      setBusinessEntryIndex(null);
+    }
+  };
 
   // Range compliance check
   const checkWalletCompliance = async () => {
@@ -125,24 +143,35 @@ export default function EmployerDashboard() {
       
       console.log('Salary in lamports:', salaryLamports);
 
-      // Send REAL transaction to Solana!
-      const signature = await createPayroll(
+      // Step 1: Register business if not already registered
+      let entryIndex = businessEntryIndex;
+      if (entryIndex === null) {
+        console.log('📝 Registering business...');
+        const result = await registerBusiness(connection, wallet);
+        entryIndex = result.entryIndex;
+        setBusinessEntryIndex(entryIndex);
+        console.log('✅ Business registered with entry index:', entryIndex);
+      }
+
+      // Step 2: Add employee
+      console.log('👷 Adding employee...');
+      const employeeResult = await addEmployee(
         connection,
         wallet,
+        entryIndex,
         new PublicKey(employeeAddress),
         salaryLamports
       );
-
-      setTxid(signature);
       
-      const [payrollJarPDA] = getPayrollJarPDA(
-        new PublicKey(employeeAddress),
-        wallet.publicKey
-      );
+      // Store employee index
+      const newIndices = new Map(employeeIndices);
+      newIndices.set(employeeAddress, employeeResult.employeeIndex);
+      setEmployeeIndices(newIndices);
 
-      console.log('✅ Payroll created!');
-      console.log('Transaction:', signature);
-      console.log('PayrollJar PDA:', payrollJarPDA.toBase58());
+      setTxid(employeeResult.txid);
+      console.log('✅ Employee added!');
+      console.log('Transaction:', employeeResult.txid);
+      console.log('Employee index:', employeeResult.employeeIndex);
 
     } catch (err: any) {
       console.error('❌ Error creating payroll:', err);
@@ -174,30 +203,27 @@ export default function EmployerDashboard() {
       setError('');
       setDepositTxid('');
 
-      console.log('💵 Depositing to existing payroll...');
+      console.log('💵 Depositing to business...');
       
-      // Verify payroll exists first
-      try {
-        const [payrollJar] = getPayrollJarPDA(
-          wallet.publicKey!,
-          new PublicKey(employeeAddress)
-        );
-        const jarAccount = await connection.getAccountInfo(payrollJar);
-        if (!jarAccount) {
-          setError('Payroll does not exist. Please create the payroll first using "Bake a New Payroll".');
+      // Get or register business
+      let entryIndex = businessEntryIndex;
+      if (entryIndex === null) {
+        // Try to load from chain
+        try {
+          entryIndex = await getCurrentBusinessIndex(connection);
+          setBusinessEntryIndex(entryIndex);
+        } catch (err) {
+          setError('Business not registered. Please create a payroll first to register your business.');
           return;
         }
-      } catch (checkErr) {
-        setError('Could not verify payroll exists. Please create the payroll first.');
-        return;
       }
       
       const depositLamports = solToLamports(parseFloat(depositAmount));
       
-      const signature = await depositDough(
+      const signature = await deposit(
         connection,
         wallet,
-        new PublicKey(employeeAddress),
+        entryIndex,
         depositLamports
       );
 

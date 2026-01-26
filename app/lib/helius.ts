@@ -65,7 +65,7 @@ export interface AccountData {
   owner: string;
   data: string; // Base64 encoded
   executable: boolean;
-  rentEpoch: number;
+  rentEpoch: number | undefined;
 }
 
 /**
@@ -155,7 +155,7 @@ export class HeliusClient {
         owner: accountInfo.owner.toBase58(),
         data: accountInfo.data.toString('base64'),
         executable: accountInfo.executable,
-        rentEpoch: accountInfo.rentEpoch,
+        rentEpoch: accountInfo.rentEpoch ?? undefined,
       };
     } catch (error) {
       console.error('Failed to get account data:', error);

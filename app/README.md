@@ -45,16 +45,16 @@ npm run dev
 - Links to employer/employee dashboards
 
 ### Employer Dashboard (`pages/employer.tsx`)
-- Create new payrolls
-- Set salary rates (SOL/second)
+- Register business (one-time setup)
+- Add employees with encrypted salaries
+- Deposit funds to master vault
 - View projections (hourly/daily/yearly)
-- Demonstrates Arcium encryption, MagicBlock streaming, Privacy Cash yield
+- Demonstrates Inco Lightning encryption, MagicBlock streaming
 
 ### Employee Dashboard (`pages/employee.tsx`)
-- **Real-time streaming simulation** (updates every second!)
-- Balance display with yield bonus
-- Private withdrawal button
-- Educational "How It Works" section
+- Request withdrawals using business and employee indices
+- Private withdrawal with optional ShadowWire ZK proofs
+- Transaction verification links
 
 ## Demo Mode
 
@@ -98,10 +98,11 @@ NEXT_PUBLIC_BAGEL_PROGRAM_ID=J45uxvT26szuQcmxvs5NRgtAMornKM9Ga9WaQ58bKUNE
 ## Privacy Integration Libraries
 
 Located in `lib/`:
-- `arcium.ts` - Arcium MPC client for encrypted computations
+- `inco.ts` - Inco Lightning client for FHE encrypted state
 - `shadowwire.ts` - ShadowWire client for zero-knowledge transfers
 - `magicblock.ts` - MagicBlock client for streaming payments
-- `privacycash.ts` - Privacy Cash client for yield generation
+- `range.ts` - Range API client for compliance checks
+- `helius.ts` - Helius RPC and DAS API client
 
 ## Design System
 
@@ -132,29 +133,32 @@ npm start
 npm run lint
 ```
 
+## Architecture Notes
+
+The frontend uses the new index-based PDA architecture:
+- **Master Vault**: Single global vault for all funds
+- **Business Entry**: Index-based PDA (no employer pubkey in seeds)
+- **Employee Entry**: Index-based PDA (no employee pubkey in seeds)
+
+Employees need their business entry index and employee index (provided by employer) to request withdrawals.
+
 ## Future Enhancements
 
-When the privacy SDKs release their production APIs:
-
-1. **Real Arcium Integration**
-   - Replace mock encryption with actual MPC calls
-   - Use `@arcium-hq/client` for circuit execution
+1. **Enhanced Inco Integration**
+   - Use Inco SDK for client-side encryption
+   - Real FHE operations on encrypted values
 
 2. **Real ShadowWire Integration**
    - Implement actual Bulletproof generation
-   - Connect to ShadowWire program for private transfers
+   - Connect to ShadowWire program for private transfers (mainnet)
 
 3. **Real MagicBlock Integration**
    - Connect to MagicBlock PER nodes
    - Stream updates via WebSocket
 
-4. **Real Privacy Cash Integration**
-   - Query actual vault yields
-   - Display real APY rates
-
-5. **Program IDL Integration**
+4. **Program IDL Integration**
    - Generate TypeScript types from Anchor IDL
-   - Auto-generate client code with Codama
+   - Auto-generate client code
 
 ## Links
 

@@ -3,605 +3,431 @@
  * 
  * REAL interaction with the deployed Solana program on devnet!
  * Program ID: J45uxvT26szuQcmxvs5NRgtAMornKM9Ga9WaQ58bKUNE
+ * 
+ * NEW ARCHITECTURE: Uses index-based PDAs for maximum privacy
+ * - Master Vault: ["master_vault"]
+ * - Business Entry: ["entry", master_vault, entry_index]
+ * - Employee Entry: ["employee", business_entry, employee_index]
  */
 
-import { AnchorProvider, Program, web3, BN } from '@coral-xyz/anchor';
-import { Connection, PublicKey, SystemProgram } from '@solana/web3.js';
+import { Connection, PublicKey, SystemProgram, Transaction, TransactionInstruction } from '@solana/web3.js';
 import { WalletContextState } from '@solana/wallet-adapter-react';
-// IDL will be generated later - for now we'll use instruction builders
 
-// Deployed program ID on devnet (correct version)
+// Deployed program ID on devnet
 export const BAGEL_PROGRAM_ID = new PublicKey('J45uxvT26szuQcmxvs5NRgtAMornKM9Ga9WaQ58bKUNE');
+export const INCO_LIGHTNING_ID = new PublicKey('5sjEbPiqgZrYwR31ahR6Uk9wf5awoX61YGg7jExQSwaj');
 
 // PDA seeds
-const BAGEL_JAR_SEED = Buffer.from('bagel_jar');
+const MASTER_VAULT_SEED = Buffer.from('master_vault');
+const BUSINESS_ENTRY_SEED = Buffer.from('entry');
+const EMPLOYEE_ENTRY_SEED = Buffer.from('employee');
+
+// Instruction discriminators (from test file)
+const DISCRIMINATORS = {
+  initialize_vault: Buffer.from([48, 191, 163, 44, 71, 129, 63, 164]),
+  register_business: Buffer.from([73, 228, 5, 59, 229, 67, 133, 82]),
+  deposit: Buffer.from([242, 35, 198, 137, 82, 225, 242, 182]),
+  add_employee: Buffer.from([14, 82, 239, 156, 50, 90, 189, 61]),
+  request_withdrawal: Buffer.from([251, 85, 121, 205, 56, 201, 12, 177]),
+};
 
 /**
- * Get the PayrollJar PDA for an employee and employer
- * 
- * IMPORTANT: Seed order must match the program!
- * Program uses: [SEED, employer, employee] (see bake_payroll.rs lines 62-65)
+ * Derive Master Vault PDA
  */
-export function getPayrollJarPDA(
-  employee: PublicKey,
-  employer: PublicKey
-): [PublicKey, number] {
+export function getMasterVaultPDA(): [PublicKey, number] {
   return PublicKey.findProgramAddressSync(
-    [
-      BAGEL_JAR_SEED,
-      employer.toBuffer(),  // employer FIRST (matches program)
-      employee.toBuffer(),  // employee SECOND (matches program)
-    ],
+    [MASTER_VAULT_SEED],
     BAGEL_PROGRAM_ID
   );
 }
 
 /**
- * Get Anchor provider
+ * Derive Business Entry PDA
  */
-export function getProvider(
-  connection: Connection,
-  wallet: WalletContextState
-): AnchorProvider | null {
-  if (!wallet.publicKey || !wallet.signTransaction) {
-    return null;
-  }
-
-  return new AnchorProvider(
-    connection,
-    wallet as any,
-    { commitment: 'confirmed' }
+export function getBusinessEntryPDA(masterVault: PublicKey, entryIndex: number): [PublicKey, number] {
+  const indexBuffer = Buffer.alloc(8);
+  indexBuffer.writeBigUInt64LE(BigInt(entryIndex));
+  return PublicKey.findProgramAddressSync(
+    [BUSINESS_ENTRY_SEED, masterVault.toBuffer(), indexBuffer],
+    BAGEL_PROGRAM_ID
   );
 }
 
 /**
- * Create a new payroll (bake_payroll instruction)
- * MANUAL INSTRUCTION BUILDING (no IDL needed!)
- * 
- * APPROACH: Use wallet.sendTransaction() with the devnet connection passed in.
- * The connection MUST be from useConnection() which uses our devnet ConnectionProvider.
+ * Derive Employee Entry PDA
  */
+export function getEmployeeEntryPDA(businessEntry: PublicKey, employeeIndex: number): [PublicKey, number] {
+  const indexBuffer = Buffer.alloc(8);
+  indexBuffer.writeBigUInt64LE(BigInt(employeeIndex));
+  return PublicKey.findProgramAddressSync(
+    [EMPLOYEE_ENTRY_SEED, businessEntry.toBuffer(), indexBuffer],
+    BAGEL_PROGRAM_ID
+  );
+}
+
+/**
+ * Get current business index from master vault
+ * This reads the on-chain state to get next_business_index
+ */
+export async function getCurrentBusinessIndex(
+  connection: Connection
+): Promise<number> {
+  const [masterVaultPDA] = getMasterVaultPDA();
+  const accountInfo = await connection.getAccountInfo(masterVaultPDA);
+  
+  if (!accountInfo) {
+    throw new Error('Master vault not initialized. Please initialize vault first.');
+  }
+  
+  // Read next_business_index from account data
+  // Offset: 8 (discriminator) + 32 (authority) + 8 (total_balance) + 16 (encrypted_business_count) + 16 (encrypted_employee_count) = 80
+  // next_business_index is at offset 80 (u64 = 8 bytes)
+  const data = accountInfo.data;
+  const index = data.readBigUInt64LE(80);
+  return Number(index);
+}
+
+/**
+ * Get current employee index from business entry
+ */
+export async function getCurrentEmployeeIndex(
+  connection: Connection,
+  businessEntry: PublicKey
+): Promise<number> {
+  const accountInfo = await connection.getAccountInfo(businessEntry);
+  
+  if (!accountInfo) {
+    throw new Error('Business entry not found');
+  }
+  
+  // Read next_employee_index from account data
+  // Offset: 8 (discriminator) + 32 (master_vault) + 8 (entry_index) + 16 (encrypted_employer_id) + 16 (encrypted_balance) + 16 (encrypted_employee_count) = 96
+  // next_employee_index is at offset 96 (u64 = 8 bytes)
+  const data = accountInfo.data;
+  const index = data.readBigUInt64LE(96);
+  return Number(index);
+}
+
+/**
+ * Create encrypted value for Inco (mock encryption - in production use Inco SDK)
+ */
+async function encryptForInco(value: number): Promise<Buffer> {
+  const buffer = Buffer.alloc(16);
+  buffer.writeBigUInt64LE(BigInt(value), 0);
+  // Add some entropy for uniqueness
+  const timestamp = Buffer.from(Date.now().toString());
+  const combined = Buffer.concat([buffer.slice(0, 8), timestamp]);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', combined);
+  const hash = Buffer.from(hashBuffer);
+  hash.copy(buffer, 8, 0, 8);
+  return buffer;
+}
+
+/**
+ * Hash pubkey to create encrypted ID (using Web Crypto API)
+ */
+async function hashPubkey(pubkey: PublicKey): Promise<Buffer> {
+  const hashBuffer = await crypto.subtle.digest('SHA-256', pubkey.toBuffer());
+  return Buffer.from(hashBuffer).slice(0, 16);
+}
+
+/**
+ * Register a new business
+ * Returns the entry_index for tracking
+ */
+export async function registerBusiness(
+  connection: Connection,
+  wallet: WalletContextState
+): Promise<{ txid: string; entryIndex: number }> {
+  if (!wallet.publicKey || !wallet.signTransaction) {
+    throw new Error('Wallet not connected');
+  }
+
+  const [masterVaultPDA] = getMasterVaultPDA();
+  const currentIndex = await getCurrentBusinessIndex(connection);
+  const [businessEntryPDA] = getBusinessEntryPDA(masterVaultPDA, currentIndex);
+  
+  // Encrypt employer ID (hash of pubkey)
+  const encryptedEmployerId = await hashPubkey(wallet.publicKey);
+  
+  // Build instruction data: discriminator + encrypted_employer_id (as Vec<u8>)
+  const idLen = Buffer.alloc(4);
+  idLen.writeUInt32LE(encryptedEmployerId.length);
+  const data = Buffer.concat([DISCRIMINATORS.register_business, idLen, encryptedEmployerId]);
+  
+  const instruction = new TransactionInstruction({
+    keys: [
+      { pubkey: wallet.publicKey, isSigner: true, isWritable: true }, // employer
+      { pubkey: masterVaultPDA, isSigner: false, isWritable: true }, // master_vault
+      { pubkey: businessEntryPDA, isSigner: false, isWritable: true }, // business_entry (init)
+      { pubkey: INCO_LIGHTNING_ID, isSigner: false, isWritable: false }, // inco_lightning_program
+      { pubkey: SystemProgram.programId, isSigner: false, isWritable: false }, // system_program
+    ],
+    programId: BAGEL_PROGRAM_ID,
+    data,
+  });
+
+  const transaction = new Transaction().add(instruction);
+  const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('confirmed');
+  transaction.recentBlockhash = blockhash;
+  transaction.feePayer = wallet.publicKey;
+
+  const signed = await wallet.signTransaction(transaction);
+  const txid = await connection.sendRawTransaction(signed.serialize(), {
+    skipPreflight: true,
+    maxRetries: 3,
+  });
+
+  await connection.confirmTransaction({
+    blockhash,
+    lastValidBlockHeight,
+    signature: txid,
+  }, 'confirmed');
+
+  return { txid, entryIndex: currentIndex };
+}
+
+/**
+ * Deposit funds to business
+ */
+export async function deposit(
+  connection: Connection,
+  wallet: WalletContextState,
+  entryIndex: number,
+  amountLamports: number
+): Promise<string> {
+  if (!wallet.publicKey || !wallet.signTransaction) {
+    throw new Error('Wallet not connected');
+  }
+
+  const [masterVaultPDA] = getMasterVaultPDA();
+  const [businessEntryPDA] = getBusinessEntryPDA(masterVaultPDA, entryIndex);
+  
+  // Encrypt amount
+  const encryptedAmount = await encryptForInco(amountLamports);
+  
+  // Build instruction data: discriminator + amount (u64) + encrypted_amount (Vec<u8>)
+  const amountBuf = Buffer.alloc(8);
+  amountBuf.writeBigUInt64LE(BigInt(amountLamports));
+  const encLen = Buffer.alloc(4);
+  encLen.writeUInt32LE(encryptedAmount.length);
+  const data = Buffer.concat([DISCRIMINATORS.deposit, amountBuf, encLen, encryptedAmount]);
+  
+  const instruction = new TransactionInstruction({
+    keys: [
+      { pubkey: wallet.publicKey, isSigner: true, isWritable: true }, // depositor
+      { pubkey: masterVaultPDA, isSigner: false, isWritable: true }, // master_vault
+      { pubkey: businessEntryPDA, isSigner: false, isWritable: true }, // business_entry
+      { pubkey: INCO_LIGHTNING_ID, isSigner: false, isWritable: false }, // inco_lightning_program
+      { pubkey: SystemProgram.programId, isSigner: false, isWritable: false }, // system_program
+    ],
+    programId: BAGEL_PROGRAM_ID,
+    data,
+  });
+
+  const transaction = new Transaction().add(instruction);
+  const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('confirmed');
+  transaction.recentBlockhash = blockhash;
+  transaction.feePayer = wallet.publicKey;
+
+  const signed = await wallet.signTransaction(transaction);
+  const txid = await connection.sendRawTransaction(signed.serialize(), {
+    skipPreflight: true,
+    maxRetries: 3,
+  });
+
+  await connection.confirmTransaction({
+    blockhash,
+    lastValidBlockHeight,
+    signature: txid,
+  }, 'confirmed');
+
+  return txid;
+}
+
+/**
+ * Add an employee to a business
+ * Returns the employee_index for tracking
+ */
+export async function addEmployee(
+  connection: Connection,
+  wallet: WalletContextState,
+  entryIndex: number,
+  employeePubkey: PublicKey,
+  salaryPerSecond: number
+): Promise<{ txid: string; employeeIndex: number }> {
+  if (!wallet.publicKey || !wallet.signTransaction) {
+    throw new Error('Wallet not connected');
+  }
+
+  const [masterVaultPDA] = getMasterVaultPDA();
+  const [businessEntryPDA] = getBusinessEntryPDA(masterVaultPDA, entryIndex);
+  const currentEmployeeIndex = await getCurrentEmployeeIndex(connection, businessEntryPDA);
+  const [employeeEntryPDA] = getEmployeeEntryPDA(businessEntryPDA, currentEmployeeIndex);
+  
+  // Encrypt employee ID and salary
+  const encryptedEmployeeId = await hashPubkey(employeePubkey);
+  const encryptedSalary = await encryptForInco(salaryPerSecond);
+  
+  // Build instruction data: discriminator + encrypted_employee_id (Vec<u8>) + encrypted_salary (Vec<u8>)
+  const idLen = Buffer.alloc(4);
+  idLen.writeUInt32LE(encryptedEmployeeId.length);
+  const salaryLen = Buffer.alloc(4);
+  salaryLen.writeUInt32LE(encryptedSalary.length);
+  const data = Buffer.concat([
+    DISCRIMINATORS.add_employee,
+    idLen, encryptedEmployeeId,
+    salaryLen, encryptedSalary
+  ]);
+  
+  const instruction = new TransactionInstruction({
+    keys: [
+      { pubkey: wallet.publicKey, isSigner: true, isWritable: true }, // employer
+      { pubkey: masterVaultPDA, isSigner: false, isWritable: true }, // master_vault
+      { pubkey: businessEntryPDA, isSigner: false, isWritable: true }, // business_entry
+      { pubkey: employeeEntryPDA, isSigner: false, isWritable: true }, // employee_entry (init)
+      { pubkey: INCO_LIGHTNING_ID, isSigner: false, isWritable: false }, // inco_lightning_program
+      { pubkey: SystemProgram.programId, isSigner: false, isWritable: false }, // system_program
+    ],
+    programId: BAGEL_PROGRAM_ID,
+    data,
+  });
+
+  const transaction = new Transaction().add(instruction);
+  const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('confirmed');
+  transaction.recentBlockhash = blockhash;
+  transaction.feePayer = wallet.publicKey;
+
+  const signed = await wallet.signTransaction(transaction);
+  const txid = await connection.sendRawTransaction(signed.serialize(), {
+    skipPreflight: true,
+    maxRetries: 3,
+  });
+
+  await connection.confirmTransaction({
+    blockhash,
+    lastValidBlockHeight,
+    signature: txid,
+  }, 'confirmed');
+
+  return { txid, employeeIndex: currentEmployeeIndex };
+}
+
+/**
+ * Request withdrawal (employee withdraws accrued salary)
+ */
+export async function requestWithdrawal(
+  connection: Connection,
+  wallet: WalletContextState,
+  entryIndex: number,
+  employeeIndex: number,
+  amountLamports: number,
+  useShadowwire: boolean = false
+): Promise<string> {
+  if (!wallet.publicKey || !wallet.signTransaction) {
+    throw new Error('Wallet not connected');
+  }
+
+  const [masterVaultPDA] = getMasterVaultPDA();
+  const [businessEntryPDA] = getBusinessEntryPDA(masterVaultPDA, entryIndex);
+  const [employeeEntryPDA] = getEmployeeEntryPDA(businessEntryPDA, employeeIndex);
+  
+  // Encrypt amount
+  const encryptedAmount = await encryptForInco(amountLamports);
+  
+  // Build instruction data: discriminator + amount (u64) + encrypted_amount (Vec<u8>) + use_shadowwire (bool)
+  const amountBuf = Buffer.alloc(8);
+  amountBuf.writeBigUInt64LE(BigInt(amountLamports));
+  const encLen = Buffer.alloc(4);
+  encLen.writeUInt32LE(encryptedAmount.length);
+  const shadowwireBuf = Buffer.alloc(1);
+  shadowwireBuf.writeUInt8(useShadowwire ? 1 : 0);
+  const data = Buffer.concat([DISCRIMINATORS.request_withdrawal, amountBuf, encLen, encryptedAmount, shadowwireBuf]);
+  
+  const instruction = new TransactionInstruction({
+    keys: [
+      { pubkey: wallet.publicKey, isSigner: true, isWritable: true }, // withdrawer
+      { pubkey: masterVaultPDA, isSigner: false, isWritable: true }, // master_vault
+      { pubkey: businessEntryPDA, isSigner: false, isWritable: true }, // business_entry
+      { pubkey: employeeEntryPDA, isSigner: false, isWritable: true }, // employee_entry
+      { pubkey: INCO_LIGHTNING_ID, isSigner: false, isWritable: false }, // inco_lightning_program
+      { pubkey: SystemProgram.programId, isSigner: false, isWritable: false }, // system_program
+    ],
+    programId: BAGEL_PROGRAM_ID,
+    data,
+  });
+
+  const transaction = new Transaction().add(instruction);
+  const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('confirmed');
+  transaction.recentBlockhash = blockhash;
+  transaction.feePayer = wallet.publicKey;
+
+  const signed = await wallet.signTransaction(transaction);
+  const txid = await connection.sendRawTransaction(signed.serialize(), {
+    skipPreflight: true,
+    maxRetries: 3,
+  });
+
+  await connection.confirmTransaction({
+    blockhash,
+    lastValidBlockHeight,
+    signature: txid,
+  }, 'confirmed');
+
+  return txid;
+}
+
+// Legacy function names for backward compatibility (deprecated)
 export async function createPayroll(
   connection: Connection,
   wallet: WalletContextState,
   employee: PublicKey,
-  salaryPerSecond: number // in lamports
+  salaryPerSecond: number
 ): Promise<string> {
-  if (!wallet.publicKey) {
-    throw new Error('Wallet not connected');
-  }
-
-  const employer = wallet.publicKey;
-  const [payrollJarPDA] = getPayrollJarPDA(employee, employer);
-
-  // Log connection info for debugging
-  console.log('🔗 Connection endpoint:', connection.rpcEndpoint);
-  console.log('🌐 This transaction will be sent to DEVNET via Helius RPC');
-  console.log('Creating payroll...');
-  console.log('Employer:', employer.toBase58());
-  console.log('Employee:', employee.toBase58());
-  console.log('PayrollJar PDA:', payrollJarPDA.toBase58());
-  console.log('Salary per second:', salaryPerSecond, 'lamports');
-
-  try {
-    // Privacy: Salary encryption happens on-chain via Inco Lightning CPI
-    // The program will encrypt the salary value using Inco's new_euint128 CPI
-    console.log('[ENCRYPTED] Salary will be encrypted on-chain via Inco Lightning CPI');
-    
-    // NOTE: The current deployed program uses register_business and add_employee
-    // which handle encryption on-chain. This bake_payroll instruction may be legacy.
-    // For now, we'll pass a placeholder - the actual encryption happens in the program.
-    // TODO: Update to use register_business/add_employee instructions instead
-    
-    // Build the instruction data manually
-    // Instruction discriminator for bake_payroll (first 8 bytes of sha256("global:bake_payroll"))
-    const discriminator = Buffer.from([0x17, 0x5f, 0x68, 0x61, 0x59, 0xcf, 0xa5, 0x92]);
-    
-    // Placeholder ciphertext (32 bytes) - program will encrypt on-chain via Inco
-    const placeholderCiphertext = Buffer.alloc(32);
-    placeholderCiphertext.writeBigUInt64LE(BigInt(salaryPerSecond), 0);
-    
-    const data = Buffer.concat([discriminator, placeholderCiphertext]);
-
-    // Account order MUST match BakePayroll struct in bake_payroll.rs:
-    // 1. employer (Signer, mut)
-    // 2. employee (UncheckedAccount, not mut)
-    // 3. payroll_jar (Account, init, mut) 
-    // 4. system_program
-    const instruction = new web3.TransactionInstruction({
-      keys: [
-        { pubkey: employer, isSigner: true, isWritable: true },      // 1. employer
-        { pubkey: employee, isSigner: false, isWritable: false },    // 2. employee
-        { pubkey: payrollJarPDA, isSigner: false, isWritable: true },// 3. payroll_jar PDA
-        { pubkey: SystemProgram.programId, isSigner: false, isWritable: false }, // 4. system
-      ],
-      programId: BAGEL_PROGRAM_ID,
-      data,
-    });
-
-    // Create transaction
-    const transaction = new web3.Transaction().add(instruction);
-    
-    // Get recent blockhash from our DEVNET connection (Helius)
-    const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('confirmed');
-    transaction.recentBlockhash = blockhash;
-    transaction.feePayer = employer;
-
-    console.log('📝 Requesting signature from wallet...');
-    console.log('   Blockhash (from devnet):', blockhash);
-    
-    // Use sendTransaction with explicit options
-    // skipPreflight: true to avoid wallet trying to simulate on wrong network
-    const txid = await wallet.sendTransaction(transaction, connection, {
-      skipPreflight: true, // CRITICAL: Skip wallet's preflight to avoid network mismatch
-      preflightCommitment: 'confirmed',
-      maxRetries: 3,
-    });
-    
-    console.log('Transaction sent to devnet:', txid);
-    
-    // Now do OUR OWN simulation/confirmation on devnet
-    console.log('⏳ Waiting for devnet confirmation...');
-    await connection.confirmTransaction({
-      blockhash,
-      lastValidBlockHeight,
-      signature: txid,
-    }, 'confirmed');
-    
-    // Verify transaction actually succeeded (not just included)
-    console.log('🔍 Verifying transaction success...');
-    const { verifyTransactionSuccess } = await import('./transaction-utils');
-    const verification = await verifyTransactionSuccess(connection, txid);
-    
-    if (!verification.success) {
-      throw new Error(`Transaction failed: ${verification.error}`);
-    }
-    
-    console.log('✅ Payroll created on DEVNET! Transaction:', txid);
-    return txid;
-  } catch (error: any) {
-    console.error('❌ Failed to create payroll:', error);
-    
-    // More helpful error messages
-    if (error.message?.includes('insufficient funds')) {
-      throw new Error('Insufficient SOL on devnet. Get free SOL at https://faucet.solana.com');
-    }
-    if (error.message?.includes('Blockhash not found')) {
-      throw new Error('Transaction expired. Please try again.');
-    }
-    if (error.message?.includes('0x1') || error.message?.includes('already in use')) {
-      throw new Error('Payroll already exists for this employee. Use "Deposit Dough" to add funds.');
-    }
-    if (error.message?.includes('Instruction #') || error.message?.includes('Transaction failed')) {
-      throw new Error(`Transaction failed: ${error.message}. Check Solana Explorer for details.`);
-    }
-    if (error.name === 'WalletSendTransactionError') {
-      throw new Error('Wallet error - please make sure Phantom is set to Devnet in Settings > Developer Settings > Testnet Mode ON, then select "Solana Devnet" from the network dropdown.');
-    }
-    
-    throw new Error(`Failed to create payroll: ${error.message || error.toString()}`);
-  }
+  console.warn('createPayroll is deprecated. Use registerBusiness + addEmployee instead.');
+  // For backward compatibility, register business first, then add employee
+  const { entryIndex } = await registerBusiness(connection, wallet);
+  const { txid } = await addEmployee(connection, wallet, entryIndex, employee, salaryPerSecond);
+  return txid;
 }
 
-/**
- * Fetch a PayrollJar account (manual deserialization)
- */
-export async function fetchPayrollJar(
-  connection: Connection,
-  employee: PublicKey,
-  employer: PublicKey
-): Promise<any | null> {
-  const [payrollJarPDA] = getPayrollJarPDA(employee, employer);
-
-  try {
-    const accountInfo = await connection.getAccountInfo(payrollJarPDA);
-    
-    if (!accountInfo) {
-      console.log('No PayrollJar found');
-      return null;
-    }
-
-    // Manual deserialization of PayrollJar account
-    const data = accountInfo.data;
-    
-    // Skip 8-byte discriminator
-    let offset = 8;
-    
-    // Read employer (32 bytes)
-    const employerPubkey = new PublicKey(data.slice(offset, offset + 32));
-    offset += 32;
-    
-    // Read employee (32 bytes)  
-    const employeePubkey = new PublicKey(data.slice(offset, offset + 32));
-    offset += 32;
-    
-    // Read encrypted_salary_per_second length (4 bytes) then bytes
-    const salaryLength = data.readUInt32LE(offset);
-    offset += 4;
-    const encryptedSalary = data.slice(offset, offset + salaryLength);
-    offset += salaryLength;
-    
-    // Read last_withdraw (8 bytes, i64)
-    const lastWithdraw = Number(data.readBigInt64LE(offset));
-    offset += 8;
-    
-    // Read total_accrued (8 bytes, u64)
-    const totalAccrued = Number(data.readBigUInt64LE(offset));
-    offset += 8;
-    
-    // Read dough_vault (32 bytes)
-    const doughVault = new PublicKey(data.slice(offset, offset + 32));
-    offset += 32;
-    
-    // Read bump (1 byte)
-    const bump = data.readUInt8(offset);
-    offset += 1;
-    
-    // Read is_active (1 byte, bool)
-    const isActive = data.readUInt8(offset) === 1;
-
-    const parsed = {
-      employer: employerPubkey,
-      employee: employeePubkey,
-      encryptedSalary,
-      lastWithdraw,
-      totalAccrued,
-      doughVault,
-      bump,
-      isActive,
-    };
-    
-    console.log('✅ Fetched PayrollJar:', parsed);
-    return parsed;
-  } catch (error) {
-    console.error('Error fetching PayrollJar:', error);
-    return null;
-  }
-}
-
-/**
- * Get all PayrollJars for an employee (manual scanning)
- */
-export async function fetchEmployeePayrolls(
-  connection: Connection,
-  employee: PublicKey
-): Promise<any[]> {
-  try {
-    // For now, we can't easily scan without knowing employers
-    // Return empty array - this would need getProgramAccounts with memcmp
-    console.log('Scanning for employee payrolls...');
-    return [];
-  } catch (error) {
-    console.error('Error fetching employee payrolls:', error);
-    return [];
-  }
-}
-
-/**
- * Calculate accrued salary (client-side for display)
- */
-export function calculateAccrued(
-  lastWithdraw: number,
-  salaryPerSecond: number,
-  currentTime: number
-): number {
-  const elapsed = currentTime - lastWithdraw;
-  return Math.max(0, elapsed * salaryPerSecond);
-}
-
-/**
- * Format lamports to SOL
- */
-export function lamportsToSOL(lamports: number): number {
-  return lamports / web3.LAMPORTS_PER_SOL;
-}
-
-/**
- * Format SOL to lamports
- */
-export function solToLamports(sol: number): number {
-  return Math.floor(sol * web3.LAMPORTS_PER_SOL);
-}
-
-/**
- * Withdraw accrued salary (get_dough instruction)
- * REAL TRANSACTION - Employee claims their earnings!
- * 
- * APPROACH: Use sendTransaction with skipPreflight to avoid network mismatch
- */
-export async function withdrawDough(
-  connection: Connection,
-  wallet: WalletContextState,
-  employer: PublicKey
-): Promise<string> {
-  if (!wallet.publicKey) {
-    throw new Error('Wallet not connected');
-  }
-
-  const employee = wallet.publicKey;
-  const [payrollJarPDA] = getPayrollJarPDA(employee, employer);
-
-  // Log connection info for debugging
-  console.log('🔗 Connection endpoint:', connection.rpcEndpoint);
-  console.log('💰 Withdrawing dough...');
-  console.log('Employee:', employee.toBase58());
-  console.log('Employer:', employer.toBase58());
-  console.log('PayrollJar PDA:', payrollJarPDA.toBase58());
-
-  try {
-    // Build the instruction data manually
-    // Instruction discriminator for get_dough (first 8 bytes of sha256("global:get_dough"))
-    // Verified: echo -n "global:get_dough" | shasum -a 256 = 5305fcc4e20c0b24...
-    const discriminator = Buffer.from([0x53, 0x05, 0xfc, 0xc4, 0xe2, 0x0c, 0x0b, 0x24]);
-    
-    const data = discriminator; // No additional params needed
-
-    // Account order MUST match GetDough struct in get_dough.rs:
-    // 1. employee (Signer, mut)
-    // 2. employer (UncheckedAccount)
-    // 3. payroll_jar (Account, mut)
-    // 4. system_program
-    const instruction = new web3.TransactionInstruction({
-      keys: [
-        { pubkey: employee, isSigner: true, isWritable: true },        // 1. employee
-        { pubkey: employer, isSigner: false, isWritable: false },      // 2. employer
-        { pubkey: payrollJarPDA, isSigner: false, isWritable: true },  // 3. payroll_jar
-        { pubkey: SystemProgram.programId, isSigner: false, isWritable: false }, // 4. system
-      ],
-      programId: BAGEL_PROGRAM_ID,
-      data,
-    });
-
-    // Create transaction
-    const transaction = new web3.Transaction().add(instruction);
-    
-    // Get recent blockhash from our DEVNET connection
-    const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('confirmed');
-    transaction.recentBlockhash = blockhash;
-    transaction.feePayer = employee;
-
-    console.log('📝 Requesting signature...');
-    
-    // Use sendTransaction with skipPreflight
-    const txid = await wallet.sendTransaction(transaction, connection, {
-      skipPreflight: true,
-      preflightCommitment: 'confirmed',
-      maxRetries: 3,
-    });
-    
-    console.log('Transaction sent:', txid);
-    
-    // Wait for confirmation
-    console.log('⏳ Waiting for devnet confirmation...');
-    await connection.confirmTransaction({
-      blockhash,
-      lastValidBlockHeight,
-      signature: txid,
-    }, 'confirmed');
-    
-    // Verify transaction actually succeeded
-    console.log('🔍 Verifying transaction success...');
-    const { verifyTransactionSuccess } = await import('./transaction-utils');
-    const verification = await verifyTransactionSuccess(connection, txid);
-    
-    if (!verification.success) {
-      throw new Error(`Transaction failed: ${verification.error}`);
-    }
-    
-    console.log('✅ Dough withdrawn! Transaction:', txid);
-    return txid;
-  } catch (error: any) {
-    console.error('❌ Failed to withdraw dough:', error);
-    if (error.name === 'WalletSendTransactionError') {
-      throw new Error('Wallet error - please ensure Phantom is on Devnet (Settings > Developer Settings > Testnet Mode, then select Solana Devnet).');
-    }
-    throw new Error(`Failed to withdraw: ${error.message || error.toString()}`);
-  }
-}
-
-/**
- * Deposit funds to payroll (deposit_dough instruction)
- * REAL TRANSACTION - Employer adds SOL to employee's payroll
- * 
- * APPROACH: Use sendTransaction with skipPreflight to avoid network mismatch
- */
 export async function depositDough(
   connection: Connection,
   wallet: WalletContextState,
   employee: PublicKey,
   amountLamports: number
 ): Promise<string> {
-  if (!wallet.publicKey) {
-    throw new Error('Wallet not connected');
-  }
-
-  const employer = wallet.publicKey;
-  const [payrollJarPDA] = getPayrollJarPDA(employee, employer);
-
-  // Log connection info for debugging
-  console.log('🔗 Connection endpoint:', connection.rpcEndpoint);
-  console.log('💵 Depositing dough...');
-  console.log('Employer:', employer.toBase58());
-  console.log('Employee:', employee.toBase58());
-  console.log('PayrollJar PDA:', payrollJarPDA.toBase58());
-  console.log('Amount:', amountLamports, 'lamports');
-
-  try {
-    // Build the instruction data manually
-    // Instruction discriminator for deposit_dough (first 8 bytes of sha256("global:deposit_dough"))
-    // Verified: echo -n "global:deposit_dough" | shasum -a 256 = 430f358819db275f...
-    const discriminator = Buffer.from([0x43, 0x0f, 0x35, 0x88, 0x19, 0xdb, 0x27, 0x5f]);
-    
-    // Amount as u64 (8 bytes, little-endian)
-    const amountBuffer = Buffer.alloc(8);
-    amountBuffer.writeBigUInt64LE(BigInt(amountLamports));
-    
-    const data = Buffer.concat([discriminator, amountBuffer]);
-
-    // Account order MUST match DepositDough struct in deposit_dough.rs:
-    // 1. employer (Signer, mut)
-    // 2. employee (UncheckedAccount)
-    // 3. payroll_jar (Account, mut)
-    // 4. system_program
-    const instruction = new web3.TransactionInstruction({
-      keys: [
-        { pubkey: employer, isSigner: true, isWritable: true },       // 1. employer
-        { pubkey: employee, isSigner: false, isWritable: false },     // 2. employee
-        { pubkey: payrollJarPDA, isSigner: false, isWritable: true }, // 3. payroll_jar
-        { pubkey: SystemProgram.programId, isSigner: false, isWritable: false }, // 4. system
-      ],
-      programId: BAGEL_PROGRAM_ID,
-      data,
-    });
-
-    // Create transaction
-    const transaction = new web3.Transaction().add(instruction);
-    
-    // Get recent blockhash from our DEVNET connection
-    const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('confirmed');
-    transaction.recentBlockhash = blockhash;
-    transaction.feePayer = employer;
-
-    console.log('📝 Requesting signature...');
-    
-    // Use sendTransaction with skipPreflight
-    const txid = await wallet.sendTransaction(transaction, connection, {
-      skipPreflight: true,
-      preflightCommitment: 'confirmed',
-      maxRetries: 3,
-    });
-    
-    console.log('Transaction sent:', txid);
-    
-    // Wait for confirmation
-    console.log('⏳ Waiting for devnet confirmation...');
-    await connection.confirmTransaction({
-      blockhash,
-      lastValidBlockHeight,
-      signature: txid,
-    }, 'confirmed');
-    
-    // Verify transaction actually succeeded
-    console.log('🔍 Verifying transaction success...');
-    const { verifyTransactionSuccess } = await import('./transaction-utils');
-    const verification = await verifyTransactionSuccess(connection, txid);
-    
-    if (!verification.success) {
-      throw new Error(`Transaction failed: ${verification.error}`);
-    }
-    
-    console.log('✅ Dough deposited! Transaction:', txid);
-    return txid;
-  } catch (error: any) {
-    console.error('❌ Failed to deposit dough:', error);
-    
-    // Check for common errors
-    if (error.message?.includes('AccountNotInitialized') || error.message?.includes('0x0')) {
-      throw new Error('Payroll does not exist. Please create the payroll first using "Bake a New Payroll".');
-    }
-    if (error.message?.includes('Instruction #') || error.message?.includes('Transaction failed')) {
-      throw new Error(`Transaction failed: ${error.message}. Make sure the payroll exists first.`);
-    }
-    if (error.name === 'WalletSendTransactionError') {
-      throw new Error('Wallet error - please ensure Phantom is on Devnet (Settings > Developer Settings > Testnet Mode, then select Solana Devnet).');
-    }
-    
-    throw new Error(`Failed to deposit: ${error.message || error.toString()}`);
-  }
+  console.warn('depositDough is deprecated. Use deposit with entryIndex instead.');
+  throw new Error('Please use deposit() with entryIndex. You need to track your business entry index.');
 }
 
-/**
- * Close/cancel a payroll (close_jar instruction)
- * REAL TRANSACTION - Employer cancels payroll and gets remaining funds back
- * 
- * APPROACH: Use sendTransaction with skipPreflight to avoid network mismatch
- */
-export async function closePayroll(
+export async function withdrawDough(
   connection: Connection,
   wallet: WalletContextState,
-  employee: PublicKey
+  employer: PublicKey
 ): Promise<string> {
-  if (!wallet.publicKey) {
-    throw new Error('Wallet not connected');
-  }
+  console.warn('withdrawDough is deprecated. Use requestWithdrawal with entryIndex and employeeIndex instead.');
+  throw new Error('Please use requestWithdrawal() with entryIndex and employeeIndex. You need to track these indices.');
+}
 
-  const employer = wallet.publicKey;
-  const [payrollJarPDA] = getPayrollJarPDA(employee, employer);
+// Utility functions
+export function solToLamports(sol: number): number {
+  return Math.floor(sol * 1_000_000_000);
+}
 
-  // Log connection info for debugging
-  console.log('🔗 Connection endpoint:', connection.rpcEndpoint);
-  console.log('🗑️ Closing payroll jar...');
-  console.log('Employer:', employer.toBase58());
-  console.log('Employee:', employee.toBase58());
-  console.log('PayrollJar PDA:', payrollJarPDA.toBase58());
+export function lamportsToSOL(lamports: number): number {
+  return lamports / 1_000_000_000;
+}
 
-  try {
-    // Build the instruction data manually
-    // Instruction discriminator for close_jar (first 8 bytes of sha256("global:close_jar"))
-    // Verified: echo -n "global:close_jar" | shasum -a 256 = 5cbd7224ba7b00a3...
-    const discriminator = Buffer.from([0x5c, 0xbd, 0x72, 0x24, 0xba, 0x7b, 0x00, 0xa3]);
-    
-    const data = discriminator; // No additional params needed
-
-    // Account order MUST match CloseJar struct in close_jar.rs:
-    // 1. employer (Signer, mut)
-    // 2. employee (UncheckedAccount)
-    // 3. payroll_jar (Account, mut, close)
-    // 4. system_program
-    const instruction = new web3.TransactionInstruction({
-      keys: [
-        { pubkey: employer, isSigner: true, isWritable: true },        // 1. employer
-        { pubkey: employee, isSigner: false, isWritable: false },      // 2. employee
-        { pubkey: payrollJarPDA, isSigner: false, isWritable: true },  // 3. payroll_jar
-        { pubkey: SystemProgram.programId, isSigner: false, isWritable: false }, // 4. system
-      ],
-      programId: BAGEL_PROGRAM_ID,
-      data,
-    });
-
-    // Create transaction
-    const transaction = new web3.Transaction().add(instruction);
-    
-    // Get recent blockhash from our DEVNET connection
-    const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('confirmed');
-    transaction.recentBlockhash = blockhash;
-    transaction.feePayer = employer;
-
-    console.log('📝 Requesting signature...');
-    
-    // Use sendTransaction with skipPreflight
-    const txid = await wallet.sendTransaction(transaction, connection, {
-      skipPreflight: true,
-      preflightCommitment: 'confirmed',
-      maxRetries: 3,
-    });
-    
-    console.log('Transaction sent:', txid);
-    
-    // Wait for confirmation
-    console.log('⏳ Waiting for devnet confirmation...');
-    await connection.confirmTransaction({
-      blockhash,
-      lastValidBlockHeight,
-      signature: txid,
-    }, 'confirmed');
-    
-    // Verify transaction actually succeeded
-    console.log('🔍 Verifying transaction success...');
-    const { verifyTransactionSuccess } = await import('./transaction-utils');
-    const verification = await verifyTransactionSuccess(connection, txid);
-    
-    if (!verification.success) {
-      throw new Error(`Transaction failed: ${verification.error}`);
-    }
-    
-    console.log('✅ Payroll closed! Transaction:', txid);
-    return txid;
-  } catch (error: any) {
-    console.error('❌ Failed to close payroll:', error);
-    if (error.name === 'WalletSendTransactionError') {
-      throw new Error('Wallet error - please ensure Phantom is on Devnet (Settings > Developer Settings > Testnet Mode, then select Solana Devnet).');
-    }
-    throw new Error(`Failed to close payroll: ${error.message || error.toString()}`);
-  }
+// Legacy PDA function (deprecated)
+export function getPayrollJarPDA(
+  employee: PublicKey,
+  employer: PublicKey
+): [PublicKey, number] {
+  console.warn('getPayrollJarPDA is deprecated. Use index-based PDAs instead.');
+  // Return a dummy PDA - this won't work with new architecture
+  return PublicKey.findProgramAddressSync(
+    [Buffer.from('deprecated')],
+    BAGEL_PROGRAM_ID
+  );
 }
