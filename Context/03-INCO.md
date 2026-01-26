@@ -47,7 +47,7 @@ inco_lightning = "5sjEbPiqgZrYwR31ahR6Uk9wf5awoX61YGg7jExQSwaj"
 
 ## Backend Integration
 
-### Replace Arcium with Inco Types
+### Inco Lightning Integration
 
 ```rust
 // programs/bagel/src/privacy/inco.rs

@@ -21,8 +21,8 @@ A privacy-preserving payroll system with:
 
 ### What We Dropped
 
-- [DROPPED] **Arcium MPC** - Too complex, circuit deployment issues
-- [DROPPED] **Privacy Cash Yield** - No devnet support, simulate instead
+- [DROPPED] **Arcium MPC** - Replaced with Inco Lightning (FHE)
+- [DROPPED] **Privacy Cash Yield** - Not privacy-related
 - [DROPPED] **Kamino DeFi** - Not privacy-related
 
 ---
@@ -74,7 +74,7 @@ A privacy-preserving payroll system with:
 
 ### Days 3-4: Encrypted Ledger
 - [ ] Inco Lightning integration
-- [ ] Replace Arcium mocks
+- [x] Inco Lightning integrated (FHE encryption)
 
 ### Day 5: Streaming
 - [ ] MagicBlock PER delegation
@@ -96,7 +96,7 @@ A privacy-preserving payroll system with:
 ### Backend (Rust/Anchor)
 - `programs/bagel/Cargo.toml` - Add Inco, MagicBlock deps
 - `programs/bagel/src/state/mod.rs` - Inco encrypted types
-- `programs/bagel/src/privacy/` - Replace arcium.rs with inco.rs
+- `programs/bagel/src/privacy/` - Inco Lightning integrated
 - `programs/bagel/src/lib.rs` - Add delegation instruction
 
 ### Frontend (TypeScript/Next.js)
