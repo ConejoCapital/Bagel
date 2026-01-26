@@ -8,6 +8,8 @@ coverage/
 *.log
 test-run-*.log
 deploy-*.log
+test-final-run*.log
+balance-capture.json
 
 # Next.js
 .next/

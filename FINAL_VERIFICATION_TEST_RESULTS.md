@@ -4,6 +4,8 @@
 **Status:** ✅ **PASSED** - All transactions executed successfully  
 **Network:** Devnet
 
+> **This is the authoritative test results document for Bagel's confidential token implementation.**
+
 ---
 
 ## Test Configuration

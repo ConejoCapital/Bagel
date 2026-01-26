@@ -156,9 +156,9 @@ When working with privacy features:
 ## Documentation
 
 - Update README.md for user-facing changes
-- Update DEVELOPMENT.md for developer-facing changes
+- Update docs/ARCHITECTURE.md for architecture changes
 - Add inline comments for complex logic
-- Keep DEMO_SCRIPT.md up to date with new features
+- Keep test results in FINAL_VERIFICATION_TEST_RESULTS.md up to date
 
 ## Questions?
 

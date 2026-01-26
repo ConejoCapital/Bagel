@@ -96,7 +96,7 @@
 | Total Withdrawn | 0.05 SOL |
 | Successful Withdrawals | 4/4 (100%) |
 
-**Full test results:** See `TEST_RESULTS_2026-01-26.md`
+**Full test results:** See `FINAL_VERIFICATION_TEST_RESULTS.md`
 
 ---
 
