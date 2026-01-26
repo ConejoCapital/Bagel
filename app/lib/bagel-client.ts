@@ -442,39 +442,6 @@ export async function requestWithdrawal(
   return txid;
 }
 
-// Legacy function names for backward compatibility (deprecated)
-export async function createPayroll(
-  connection: Connection,
-  wallet: WalletContextState,
-  employee: PublicKey,
-  salaryPerSecond: number
-): Promise<string> {
-  console.warn('createPayroll is deprecated. Use registerBusiness + addEmployee instead.');
-  // For backward compatibility, register business first, then add employee
-  const { entryIndex } = await registerBusiness(connection, wallet);
-  const { txid } = await addEmployee(connection, wallet, entryIndex, employee, salaryPerSecond);
-  return txid;
-}
-
-export async function depositDough(
-  connection: Connection,
-  wallet: WalletContextState,
-  employee: PublicKey,
-  amountLamports: number
-): Promise<string> {
-  console.warn('depositDough is deprecated. Use deposit with entryIndex instead.');
-  throw new Error('Please use deposit() with entryIndex. You need to track your business entry index.');
-}
-
-export async function withdrawDough(
-  connection: Connection,
-  wallet: WalletContextState,
-  employer: PublicKey
-): Promise<string> {
-  console.warn('withdrawDough is deprecated. Use requestWithdrawal with entryIndex and employeeIndex instead.');
-  throw new Error('Please use requestWithdrawal() with entryIndex and employeeIndex. You need to track these indices.');
-}
-
 // Utility functions
 export function solToLamports(sol: number): number {
   return Math.floor(sol * 1_000_000_000);
@@ -482,17 +449,4 @@ export function solToLamports(sol: number): number {
 
 export function lamportsToSOL(lamports: number): number {
   return lamports / 1_000_000_000;
-}
-
-// Legacy PDA function (deprecated)
-export function getPayrollJarPDA(
-  employee: PublicKey,
-  employer: PublicKey
-): [PublicKey, number] {
-  console.warn('getPayrollJarPDA is deprecated. Use index-based PDAs instead.');
-  // Return a dummy PDA - this won't work with new architecture
-  return PublicKey.findProgramAddressSync(
-    [Buffer.from('deprecated')],
-    BAGEL_PROGRAM_ID
-  );
 }
