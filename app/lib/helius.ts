@@ -183,10 +183,10 @@ export class HeliusClient {
   }
 
   /**
-   * Parse PayrollJar account data
+   * Parse EmployeeEntry account data
    * Shows the raw bytes vs what authorized users see
    */
-  parsePayrollJarData(hexData: string): {
+  parseEmployeeEntryData(hexData: string): {
     raw: {
       employer: string;
       employee: string;

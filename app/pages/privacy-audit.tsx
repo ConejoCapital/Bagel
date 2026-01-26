@@ -261,7 +261,7 @@ export default function PrivacyAuditPage() {
             {/* Account Lookup */}
             <div className="mb-4">
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Look up PayrollJar Account
+                Look up EmployeeEntry Account
               </label>
               <div className="flex space-x-2">
                 <input

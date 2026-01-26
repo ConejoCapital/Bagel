@@ -255,14 +255,14 @@ export class IncoClient {
   }
 
   /**
-   * Get encrypted salary data from a PayrollJar account
+   * Get encrypted salary data from an EmployeeEntry account
    * 
    * Fetches the on-chain data. Values are still encrypted (handles).
    * Call decryptValues to see actual values.
    */
-  async getEncryptedSalaryData(payrollJarAddress: PublicKey): Promise<EncryptedSalaryData | null> {
+  async getEncryptedSalaryData(employeeEntryAddress: PublicKey): Promise<EncryptedSalaryData | null> {
     try {
-      const accountInfo = await this.connection.getAccountInfo(payrollJarAddress);
+      const accountInfo = await this.connection.getAccountInfo(employeeEntryAddress);
       
       if (!accountInfo) {
         return null;
@@ -270,7 +270,7 @@ export class IncoClient {
 
       const data = accountInfo.data;
       
-      // Parse account data based on PayrollJar layout:
+      // Parse account data based on EmployeeEntry layout:
       // - 8 bytes: discriminator
       // - 32 bytes: employer
       // - 32 bytes: employee
