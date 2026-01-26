@@ -152,7 +152,7 @@ export class BagelClient {
   }
 
   /**
-   * Wrap native SOL to WSOL (helper for Kamino deposits)
+   * Wrap native SOL to WSOL (helper for token operations)
    * 
    * @param amountLamports - Amount in lamports to wrap
    * @returns Transaction signature and WSOL token account
