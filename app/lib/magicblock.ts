@@ -15,7 +15,7 @@
  * - Zero wallet popups during streaming
  * 
  * **THE FLOW:**
- * 1. Delegate PayrollJar to MagicBlock TEE
+ * 1. Delegate EmployeeEntry to MagicBlock TEE
  * 2. Balance updates in real-time (private!)
  * 3. Employee authenticates with TEE to view balance
  * 4. On withdrawal: commit state to L1 → ShadowWire payout
