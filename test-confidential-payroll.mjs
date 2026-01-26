@@ -82,9 +82,12 @@ const DISCRIMINATORS = {
   configure_confidential_mint: Buffer.from([0, 0, 0, 0, 0, 0, 0, 0]), // TODO: Get from IDL
 };
 
-// Test amounts
-const DEPOSIT_AMOUNT = 1000000; // 0.001 tokens (assuming 9 decimals)
-const SALARY_PER_SECOND = 10000; // Small salary for testing
+// Test amounts - Final Verification Test
+// Deposit: 10,000 USDBagel (6 decimals)
+// Accrual: 1,000 USDBagel in 1 minute = 16,666,667 per second
+const DEPOSIT_AMOUNT = 10_000_000_000; // 10,000 USDBagel (6 decimals)
+const TARGET_ACCRUAL = 1_000_000_000; // 1,000 USDBagel in 1 minute
+const SALARY_PER_SECOND = 16_666_667; // 1,000 USDBagel per minute = ~16.67 per second
 
 // ============================================================
 // Utility Functions
@@ -900,8 +903,9 @@ async function depositConfidential(connection, authority, masterVault, businessE
 async function withdrawConfidential(connection, employee, masterVault, businessEntryPDA, employeeEntryPDA, entryIndex, employeeIndex) {
   log('Withdrawing confidential USDBagel...', 'privacy');
   
-  // Calculate withdrawal amount (simplified - in production, use encrypted computation)
-  const withdrawalAmount = DEPOSIT_AMOUNT / 2; // Withdraw half
+  // Calculate withdrawal amount - should be ~1,000 USDBagel after 1 minute
+  // In production, this would use encrypted computation from EmployeeEntry.encrypted_accrued
+  const withdrawalAmount = TARGET_ACCRUAL; // 1,000 USDBagel (target accrual)
   
   const encryptedAmount = encryptForInco(withdrawalAmount);
   

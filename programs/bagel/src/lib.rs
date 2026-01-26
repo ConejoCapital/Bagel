@@ -275,6 +275,8 @@ pub mod bagel {
             transfer(cpi_ctx, encrypted_amount.clone(), 0)?;
 
             msg!("✅ Confidential token transfer completed");
+            // Note: For confidential tokens, we don't update vault.total_balance
+            // because the balance is encrypted and stored in the token account
         } else {
             // Transfer SOL to master vault (fallback when confidential tokens not enabled)
             let transfer_ix = anchor_lang::solana_program::system_instruction::transfer(
@@ -481,20 +483,13 @@ pub mod bagel {
             .checked_sub(employee.last_action)
             .ok_or(BagelError::InvalidTimestamp)?;
         require!(time_elapsed >= MIN_WITHDRAW_INTERVAL, BagelError::WithdrawTooSoon);
-        require!(amount <= vault.total_balance, BagelError::InsufficientFunds);
-
-        // Check rent-exempt minimum
-        let rent = anchor_lang::prelude::Rent::get()?;
-        let min_lamports = rent.minimum_balance(vault.to_account_info().data_len());
-        let vault_lamports = vault.to_account_info().lamports();
-        require!(
-            vault_lamports.saturating_sub(amount) >= min_lamports,
-            BagelError::InsufficientFunds
-        );
 
         // PRIVACY: Transfer funds (SOL or Confidential Token)
         // When vault.use_confidential_tokens is true, use inco_token::transfer() for encrypted transfers
         if vault.use_confidential_tokens && vault.confidential_mint != Pubkey::default() {
+            // For confidential tokens, we can't check balance (it's encrypted)
+            // The Inco token program will handle balance validation
+            // Skip SOL balance checks when using confidential tokens
             // Use Inco Confidential Token transfer with encrypted amount
             msg!("🔒 Using confidential token transfer (encrypted amount)");
             msg!("   Confidential mint: {}", vault.confidential_mint);
@@ -536,6 +531,18 @@ pub mod bagel {
 
             msg!("✅ Confidential token withdrawal completed");
         } else {
+            // For SOL transfers, check balance and rent-exempt minimum
+            require!(amount <= vault.total_balance, BagelError::InsufficientFunds);
+            
+            // Check rent-exempt minimum
+            let rent = anchor_lang::prelude::Rent::get()?;
+            let min_lamports = rent.minimum_balance(vault.to_account_info().data_len());
+            let vault_lamports = vault.to_account_info().lamports();
+            require!(
+                vault_lamports.saturating_sub(amount) >= min_lamports,
+                BagelError::InsufficientFunds
+            );
+            
             // Update vault balance tracking (for SOL mode)
             vault.total_balance = vault.total_balance.checked_sub(amount).ok_or(BagelError::Underflow)?;
             

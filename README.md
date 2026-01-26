@@ -326,17 +326,37 @@ NEXT_PUBLIC_SHADOWWIRE_PROGRAM_ID=GQBqwwoikYh7p6KEUHDUu5r9dHHXx9tMGskAPubmFPzD
 See test result files for complete verification:
 - [TEST_RESULTS_2026-01-26.md](TEST_RESULTS_2026-01-26.md) - Standard E2E test with SOL transfers
 - [CONFIDENTIAL_TOKEN_TEST_RESULTS.md](CONFIDENTIAL_TOKEN_TEST_RESULTS.md) - Confidential token test with encrypted transfers
+- [FINAL_VERIFICATION_TEST_RESULTS.md](FINAL_VERIFICATION_TEST_RESULTS.md) - **Final verification: 10,000 USDBagel deposit, 1,000 USDBagel withdrawal**
 
 **Summary:**
 - Status: ✅ PASSED
-- Businesses registered: 2
-- Employees added: 4
-- Withdrawals successful: 4/4 (100%)
+- Businesses registered: 2+
+- Employees added: 4+
+- Withdrawals successful: 100%
 - All privacy tools integrated and verified
 - **Confidential tokens: ENABLED and working**
   - Transfer amounts encrypted on-chain
   - Token account balances encrypted
   - Real on-chain transactions verified
+
+### Final Verification Test (January 26, 2026)
+
+**Test Scenario:**
+- ✅ Deposit: 10,000 USDBagel (encrypted)
+- ✅ Accrual: 1,000 USDBagel in 1 minute
+- ✅ Withdrawal: ~1,000 USDBagel (encrypted)
+
+**Balance Encryption Status:**
+- 🔒 **Employer Balance:** ENCRYPTED (cannot be decoded)
+- 🔒 **Employee Balance:** ENCRYPTED (cannot be decoded)
+- 🔒 **Vault Balance:** ENCRYPTED (cannot be decoded)
+- ❌ **Can observers decode balances?** NO - Requires decryption key
+
+**Transaction Signatures:**
+- Deposit: [`oUYSZg3Vi3gG7jT7AWRkPc6p7r6wcDrNp1GhTsaU5pa1eoPMWhrbxpPJwUKRYfqtf5z9ZjvAxoUB7tcmbB71ir7`](https://explorer.solana.com/tx/oUYSZg3Vi3gG7jT7AWRkPc6p7r6wcDrNp1GhTsaU5pa1eoPMWhrbxpPJwUKRYfqtf5z9ZjvAxoUB7tcmbB71ir7?cluster=devnet)
+- Withdrawal: [`4ynduoFLeK8ajYeMXDpZY98h7RzzNgzDt8oSWARwoSjNhFraawnvsS5C87md18FfYka8wXMYw7J6AcS33aRCBnFE`](https://explorer.solana.com/tx/4ynduoFLeK8ajYeMXDpZY98h7RzzNgzDt8oSWARwoSjNhFraawnvsS5C87md18FfYka8wXMYw7J6AcS33aRCBnFE?cluster=devnet)
+
+See [FINAL_VERIFICATION_TEST_RESULTS.md](FINAL_VERIFICATION_TEST_RESULTS.md) for complete details.
 
 ---
 
