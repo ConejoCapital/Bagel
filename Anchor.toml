@@ -3,22 +3,23 @@
 [features]
 resolution = true
 skip-lint = false
-seeds = true
-
-[programs.localnet]
-bagel = "8rgaVvV6m3SSaVJfJ2VNoBk67frTWbCS3WDBjrk7S6gU"
 
 [programs.devnet]
-bagel = "8rgaVvV6m3SSaVJfJ2VNoBk67frTWbCS3WDBjrk7S6gU"
+bagel = "J45uxvT26szuQcmxvs5NRgtAMornKM9Ga9WaQ58bKUNE"
+delegation_program = "DELeGGvXpWV2fqJUhqcF5ZSYMS4JTLjteaAMARRSaeSh"
+inco_lightning = "5sjEbPiqgZrYwR31ahR6Uk9wf5awoX61YGg7jExQSwaj"
+
+[programs.localnet]
+bagel = "EijHU9DFQX1gYprK2rd9pNunPxTEQaByUQd1KDngmN8b"
 
 [programs.mainnet]
-bagel = "8rgaVvV6m3SSaVJfJ2VNoBk67frTWbCS3WDBjrk7S6gU"
+bagel = "EijHU9DFQX1gYprK2rd9pNunPxTEQaByUQd1KDngmN8b"
 
 [registry]
 url = "https://api.apr.dev"
 
 [provider]
-cluster = "Mainnet"  # 🚀 MAINNET DEPLOYMENT
+cluster = "devnet"
 wallet = "~/.config/solana/id.json"
 
 [scripts]
@@ -26,12 +27,23 @@ test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"
 
 [test]
 startup_wait = 10000
+shutdown_wait = 2000
+upgradeable = false
 
 [test.validator]
-url = "https://api.devnet.solana.com"
+bind_address = "0.0.0.0"
+url = "https://devnet.helius-rpc.com/?api-key=06227422-9d57-42de-a7b3-92f1491c58af"
+ledger = ".anchor/test-ledger"
+rpc_port = 8899
 
 [[test.validator.clone]]
 address = "USD1111111111111111111111111111111111111"
 
 [[test.validator.clone]]
 address = "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+
+[[test.validator.clone]]
+address = "5sjEbPiqgZrYwR31ahR6Uk9wf5awoX61YGg7jExQSwaj"
+
+[[test.validator.clone]]
+address = "DELeGGvXpWV2fqJUhqcF5ZSYMS4JTLjteaAMARRSaeSh"

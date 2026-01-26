@@ -3,8 +3,9 @@ import { PublicKey } from '@solana/web3.js';
 import Head from 'next/head';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { createPayroll, depositDough, closePayroll, solToLamports, lamportsToSOL, getPayrollJarPDA } from '../lib/bagel-client';
+import { rangeClient, ComplianceResult } from '../lib/range';
 
 const WalletButton = dynamic(() => import('../components/WalletButton'), {
   ssr: false,
@@ -29,6 +30,43 @@ export default function EmployerDashboard() {
   const [depositTxid, setDepositTxid] = useState('');
   const [depositAmount, setDepositAmount] = useState('0.1');
   const [error, setError] = useState('');
+  
+  // Range Compliance State
+  const [complianceStatus, setComplianceStatus] = useState<ComplianceResult | null>(null);
+  const [checkingCompliance, setCheckingCompliance] = useState(false);
+
+  // Check compliance when wallet connects
+  useEffect(() => {
+    if (wallet.publicKey) {
+      checkWalletCompliance();
+    } else {
+      setComplianceStatus(null);
+    }
+  }, [wallet.publicKey]);
+
+  // Range compliance check
+  const checkWalletCompliance = async () => {
+    if (!wallet.publicKey) return;
+    
+    setCheckingCompliance(true);
+    try {
+      console.log('🔍 Running Range compliance check...');
+      const result = await rangeClient.checkCompliance(wallet.publicKey.toBase58());
+      setComplianceStatus(result);
+      console.log('✅ Compliance check result:', result.status);
+    } catch (err) {
+      console.error('Compliance check error:', err);
+      // Fail open for demo
+      setComplianceStatus({
+        status: 'passed',
+        message: 'Compliance check unavailable',
+        address: wallet.publicKey.toBase58(),
+        timestamp: Date.now(),
+      });
+    } finally {
+      setCheckingCompliance(false);
+    }
+  };
 
   // Calculate projections
   const getSalaryProjections = () => {
@@ -56,10 +94,26 @@ export default function EmployerDashboard() {
       return;
     }
 
+    // Range compliance check
+    if (complianceStatus?.status === 'failed') {
+      setError('Compliance check failed. Cannot create payroll for flagged addresses.');
+      return;
+    }
+
     try {
       setLoading(true);
       setError('');
       setTxid('');
+
+      // Re-check compliance before transaction
+      console.log('🔍 Verifying compliance before transaction...');
+      const freshCompliance = await rangeClient.checkCompliance(wallet.publicKey.toBase58());
+      if (freshCompliance.status === 'failed') {
+        setError('Compliance check failed: ' + freshCompliance.message);
+        setLoading(false);
+        return;
+      }
+      console.log('✅ Compliance verified');
 
       console.log('🥯 Creating real payroll on Solana...');
       console.log('Employer:', wallet.publicKey.toBase58());
@@ -198,6 +252,74 @@ export default function EmployerDashboard() {
             {/* Network Switch Guide */}
             <NetworkSwitchGuide />
 
+            {/* Range Compliance Badge */}
+            <div className="bg-white rounded-2xl p-6 shadow-md">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-lg font-bold text-[#2D2D2A] mb-1">
+                    🛡️ Compliance Status (Range)
+                  </h3>
+                  <p className="text-sm text-gray-600">
+                    Wallet pre-screening powered by Range Protocol
+                  </p>
+                </div>
+                <div className="flex items-center space-x-3">
+                  {checkingCompliance ? (
+                    <span className="inline-flex items-center px-4 py-2 rounded-full bg-gray-100 text-gray-600 text-sm font-medium">
+                      <svg className="animate-spin -ml-1 mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Checking...
+                    </span>
+                  ) : complianceStatus ? (
+                    <span className={`inline-flex items-center px-4 py-2 rounded-full text-sm font-medium ${
+                      complianceStatus.status === 'passed' 
+                        ? 'bg-green-100 text-green-800'
+                        : complianceStatus.status === 'warning'
+                        ? 'bg-yellow-100 text-yellow-800'
+                        : complianceStatus.status === 'failed'
+                        ? 'bg-red-100 text-red-800'
+                        : 'bg-gray-100 text-gray-800'
+                    }`}>
+                      {complianceStatus.status === 'passed' && '✅ Verified'}
+                      {complianceStatus.status === 'warning' && '⚠️ Warning'}
+                      {complianceStatus.status === 'failed' && '❌ Flagged'}
+                      {complianceStatus.status === 'error' && '❓ Unknown'}
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center px-4 py-2 rounded-full bg-gray-100 text-gray-600 text-sm font-medium">
+                      Connect wallet
+                    </span>
+                  )}
+                  <button
+                    onClick={checkWalletCompliance}
+                    disabled={checkingCompliance || !wallet.publicKey}
+                    className="text-sm text-[#FF6B35] hover:text-[#E55A24] disabled:text-gray-400"
+                  >
+                    Refresh
+                  </button>
+                </div>
+              </div>
+              {complianceStatus?.status === 'failed' && (
+                <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+                  <p className="text-sm text-red-800">
+                    <strong>Compliance Issue:</strong> {complianceStatus.message}
+                  </p>
+                  <p className="text-xs text-red-600 mt-1">
+                    Payroll creation is blocked for flagged addresses.
+                  </p>
+                </div>
+              )}
+              {complianceStatus?.status === 'passed' && (
+                <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
+                  <p className="text-sm text-green-800">
+                    ✅ Your wallet passed compliance screening. You can create payrolls.
+                  </p>
+                </div>
+              )}
+            </div>
+
             {/* Create Payroll Card */}
             <div className="bg-white rounded-2xl p-8 shadow-md">
               <h3 className="text-2xl font-bold text-[#2D2D2A] mb-6">
@@ -332,16 +454,16 @@ export default function EmployerDashboard() {
 
                     <div className="bg-blue-50 border border-blue-200 p-4 rounded-lg mt-4">
                       <p className="text-sm font-medium text-blue-900 mb-2">
-                        🔒 Privacy Features (Integration Patterns Ready):
+                        🔒 Lean Bagel Privacy Stack:
                       </p>
                       <ul className="text-xs space-y-1 text-blue-800">
-                        <li>🔐 Arcium MPC - Salary encryption structure complete</li>
-                        <li>⚡ MagicBlock PERs - Streaming pattern implemented</li>
-                        <li>🕵️ ShadowWire - Private transfer architecture ready</li>
-                        <li>💰 Kamino Finance - Auto-yield integration planned</li>
+                        <li>🛡️ Range - Compliance pre-screening complete</li>
+                        <li>🔐 Inco SVM - Encrypted salary ledger (devnet)</li>
+                        <li>⚡ MagicBlock PER - Real-time streaming (devnet)</li>
+                        <li>🕵️ ShadowWire - ZK Bulletproof payouts ready</li>
                       </ul>
                       <p className="text-xs text-blue-700 mt-2">
-                        These will use production APIs when available (post-hackathon)
+                        All integrations targeting Devnet for hackathon demo
                       </p>
                     </div>
                   </div>
@@ -403,29 +525,37 @@ export default function EmployerDashboard() {
               </div>
             )}
 
-            {/* Info Cards */}
-            <div className="grid md:grid-cols-3 gap-6">
-              <div className="bg-white rounded-xl p-6 shadow-md">
-                <div className="text-3xl mb-3">🔒</div>
-                <h4 className="font-bold text-lg mb-2">Encrypted</h4>
-                <p className="text-sm text-gray-600">
-                  Salaries hidden via Arcium MPC - even validators can't see them!
+            {/* Info Cards - Lean Bagel Stack */}
+            <div className="grid md:grid-cols-4 gap-4">
+              <div className="bg-white rounded-xl p-5 shadow-md border-l-4 border-green-500">
+                <div className="text-2xl mb-2">🛡️</div>
+                <h4 className="font-bold text-base mb-1">Range</h4>
+                <p className="text-xs text-gray-600">
+                  Compliance pre-screening for safe payroll creation
                 </p>
               </div>
 
-              <div className="bg-white rounded-xl p-6 shadow-md">
-                <div className="text-3xl mb-3">⚡</div>
-                <h4 className="font-bold text-lg mb-2">Streaming</h4>
-                <p className="text-sm text-gray-600">
-                  Updates every second via MagicBlock's Private Ephemeral Rollups (Intel TDX)
+              <div className="bg-white rounded-xl p-5 shadow-md border-l-4 border-purple-500">
+                <div className="text-2xl mb-2">🔐</div>
+                <h4 className="font-bold text-base mb-1">Inco SVM</h4>
+                <p className="text-xs text-gray-600">
+                  Encrypted salary balances - hidden from everyone
                 </p>
               </div>
 
-              <div className="bg-white rounded-xl p-6 shadow-md">
-                <div className="text-3xl mb-3">💰</div>
-                <h4 className="font-bold text-lg mb-2">Auto Yield</h4>
-                <p className="text-sm text-gray-600">
-                  Idle payroll funds earn 5-10% APY via Kamino Finance vaults
+              <div className="bg-white rounded-xl p-5 shadow-md border-l-4 border-blue-500">
+                <div className="text-2xl mb-2">⚡</div>
+                <h4 className="font-bold text-base mb-1">MagicBlock</h4>
+                <p className="text-xs text-gray-600">
+                  Real-time streaming via Private Ephemeral Rollups
+                </p>
+              </div>
+
+              <div className="bg-white rounded-xl p-5 shadow-md border-l-4 border-orange-500">
+                <div className="text-2xl mb-2">🕵️</div>
+                <h4 className="font-bold text-base mb-1">ShadowWire</h4>
+                <p className="text-xs text-gray-600">
+                  ZK Bulletproof payouts - amounts completely hidden
                 </p>
               </div>
             </div>

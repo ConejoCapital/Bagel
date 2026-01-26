@@ -1,382 +1,399 @@
 /**
- * 🔒 Shadow Wire Private Transfer Client
- * 
- * Client library for ShadowWire (Radr Labs) private transfers
- * using Bulletproofs zero-knowledge proofs.
- * 
- * **TARGET:** ShadowWire Sponsor Prize + Track 01 ($15k)
- * 
+ * ShadowWire Private Transfer Client (Lean Bagel Stack)
+ *
+ * REAL SDK Implementation using @radr/shadowwire
+ *
+ * **LEAN BAGEL STACK**
+ * Prize Target: $15,000 (Grand Prize: $10k, Best Integration: $2.5k)
+ * Documentation: https://github.com/Radrdotfun/ShadowWire
+ *
  * **KEY FEATURES:**
  * - Zero-knowledge private transfers (Bulletproofs)
- * - USD1 stablecoin support
- * - No trusted setup required
- * - Amount privacy (only validity is public)
- * - Solana-native integration
- * 
- * **PRIVACY GUARANTEES:**
- * - Transfer amounts: HIDDEN
- * - Balance updates: HIDDEN
- * - Only sender and receiver know amounts
- * - Network sees only proof validity
+ * - Amount privacy (on-chain amount is HIDDEN)
+ * - Supports SOL, USDC, RADR, and 13+ other tokens
+ * - Internal transfers are fully private
+ *
+ * **INTEGRATION FLOW:**
+ * 1. MagicBlock commits state to L1
+ * 2. ShadowWire executes private transfer
+ * 3. Employee receives funds (amount hidden on-chain)
  */
 
-import { Connection, PublicKey, Transaction, TransactionInstruction } from '@solana/web3.js';
-import { AnchorProvider } from '@coral-xyz/anchor';
-// import { ShadowWire } from '@radr/shadowwire'; // TODO: Uncomment when package is available
+import { ShadowWireClient as RealShadowWireClient } from '@radr/shadowwire';
+import { Connection, PublicKey } from '@solana/web3.js';
+
+// Re-export from real SDK for convenience
+export { ShadowWireClient as RealShadowWireClient } from '@radr/shadowwire';
+
+// ShadowWire Constants
+const SHADOWWIRE_PROGRAM_ID = process.env.NEXT_PUBLIC_SHADOWWIRE_PROGRAM_ID || 'GQBqwwoikYh7p6KEUHDUu5r9dHHXx9tMGskAPubmFPzD';
+
+// Token fees (from ShadowWire docs) - 1% relayer fee
+const TOKEN_FEES: Record<string, number> = {
+  SOL: 1.0,    // 1%
+  USDC: 1.0,   // 1%
+  USD1: 1.0,   // 1%
+  RADR: 1.0,   // 1%
+  BONK: 1.0,   // 1%
+};
+
+// Token decimals
+const TOKEN_DECIMALS: Record<string, number> = {
+  SOL: 9,
+  USDC: 6,
+  USD1: 6,
+  RADR: 9,
+  BONK: 5,
+};
 
 /**
  * ShadowWire Client Configuration
  */
 export interface ShadowWireConfig {
-  /** Solana RPC endpoint */
-  solanaRpcUrl: string;
-  /** Network: 'devnet' | 'mainnet-beta' */
-  network: 'devnet' | 'mainnet-beta';
-  /** ShadowWire program ID */
-  programId?: string;
+  /** Enable debug logging */
+  debug?: boolean;
+  /** Custom API endpoint (optional) */
+  apiBaseUrl?: string;
 }
 
 /**
- * Bulletproof Commitment
- * 
- * A cryptographic commitment that hides the amount
- * but allows zero-knowledge proof of validity.
+ * Transfer Result from ShadowWire
  */
-export interface BulletproofCommitment {
-  /** Pedersen commitment: C = aG + rH */
-  commitment: Uint8Array;
-  /** Blinding factor (kept secret) */
-  blindingFactor?: Uint8Array;
+export interface TransferResult {
+  success: boolean;
+  tx_signature?: string;
+  amount_hidden: boolean;
+  error?: string;
 }
 
 /**
- * Range Proof (Bulletproof)
- * 
- * Proves that a committed value is in a valid range
- * without revealing the actual value.
+ * Balance Info from ShadowWire
  */
-export interface RangeProof {
-  /** The proof data (~672 bytes) */
-  proof: Uint8Array;
-  /** Minimum value (typically 0) */
-  min: number;
-  /** Maximum value (typically 2^64 - 1) */
-  max: bigint;
+export interface BalanceInfo {
+  available: number;
+  pool_address: string;
 }
 
 /**
- * Private Transfer Parameters
- */
-export interface PrivateTransferParams {
-  /** Amount to transfer (will be hidden) */
-  amount: number;
-  /** Recipient's public key */
-  recipient: PublicKey;
-  /** Token mint (e.g., USD1) */
-  mint: PublicKey;
-  /** Optional memo (encrypted) */
-  memo?: string;
-}
-
-/**
- * ShadowWire Client
+ * ShadowWire Client Wrapper
  * 
- * Handles zero-knowledge private transfers using Bulletproofs.
+ * Wraps the real @radr/shadowwire SDK for use in Bagel
  */
 export class ShadowWireClient {
-  private connection: Connection;
-  private config: ShadowWireConfig;
-  private programId: PublicKey;
+  private client: RealShadowWireClient;
+  private debug: boolean;
   
-  constructor(config: ShadowWireConfig) {
-    this.config = config;
-    this.connection = new Connection(config.solanaRpcUrl, 'confirmed');
-    
-    // TODO: Replace with actual ShadowWire program ID
-    this.programId = config.programId 
-      ? new PublicKey(config.programId)
-      : PublicKey.default;
+  constructor(config: ShadowWireConfig = {}) {
+    this.debug = config.debug || false;
+    this.client = new RealShadowWireClient({
+      debug: this.debug,
+      ...(config.apiBaseUrl ? { apiBaseUrl: config.apiBaseUrl } : {}),
+    });
   }
   
   /**
-   * Create a Bulletproof commitment to an amount
+   * Get balance for a wallet
    * 
-   * **USE CASE:** Hide transfer amount before sending
-   * 
-   * **PRODUCTION:** Will use actual Bulletproof library
-   * ```typescript
-   * import { Bulletproof } from '@radr/shadowwire';
-   * const { commitment, blindingFactor } = Bulletproof.commit(amount);
-   * ```
-   * 
-   * @param amount - Amount to commit to
-   * @returns Commitment and blinding factor
+   * @param wallet - Wallet address
+   * @param token - Token symbol (default: SOL)
+   * @returns Balance info
    */
-  async createCommitment(amount: number): Promise<BulletproofCommitment> {
-    console.log(`🔒 Creating Bulletproof commitment for amount: ${amount}`);
+  async getBalance(wallet: string, token: string = 'SOL'): Promise<BalanceInfo> {
+    if (this.debug) {
+      console.log(`🔍 Getting ShadowWire balance for ${wallet}`);
+    }
     
-    // TODO: Implement real Bulletproof commitment
-    // C = aG + rH where:
-    // - a is the amount
-    // - r is a random blinding factor
-    // - G, H are generator points on the curve
-    
-    // Mock: Simple hash (NOT SECURE!)
-    const commitment = new Uint8Array(32);
-    const buffer = new ArrayBuffer(8);
-    new DataView(buffer).setBigUint64(0, BigInt(amount), true);
-    commitment.set(new Uint8Array(buffer));
-    
-    console.log('✅ Commitment created (mock)');
-    
-    return {
-      commitment,
-      blindingFactor: new Uint8Array(32), // Mock blinding factor
-    };
-  }
-  
-  /**
-   * Create a range proof (Bulletproof)
-   * 
-   * Proves that the committed amount is in range [0, 2^64)
-   * without revealing the amount.
-   * 
-   * **PRODUCTION:** Will use @radr/shadowwire SDK
-   * ```typescript
-   * const proof = await Bulletproof.proveRange(
-   *   amount,
-   *   commitment,
-   *   blindingFactor,
-   *   { min: 0, max: 2n ** 64n }
-   * );
-   * ```
-   * 
-   * @param amount - Amount to prove (kept secret)
-   * @param commitment - Commitment to the amount
-   * @returns Range proof
-   */
-  async createRangeProof(
-    amount: number,
-    commitment: BulletproofCommitment
-  ): Promise<RangeProof> {
-    console.log('🔍 Creating Bulletproof range proof...');
-    
-    // TODO: Implement real Bulletproof range proof
-    // This would involve:
-    // 1. Inner product argument
-    // 2. Aggregate range proof
-    // 3. Multiple range proofs batched for efficiency
-    
-    // Mock: Empty proof (NOT SECURE!)
-    const proof = new Uint8Array(672); // Typical Bulletproof size
-    
-    console.log('✅ Range proof created (mock)');
-    
-    return {
-      proof,
-      min: 0,
-      max: 2n ** 64n - 1n,
-    };
-  }
-  
-  /**
-   * Verify a Bulletproof range proof
-   * 
-   * **NOTE:** On-chain verification happens via ShadowWire program.
-   * This is for client-side validation before sending.
-   * 
-   * @param commitment - Commitment to verify
-   * @param proof - Range proof
-   * @returns True if valid
-   */
-  async verifyRangeProof(
-    commitment: BulletproofCommitment,
-    proof: RangeProof
-  ): Promise<boolean> {
-    console.log('🔍 Verifying Bulletproof...');
-    
-    // TODO: Implement real verification
-    // shadowwire.verifyRangeProof(commitment, proof);
-    
-    // Mock: Always true
-    console.log('✅ Proof valid (mock)');
-    return true;
-  }
-  
-  /**
-   * Execute a private transfer
-   * 
-   * Creates a zero-knowledge transfer where the amount is hidden
-   * using Bulletproofs.
-   * 
-   * **FLOW:**
-   * 1. Create commitment to amount
-   * 2. Generate range proof
-   * 3. Verify proof locally
-   * 4. Submit transaction with commitment + proof
-   * 5. ShadowWire program verifies on-chain
-   * 6. Transfer executes with hidden amount
-   * 
-   * **REAL IMPLEMENTATION:** Uses @radr/shadowwire SDK
-   * 
-   * @param params - Transfer parameters
-   * @param wallet - Wallet to sign transaction
-   * @returns Transaction signature
-   */
-  async executePrivateTransfer(
-    params: PrivateTransferParams,
-    wallet: any // TODO: Type this properly
-  ): Promise<string> {
     try {
-      console.log('🚀 Executing ShadowWire private transfer...');
-      console.log(`   Amount: ${params.amount} (will be hidden)`);
-      console.log(`   Recipient: ${params.recipient.toBase58()}`);
-      console.log(`   Mint: ${params.mint.toBase58()}`);
-      
-      // REAL SHADOWWIRE SDK: Using @radr/shadowwire
-      // 
-      // When SDK is available, uncomment:
-      // import { ShadowWire } from '@radr/shadowwire';
-      // 
-      // // Generate real Bulletproof proof
-      // const proof = await ShadowWire.proveTransfer({
-      //   amount: params.amount,
-      //   recipient: params.recipient,
-      //   mint: params.mint, // USD1 mint for confidential transfers
-      //   sender: wallet.publicKey,
-      // });
-      // 
-      // // Create transfer instruction with proof
-      // const instruction = ShadowWire.createTransferInstruction(
-      //   wallet.publicKey,
-      //   params.recipient,
-      //   proof,
-      //   params.mint,
-      // );
-      // 
-      // const transaction = new Transaction().add(instruction);
-      // const signature = await wallet.sendTransaction(transaction, this.connection);
-      // await this.connection.confirmTransaction(signature);
-      // return signature;
-      
-      // Current: Use mock implementation until program ID is available
-      const commitment = await this.createCommitment(params.amount);
-      const rangeProof = await this.createRangeProof(params.amount, commitment);
-      const valid = await this.verifyRangeProof(commitment, rangeProof);
-      
-      if (!valid) {
-        throw new Error('Invalid Bulletproof range proof');
-      }
-      
-      console.log('⚠️ Using mock implementation - replace with @radr/shadowwire SDK');
-      console.log('✅ Private transfer proof generated (mock)');
-      console.log('   Amount: HIDDEN (Bulletproof)');
-      
-      // Return placeholder signature
-      const signature = 'MOCK_SIGNATURE_' + Date.now();
-      return signature;
+      const balance = await this.client.getBalance(wallet, token);
+      return {
+        available: balance.available,
+        pool_address: balance.pool_address,
+      };
     } catch (error) {
-      console.error('❌ Private transfer failed:', error);
-      throw error;
+      console.error('Failed to get balance:', error);
+      return { available: 0, pool_address: '' };
     }
   }
   
   /**
-   * Initialize encrypted balance account
+   * Execute private transfer using real ShadowWire SDK
    * 
-   * Creates a ShadowWire encrypted balance account for receiving
-   * private transfers.
-   * 
-   * @param owner - Account owner
-   * @param mint - Token mint
-   * @returns Balance account public key
+   * @param params - Transfer parameters
+   * @returns Transfer result
    */
-  async initializeEncryptedBalance(
-    owner: PublicKey,
-    mint: PublicKey
-  ): Promise<PublicKey> {
-    console.log('🔐 Initializing ShadowWire encrypted balance...');
-    console.log(`   Owner: ${owner.toBase58()}`);
-    console.log(`   Mint: ${mint.toBase58()}`);
+  async transfer(params: {
+    sender: string;
+    recipient: string;
+    amount: number;
+    token: 'SOL' | 'USDC' | 'USD1' | 'RADR' | 'BONK';
+    type: 'internal' | 'external';
+    wallet: {
+      signMessage: (message: Uint8Array) => Promise<Uint8Array>;
+    };
+  }): Promise<TransferResult> {
+    console.log('🔒 Executing ShadowWire private transfer...');
+    console.log(`   Amount: ${params.amount} ${params.token}`);
+    console.log(`   Type: ${params.type} (amount ${params.type === 'internal' ? 'HIDDEN' : 'visible'})`);
+    console.log(`   Recipient: ${params.recipient.slice(0, 8)}...`);
     
-    // TODO: Implement actual encrypted balance initialization
-    // const balanceAccount = await shadowwire.initializeBalance(owner, mint);
-    
-    // Mock: Return owner's pubkey
-    console.log('✅ Encrypted balance initialized (mock)');
-    return owner;
+    try {
+      const result = await this.client.transfer({
+        sender: params.sender,
+        recipient: params.recipient,
+        amount: params.amount,
+        token: params.token,
+        type: params.type,
+        wallet: {
+          signMessage: params.wallet.signMessage,
+        },
+      });
+      
+      console.log('✅ Private transfer complete!');
+      console.log(`   Signature: ${result.tx_signature}`);
+      console.log(`   Amount hidden: ${result.amount_hidden}`);
+      
+      return {
+        success: true,
+        tx_signature: result.tx_signature,
+        amount_hidden: result.amount_hidden,
+      };
+    } catch (error) {
+      console.error('❌ Transfer failed:', error);
+      
+      // Handle specific errors
+      if (error instanceof Error) {
+        if (error.name === 'RecipientNotFoundError') {
+          return {
+            success: false,
+            amount_hidden: false,
+            error: 'Recipient has not used ShadowWire. Use external transfer instead.',
+          };
+        }
+        if (error.name === 'InsufficientBalanceError') {
+          return {
+            success: false,
+            amount_hidden: false,
+            error: 'Insufficient ShadowWire balance. Deposit funds first.',
+          };
+        }
+      }
+      
+      return {
+        success: false,
+        amount_hidden: false,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      };
+    }
   }
   
   /**
-   * Get encrypted balance (only owner can decrypt)
+   * Deposit SOL/tokens into ShadowWire pool
    * 
-   * Returns the encrypted balance commitment. Only the owner
-   * with the private key can decrypt to see the actual amount.
-   * 
-   * @param account - Balance account
-   * @returns Encrypted balance commitment
+   * @param wallet - Wallet address
+   * @param amount - Amount in lamports/smallest unit
+   * @param token - Token symbol
+   * @returns Unsigned transaction (must be signed by wallet)
    */
-  async getEncryptedBalance(account: PublicKey): Promise<BulletproofCommitment> {
-    console.log(`🔍 Fetching encrypted balance for ${account.toBase58()}`);
+  async deposit(wallet: string, amount: number, token: string = 'SOL') {
+    console.log(`💰 Depositing ${amount} ${token} to ShadowWire...`);
     
-    // TODO: Fetch from ShadowWire program
-    // const balance = await shadowwire.getBalance(account);
+    const tx = await this.client.deposit({
+      wallet,
+      amount,
+    });
     
-    // Mock: Return empty commitment
+    console.log('✅ Deposit transaction created (needs signing)');
+    return tx;
+  }
+  
+  /**
+   * Withdraw from ShadowWire pool
+   * 
+   * @param wallet - Wallet address
+   * @param amount - Amount to withdraw
+   * @param token - Token symbol
+   * @returns Unsigned transaction
+   */
+  async withdraw(wallet: string, amount: number, token: string = 'SOL') {
+    console.log(`💸 Withdrawing ${amount} ${token} from ShadowWire...`);
+    
+    const tx = await this.client.withdraw({
+      wallet,
+      amount,
+    });
+    
+    console.log('✅ Withdraw transaction created (needs signing)');
+    return tx;
+  }
+}
+
+/**
+ * Create ShadowWire client for devnet/mainnet
+ */
+export function createShadowWireClient(debug: boolean = false): ShadowWireClient {
+  return new ShadowWireClient({ debug });
+}
+
+// ============================================================
+// Lean Bagel Integration: Private Payout Flow
+// ============================================================
+
+/**
+ * Private payout parameters for Lean Bagel withdrawal
+ */
+export interface PrivatePayoutParams {
+  /** Sender vault address */
+  sender: string;
+  /** Recipient employee wallet */
+  recipient: string;
+  /** Amount in token units (not lamports) */
+  amount: number;
+  /** Token: SOL, USDC, USD1 */
+  token: 'SOL' | 'USDC' | 'USD1' | 'RADR' | 'BONK';
+  /** Transfer type: internal (fully private) or external */
+  type: 'internal' | 'external';
+}
+
+/**
+ * Payout result
+ */
+export interface PayoutResult {
+  success: boolean;
+  signature?: string;
+  error?: string;
+  fee?: number;
+  amountAfterFee?: number;
+  amountHidden: boolean;
+}
+
+/**
+ * Execute private payout via ShadowWire (REAL IMPLEMENTATION)
+ *
+ * This is the main function for Bagel withdrawal flow:
+ * 1. MagicBlock commits employee's accrued balance to L1
+ * 2. This function executes the private transfer
+ * 3. Amount is hidden on-chain via Bulletproofs
+ *
+ * @param params - Payout parameters
+ * @param wallet - Wallet with signMessage capability
+ * @returns Payout result
+ */
+export async function executePrivatePayout(
+  params: PrivatePayoutParams,
+  wallet: { signMessage: (message: Uint8Array) => Promise<Uint8Array> }
+): Promise<PayoutResult> {
+  console.log('🔒 Executing ShadowWire private payout...');
+  console.log(`   Amount: ${params.amount} ${params.token} (will be HIDDEN)`);
+  console.log(`   Type: ${params.type}`);
+  console.log(`   Recipient: ${params.recipient.slice(0, 8)}...`);
+
+  try {
+    // Create client
+    const client = createShadowWireClient(true);
+    
+    // Calculate fee (1% for all tokens)
+    const feePercent = TOKEN_FEES[params.token] || 1;
+    const fee = params.amount * (feePercent / 100);
+    const amountAfterFee = params.amount - fee;
+
+    console.log(`   Fee: ${fee.toFixed(6)} ${params.token} (${feePercent}%)`);
+    console.log(`   After fee: ${amountAfterFee.toFixed(6)} ${params.token}`);
+
+    // Execute transfer via real ShadowWire SDK
+    const result = await client.transfer({
+      sender: params.sender,
+      recipient: params.recipient,
+      amount: params.amount,
+      token: params.token,
+      type: params.type,
+      wallet: { signMessage: wallet.signMessage },
+    });
+
+    if (!result.success) {
+      return {
+        success: false,
+        error: result.error || 'Transfer failed',
+        amountHidden: false,
+      };
+    }
+
+    console.log('✅ Private payout complete');
+    console.log(`   Signature: ${result.tx_signature}`);
+    console.log(`   Amount hidden: ${result.amount_hidden}`);
+
     return {
-      commitment: new Uint8Array(32),
+      success: true,
+      signature: result.tx_signature,
+      fee,
+      amountAfterFee,
+      amountHidden: result.amount_hidden,
+    };
+  } catch (error) {
+    console.error('❌ Private payout failed:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+      amountHidden: false,
     };
   }
-  
-  /**
-   * Decrypt balance (requires private key)
-   * 
-   * Decrypts an encrypted balance using the owner's private key.
-   * 
-   * **NOTE:** This happens client-side. The private key never leaves
-   * the user's machine.
-   * 
-   * @param commitment - Encrypted balance
-   * @param privateKey - Owner's private key
-   * @returns Decrypted amount
-   */
-  async decryptBalance(
-    commitment: BulletproofCommitment,
-    privateKey: Uint8Array
-  ): Promise<number> {
-    console.log('🔓 Decrypting balance...');
-    
-    // TODO: Implement real decryption
-    // const amount = shadowwire.decrypt(commitment, privateKey);
-    
-    // Mock: Extract from commitment
-    const view = new DataView(commitment.commitment.buffer);
-    const amount = Number(view.getBigUint64(0, true));
-    
-    console.log(`✅ Decrypted balance: ${amount}`);
-    return amount;
-  }
 }
 
 /**
- * Create ShadowWire client for devnet
+ * Get fee for a token transfer
  */
-export function createShadowWireClient(): ShadowWireClient {
-  return new ShadowWireClient({
-    solanaRpcUrl: process.env.NEXT_PUBLIC_SOLANA_RPC_URL || 'https://api.devnet.solana.com',
-    network: 'devnet',
-    programId: process.env.NEXT_PUBLIC_SHADOWWIRE_PROGRAM_ID,
-  });
+export function getTransferFee(amount: number, token: string): { fee: number; total: number } {
+  const feePercent = TOKEN_FEES[token] || 1;
+  const fee = amount * (feePercent / 100);
+  return {
+    fee,
+    total: amount - fee,
+  };
 }
 
 /**
- * Helper: Format amount for display (without revealing to network)
+ * Get minimum transfer amount for a token
  */
-export function formatPrivateAmount(amount?: number): string {
-  if (amount === undefined) {
+export function getMinimumAmount(token: string): number {
+  // Minimum amounts (approximate)
+  const minimums: Record<string, number> = {
+    SOL: 0.001,    // ~$0.15
+    USDC: 0.1,     // $0.10
+    USD1: 0.1,     // $0.10
+    RADR: 1,       // 1 RADR
+    BONK: 1000,    // 1000 BONK
+  };
+  return minimums[token] || 0.001;
+}
+
+/**
+ * Convert to smallest unit (lamports, etc.)
+ */
+export function toSmallestUnit(amount: number, token: string): number {
+  const decimals = TOKEN_DECIMALS[token] || 9;
+  return Math.floor(amount * Math.pow(10, decimals));
+}
+
+/**
+ * Convert from smallest unit
+ */
+export function fromSmallestUnit(amount: number, token: string): number {
+  const decimals = TOKEN_DECIMALS[token] || 9;
+  return amount / Math.pow(10, decimals);
+}
+
+/**
+ * Format amount for display (privacy-aware)
+ */
+export function formatPrivateAmount(amount?: number, revealed: boolean = false): string {
+  if (!revealed || amount === undefined) {
     return '***.**';  // Hidden
   }
-  return `$${(amount / 1e9).toFixed(2)}`; // Assuming SOL/lamports
+  return `$${amount.toFixed(2)}`;
 }
 
-// Export types (already exported with interface declarations above)
+// Export constants
+export {
+  SHADOWWIRE_PROGRAM_ID,
+  TOKEN_FEES,
+  TOKEN_DECIMALS,
+};

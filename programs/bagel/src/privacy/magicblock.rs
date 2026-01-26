@@ -1,57 +1,79 @@
-//! MagicBlock Ephemeral Rollups Integration
-//! 
-//! This module provides integration with MagicBlock Ephemeral Rollups (ERs)
-//! for real-time payroll streaming with millisecond-level precision.
-//! 
-//! **TARGET:** MagicBlock $5k Prize
-//! 
+//! MagicBlock Private Ephemeral Rollups (PER) Integration
+//!
+//! This module provides integration with MagicBlock PERs for real-time
+//! payroll streaming with sub-second precision using Intel TDX TEE.
+//!
+//! **LEAN BAGEL STACK**
+//! Prize Target: $5,000
+//! Documentation: https://docs.magicblock.gg
+//!
 //! **KEY FEATURES:**
-//! - Real-time balance updates on ER (sub-second precision)
-//! - Delegate PayrollJar to ER for streaming
+//! - Real-time balance updates (sub-second precision)
+//! - State hidden in TEE (Intel TDX)
+//! - Delegate PayrollJar to PER for streaming
 //! - Commit state back to L1 on withdrawal
-//! - Undelegate after settlement
-//! 
+//!
 //! **HOW IT WORKS:**
-//! 1. Employer creates payroll → PayrollJar delegated to ER
-//! 2. Salary accrues in real-time on ER (millisecond precision)
-//! 3. Employee withdraws → State committed back to L1
-//! 4. PayrollJar undelegated after settlement
-//! 
-//! **NETWORK:** MagicBlock Devnet (Asia: devnet-as)
-//! **RPC:** https://devnet.magicblock.app/
+//! 1. Employer creates payroll → PayrollJar delegated to PER
+//! 2. Salary accrues in real-time in TEE (state is private!)
+//! 3. Employee authenticates with TEE to view balance
+//! 4. Employee withdraws → State committed back to L1
+//! 5. ShadowWire payout executed
+//!
+//! **NETWORK:** Devnet
+//! **TEE RPC:** https://tee.magicblock.app
+//! **Delegation Program:** DELeGGvXpWV2fqJUhqcF5ZSYMS4JTLjteaAMARRSaeSh
 
 use anchor_lang::prelude::*;
+use crate::constants::{
+    MAGICBLOCK_DELEGATION_PROGRAM,
+    MAGICBLOCK_TEE_VALIDATOR,
+};
 
-/// MagicBlock ER Configuration
-/// 
-/// Configuration for delegating PayrollJar to an Ephemeral Rollup
+/// MagicBlock PER Configuration
+///
+/// Configuration for delegating PayrollJar to a Private Ephemeral Rollup
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct ERConfig {
-    /// ER validator public key
+    /// TEE validator public key
     pub validator: Pubkey,
-    
+
     /// Account lifetime in seconds
     pub lifetime: u64,
-    
+
     /// Synchronization frequency (how often to commit to L1)
     pub sync_frequency: u64,
 }
 
 impl Default for ERConfig {
     fn default() -> Self {
-        use crate::constants::program_ids::MAGICBLOCK_PROGRAM_ID;
-        
-        // TODO: Replace with actual MagicBlock ER validator on devnet
-        // Get from: MagicBlock Discord or documentation
-        // Devnet Endpoint: https://devnet.magicblock.app/
-        let validator = Pubkey::try_from(MAGICBLOCK_PROGRAM_ID)
+        // Use TEE validator for maximum privacy
+        let validator = Pubkey::try_from(MAGICBLOCK_TEE_VALIDATOR)
             .unwrap_or(Pubkey::default());
-        
+
         Self {
             validator,
             lifetime: 86400 * 365, // 1 year default
             sync_frequency: 3600,   // Commit every hour
         }
+    }
+}
+
+impl ERConfig {
+    /// Create config with specific validator
+    pub fn with_validator(validator_str: &str) -> Self {
+        let validator = Pubkey::try_from(validator_str)
+            .unwrap_or(Pubkey::default());
+
+        Self {
+            validator,
+            ..Default::default()
+        }
+    }
+
+    /// Create config for TEE (maximum privacy)
+    pub fn tee() -> Self {
+        Self::with_validator(MAGICBLOCK_TEE_VALIDATOR)
     }
 }
 

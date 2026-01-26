@@ -1,25 +1,29 @@
-//! Privacy SDK Integration Layer
-//! 
+//! Privacy SDK Integration Layer - Lean Bagel Stack
+//!
 //! This module provides a unified interface for privacy operations.
-//! 
-//! **CURRENT STATUS: ARCIUM C-SPL PREPARATION**
-//! 
-//! Strategic pivot to Arcium for the $10,000 DeFi bounty!
-//! 
-//! Arcium provides:
-//! - C-SPL (Confidential SPL) for encrypted token balances
-//! - MPC (Multi-Party Computation) for private calculations
-//! - Token-2022 integration for standard compatibility
-//! 
-//! This module provides the interface. Full C-SPL integration will be
-//! added carefully to avoid stack size issues.
-//! 
-//! **SECURITY WARNING:** Currently using mocks for testing!
-//! Real encryption will come from Arcium C-SPL + Token-2022.
+//!
+//! **LEAN BAGEL STACK (Privacy Hackathon 2026)**
+//!
+//! Primary encryption: Inco SVM (Devnet)
+//! Private transfers: ShadowWire (Mainnet)
+//! Real-time streaming: MagicBlock PER (Devnet)
+//! Compliance: Range API
+//!
+//! Prize Targets:
+//! - Inco: $6,000 (Payments category)
+//! - ShadowWire: $15,000
+//! - MagicBlock: $5,000
+//! - Range: $1,500
+//!
+//! **SECURITY WARNING:** Using mock encryption for demo!
+//! Production will use real Inco Lightning encryption.
 
 use anchor_lang::prelude::*;
 
-// Arcium C-SPL integration module
+// Inco SVM integration module (PRIMARY - Lean Bagel)
+pub mod inco;
+
+// Arcium module (LEGACY - kept for compatibility)
 pub mod arcium;
 
 // ShadowWire private transfers module
@@ -28,56 +32,56 @@ pub mod shadowwire;
 // MagicBlock streaming payments module
 pub mod magicblock;
 
-// Privacy Cash yield generation module
+// Privacy Cash yield generation module (simulated in Lean Bagel)
 pub mod privacycash;
 
-// Kamino Finance yield integration module
+// Kamino Finance yield integration module (dropped from Lean Bagel)
 pub mod kamino;
 
 // MPC output types
 pub mod mpc_output;
 
-/// Encrypted u64 type using Arcium C-SPL
-/// 
-/// **RE-EXPORT:** Using Arcium's ConfidentialBalance type
-/// 
-/// In production, this will be Arcium's C-SPL encrypted balance which provides:
-/// - Twisted ElGamal encryption
-/// - Homomorphic operations
-/// - MPC computations
-pub use arcium::ConfidentialBalance as EncryptedU64;
+/// Encrypted u64 type using Inco SVM
+///
+/// **LEAN BAGEL:** Using Inco's ConfidentialBalance type
+///
+/// Provides:
+/// - Encrypted Euint128 storage
+/// - Homomorphic operations (add, sub, mul)
+/// - Access-controlled decryption
+pub use inco::ConfidentialBalance as EncryptedU64;
 
-// Implementation is in arcium.rs module
+// Re-export Inco types for direct access
+pub use inco::{Euint128, Ebool};
 
-/// Privacy context (MOCK - placeholder for Inco SDK context)
-/// 
-/// **TODO:** Replace with actual Inco context when SDK is available
-/// 
-/// The real implementation will include:
-/// - Inco program account
+/// Privacy context for Inco operations
+///
+/// **PRODUCTION:** Will include:
+/// - Inco Lightning program account
 /// - Encryption context account
-/// - Attestation account (for TEE)
+/// - Owner authority for decryption
 #[derive(Accounts)]
 pub struct PrivacyContext<'info> {
-    /// Placeholder account
-    /// 
-    /// **PRODUCTION:** Will be replaced with:
-    /// ```ignore
-    /// /// Inco program
-    /// pub inco_program: Program<'info, IncoProgram>,
-    /// 
-    /// /// Encryption context
-    /// /// CHECK: Inco program will validate
-    /// pub encryption_context: AccountInfo<'info>,
-    /// ```
+    /// System program (placeholder)
     pub system_program: Program<'info, System>,
 }
 
-// Re-export error codes from arcium module
-pub use arcium::ErrorCode;
+/// Inco Privacy Context with full accounts
+#[derive(Accounts)]
+pub struct IncoPrivacyContext<'info> {
+    /// Authority who can perform encrypted operations
+    #[account(mut)]
+    pub authority: Signer<'info>,
 
-// Re-export Arcium functions
-pub use arcium::{encrypt_salary, decrypt_for_transfer};
+    /// System program
+    pub system_program: Program<'info, System>,
+}
+
+// Re-export error codes from Inco module
+pub use inco::ErrorCode;
+
+// Re-export Inco functions (PRIMARY)
+pub use inco::{encrypt_salary, decrypt_for_transfer, calculate_accrued_mpc};
 
 // Re-export ShadowWire functions
 pub use shadowwire::{execute_private_payout, initialize_encrypted_balance, ShadowWireTransfer};
@@ -85,22 +89,27 @@ pub use shadowwire::{execute_private_payout, initialize_encrypted_balance, Shado
 // Re-export MagicBlock functions
 pub use magicblock::{delegate_payroll_jar, commit_and_undelegate, get_er_balance, ERConfig};
 
-// Re-export Privacy Cash functions
+// Re-export Privacy Cash functions (simulated yield in Lean Bagel)
 pub use privacycash::{deposit_to_vault, calculate_employee_yield_bonus, YieldVaultPosition, YieldDistribution};
 
-// Re-export Kamino functions
+// Re-export Kamino functions (legacy, not used in Lean Bagel)
 pub use kamino::{deposit_to_kamino_vault, KaminoVaultPosition};
 
-/// Calculate accrued salary using Arcium MPC
-/// 
-/// **MOCK:** Uses local multiplication
-/// **PRODUCTION:** Will use Arcium MPC circuit for distributed computation
+/// Calculate accrued salary using Inco encrypted computation
+///
+/// **LEAN BAGEL:** Uses Inco's homomorphic multiplication
+///
+/// In production, this calls Inco's e_mul CPI for encrypted computation.
+/// The salary amount stays encrypted throughout the calculation!
 pub fn calculate_accrued(
     encrypted_salary_per_second: &EncryptedU64,
     elapsed_seconds: u64,
 ) -> Result<EncryptedU64> {
-    arcium::calculate_accrued_mpc(encrypted_salary_per_second, elapsed_seconds)
+    inco::calculate_accrued_mpc(encrypted_salary_per_second, elapsed_seconds)
 }
+
+/// Inco Program ID constant
+pub const INCO_PROGRAM_ID: &str = "5sjEbPiqgZrYwR31ahR6Uk9wf5awoX61YGg7jExQSwaj";
 
 #[cfg(test)]
 mod tests {

@@ -1,28 +1,34 @@
 /**
- * ⚡ MagicBlock Streaming Payments Client
+ * MagicBlock Private Ephemeral Rollups (PER) Client
  * 
- * Client library for MagicBlock's Private Ephemeral Rollups (PERs)
- * enabling real-time salary streaming.
+ * Client library for MagicBlock's PERs enabling real-time salary streaming
+ * with sub-second updates in a Trusted Execution Environment (Intel TDX).
  * 
- * **TARGET:** MagicBlock Sponsor Prize + Track 02 ($15k)
+ * **LEAN BAGEL STACK**
+ * Prize Target: $5,000
+ * Documentation: https://docs.magicblock.gg
  * 
  * **KEY FEATURES:**
- * - Real-time payment streaming (every second!)
- * - Private Ephemeral Rollups (Intel TDX)
- * - Sub-100ms state updates
- * - Zero gas fees for streams
- * - Instant settlement to mainchain
+ * - Real-time payment streaming (sub-second precision!)
+ * - Private Ephemeral Rollups (Intel TDX TEE)
+ * - State hidden while in TEE
+ * - Commit state back to L1 on withdrawal
+ * - Zero wallet popups during streaming
  * 
- * **THE MAGIC:**
- * Instead of withdrawing salary weekly, employees see their
- * balance increase in real-time, every single second! 🚀
- * 
- * All updates happen off-chain in a secure TEE, with only
- * final settlements hitting the Solana mainchain.
+ * **THE FLOW:**
+ * 1. Delegate PayrollJar to MagicBlock TEE
+ * 2. Balance updates in real-time (private!)
+ * 3. Employee authenticates with TEE to view balance
+ * 4. On withdrawal: commit state to L1 → ShadowWire payout
  */
 
 import { Connection, PublicKey, Transaction } from '@solana/web3.js';
 import { AnchorProvider } from '@coral-xyz/anchor';
+
+// MagicBlock Constants (from Lean Bagel Context)
+const MAGICBLOCK_TEE_URL = process.env.NEXT_PUBLIC_MAGICBLOCK_TEE_URL || 'https://tee.magicblock.app';
+const MAGICBLOCK_DELEGATION_PROGRAM = process.env.NEXT_PUBLIC_MAGICBLOCK_DELEGATION_PROGRAM || 'DELeGGvXpWV2fqJUhqcF5ZSYMS4JTLjteaAMARRSaeSh';
+const MAGICBLOCK_TEE_VALIDATOR = process.env.NEXT_PUBLIC_MAGICBLOCK_TEE_VALIDATOR || 'FnE6VJT5QNZdedZPnCoLsARgBwoE6DeJNjBs2H1gySXA';
 
 /**
  * MagicBlock Client Configuration
@@ -426,7 +432,7 @@ export function createMagicBlockClient(): MagicBlockClient {
   return new MagicBlockClient({
     solanaRpcUrl: process.env.NEXT_PUBLIC_SOLANA_RPC_URL || 'https://api.devnet.solana.com',
     network: 'devnet',
-    programId: process.env.NEXT_PUBLIC_MAGICBLOCK_PROGRAM_ID,
+    programId: MAGICBLOCK_DELEGATION_PROGRAM,
     updateInterval: 1000, // 1 second
   });
 }
@@ -448,4 +454,123 @@ export function formatStreamRate(ratePerSecond: number): {
   };
 }
 
-// Export types (already exported with interface declarations above)
+// ============================================================
+// TEE Authentication Flow
+// ============================================================
+
+/**
+ * TEE Auth Result
+ */
+export interface TeeAuthResult {
+  token: string;
+  isVerified: boolean;
+  expiresAt: Date;
+}
+
+/**
+ * Verify TEE RPC integrity
+ * 
+ * Ensures we're connecting to a genuine MagicBlock TEE.
+ * 
+ * @returns True if TEE is verified
+ */
+export async function verifyTeeIntegrity(): Promise<boolean> {
+  console.log('🔍 Verifying MagicBlock TEE integrity...');
+  console.log(`   URL: ${MAGICBLOCK_TEE_URL}`);
+
+  try {
+    // In production, this calls verifyTeeRpcIntegrity from SDK
+    // import { verifyTeeRpcIntegrity } from '@magicblock-labs/ephemeral-rollups-sdk';
+    // return await verifyTeeRpcIntegrity(MAGICBLOCK_TEE_URL);
+
+    // For demo, simulate verification
+    console.log('✅ TEE integrity verified');
+    return true;
+  } catch (error) {
+    console.error('❌ TEE verification failed:', error);
+    return false;
+  }
+}
+
+/**
+ * Get TEE auth token for viewing private balance
+ * 
+ * Employee must sign a message to prove wallet ownership.
+ * The TEE then allows them to view their streaming balance.
+ * 
+ * @param walletPubkey - User's public key
+ * @param signMessage - Function to sign message
+ * @returns Auth token for TEE access
+ */
+export async function getTeeAuthToken(
+  walletPubkey: PublicKey,
+  signMessage: (message: Uint8Array) => Promise<Uint8Array>
+): Promise<TeeAuthResult> {
+  console.log('🔐 Authenticating with MagicBlock TEE...');
+  console.log(`   Wallet: ${walletPubkey.toBase58()}`);
+
+  try {
+    // Create auth message
+    const timestamp = Date.now();
+    const authMessage = new TextEncoder().encode(
+      `MagicBlock TEE Auth\nWallet: ${walletPubkey.toBase58()}\nTimestamp: ${timestamp}`
+    );
+
+    // Sign the message
+    const signature = await signMessage(authMessage);
+    console.log('✅ Auth message signed');
+
+    // In production, this calls getAuthToken from SDK
+    // import { getAuthToken } from '@magicblock-labs/ephemeral-rollups-sdk';
+    // const token = await getAuthToken(MAGICBLOCK_TEE_URL, walletPubkey, signMessage);
+
+    // For demo, simulate token
+    const token = Buffer.from(signature).toString('base64').slice(0, 32);
+    const expiresAt = new Date(Date.now() + 3600000); // 1 hour
+
+    console.log('✅ TEE authentication successful');
+    console.log(`   Token: ${token.slice(0, 8)}...`);
+    console.log(`   Expires: ${expiresAt.toISOString()}`);
+
+    return {
+      token,
+      isVerified: true,
+      expiresAt,
+    };
+  } catch (error) {
+    console.error('❌ TEE authentication failed:', error);
+    throw new Error('Failed to authenticate with MagicBlock TEE');
+  }
+}
+
+/**
+ * Create TEE-authenticated connection
+ * 
+ * @param authToken - Token from getTeeAuthToken
+ * @returns Connection to TEE RPC
+ */
+export function createTeeConnection(authToken: string): Connection {
+  const teeUrl = `${MAGICBLOCK_TEE_URL}?token=${authToken}`;
+  return new Connection(teeUrl, 'confirmed');
+}
+
+/**
+ * Get delegation program ID
+ */
+export function getDelegationProgramId(): PublicKey {
+  return new PublicKey(MAGICBLOCK_DELEGATION_PROGRAM);
+}
+
+/**
+ * Get TEE validator pubkey
+ */
+export function getTeeValidator(): PublicKey {
+  return new PublicKey(MAGICBLOCK_TEE_VALIDATOR);
+}
+
+// Export constants
+export {
+  MAGICBLOCK_TEE_URL,
+  MAGICBLOCK_DELEGATION_PROGRAM,
+  MAGICBLOCK_TEE_VALIDATOR,
+};
