@@ -86,7 +86,7 @@ export default function Home() {
             <div className="text-center p-6">
               <div className="text-3xl mb-3">🔒</div>
               <h4 className="font-bold mb-2">Encrypted Salaries</h4>
-              <p className="text-sm text-gray-600">Arcium MPC keeps salaries hidden on-chain</p>
+              <p className="text-sm text-gray-600">Inco Lightning FHE keeps salaries hidden on-chain</p>
             </div>
             <div className="text-center p-6">
               <div className="text-3xl mb-3">⚡</div>

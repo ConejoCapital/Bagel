@@ -460,8 +460,8 @@ export default function Landing() {
                   {
                     icon: Lock,
                     title: 'Encrypted Salary Storage',
-                    desc: "Salaries are encrypted using Arcium's MPC network before being stored on-chain. Even validators cannot see the actual amounts.",
-                    powered: 'Arcium v0.5.1',
+                    desc: "Salaries are encrypted using Inco Lightning FHE before being stored on-chain. Even validators cannot see the actual amounts.",
+                    powered: 'Inco Lightning',
                     color: 'bg-bagel-orange/10',
                     iconColor: 'text-bagel-orange'
                   },
@@ -725,7 +725,7 @@ export default function Landing() {
                     <span className="text-sm font-medium text-gray-400 uppercase tracking-wide">Technology Stack</span>
                   </div>
                   <div className="flex flex-wrap justify-center gap-4">
-                    {['Solana', 'Anchor', 'Next.js', 'TypeScript', 'Tailwind', 'Arcium', 'ShadowWire', 'MagicBlock', 'Kamino'].map((tech, i) => (
+                    {['Solana', 'Anchor', 'Next.js', 'TypeScript', 'Tailwind', 'Inco Lightning', 'ShadowWire', 'MagicBlock', 'Range'].map((tech, i) => (
                       <motion.span
                         key={tech}
                         initial={{ opacity: 0, scale: 0.8 }}
@@ -872,7 +872,7 @@ const tx = await withdrawPrivately(
               </motion.div>
               <div className="flex flex-wrap justify-center items-center gap-8 md:gap-16">
                 {[
-                  { name: 'Arcium', type: 'MPC Network' },
+                  { name: 'Inco Lightning', type: 'FHE Encryption' },
                   { name: 'ShadowWire', type: 'Bulletproofs' },
                   { name: 'MagicBlock', type: 'Ephemeral Rollups' },
                   { name: 'Kamino', type: 'DeFi Yield' },
