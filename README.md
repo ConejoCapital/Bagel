@@ -236,9 +236,7 @@ Bagel/
 │       ├── magicblock.ts        # MagicBlock streaming client
 │       └── shadowwire.ts        # ShadowWire ZK client
 │
-├── Context/                     # Integration guides (00-07)
 ├── docs/                        # Architecture documentation
-├── docs-site/                   # Docusaurus documentation
 ├── tests/                       # E2E test files
 └── scripts/                     # Deployment scripts
 ```
@@ -323,10 +321,7 @@ NEXT_PUBLIC_SHADOWWIRE_PROGRAM_ID=GQBqwwoikYh7p6KEUHDUu5r9dHHXx9tMGskAPubmFPzD
 
 ## Test Results
 
-See test result files for complete verification:
-- [TEST_RESULTS_2026-01-26.md](TEST_RESULTS_2026-01-26.md) - Standard E2E test with SOL transfers
-- [CONFIDENTIAL_TOKEN_TEST_RESULTS.md](CONFIDENTIAL_TOKEN_TEST_RESULTS.md) - Confidential token test with encrypted transfers
-- [FINAL_VERIFICATION_TEST_RESULTS.md](FINAL_VERIFICATION_TEST_RESULTS.md) - **Final verification: 10,000 USDBagel deposit, 1,000 USDBagel withdrawal**
+**Latest Test Results:** [FINAL_VERIFICATION_TEST_RESULTS.md](FINAL_VERIFICATION_TEST_RESULTS.md)
 
 **Summary:**
 - Status: ✅ PASSED
