@@ -277,29 +277,22 @@ NEXT_PUBLIC_SHADOWWIRE_PROGRAM_ID=GQBqwwoikYh7p6KEUHDUu5r9dHHXx9tMGskAPubmFPzD
 ### Helius - RPC Infrastructure
 - All transactions use Helius RPC endpoints
 - DAS API for transaction fetching in privacy audit
-- Prize target: $5,000
 
 ### Range - Compliance
 - Pre-screen wallets before payroll creation
 - Risk score + OFAC sanctions check
-- Prize target: $1,500+
 
 ### Inco - Encrypted Ledger
 - FHE encryption for all sensitive data
 - Homomorphic operations (add, subtract) on encrypted values
-- Prize target: $6,000
 
 ### MagicBlock - Real-Time Privacy
 - Private Ephemeral Rollups for streaming payments
 - TEE-based computation for live balance updates
-- Prize target: $5,000
 
 ### ShadowWire - ZK Payouts
 - Bulletproof zero-knowledge proofs
 - Hide withdrawal amounts on mainnet
-- Prize target: $15,000
-
-**Total Prize Target: $32,500**
 
 ---
 
@@ -318,8 +311,8 @@ See [TEST_RESULTS_2026-01-26.md](TEST_RESULTS_2026-01-26.md) for full E2E test o
 
 ## Team
 
-- **@ConejoCapital** - Backend, Privacy Integrations, Architecture
-- **@tomi204_** - Frontend, UI/UX, Documentation
+- **@ConejoCapital** - Backend, Privacy Integrations, Architecture - [https://x.com/ConejoCapital]
+- **@tomi204_** - Frontend, UI/UX, Documentation - [https://x.com/Tomi204_]
 
 ---
 
