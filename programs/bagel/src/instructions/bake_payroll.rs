@@ -16,9 +16,8 @@ use crate::{constants::*, error::*, privacy::*, state::*};
 /// #[ephemeral]  // Uncomment when SDK is active
 /// ```
 /// 
-/// **PRIVACY:** This instruction accepts pre-encrypted salary ciphertext.
-/// The frontend MUST encrypt the salary using Arcium RescueCipher before calling this.
-/// This ensures the salary amount never appears as plaintext on-chain.
+/// **PRIVACY:** This instruction accepts salary ciphertext.
+/// The salary will be encrypted on-chain via Inco Lightning CPI.
 pub fn handler(
     ctx: Context<BakePayroll>,
     salary_ciphertext: [u8; 32],
@@ -26,9 +25,8 @@ pub fn handler(
     let payroll_jar = &mut ctx.accounts.payroll_jar;
     let clock = Clock::get()?;
 
-    // 🔒 REAL PRIVACY: Store encrypted ciphertext directly (no decryption on-chain!)
-    // The frontend has already encrypted the salary using Arcium RescueCipher
-    // We store it as-is, ensuring the plaintext salary never appears on-chain
+    // Privacy: Store encrypted ciphertext (encryption happens on-chain via Inco Lightning)
+    // The salary amount is encrypted before storage, ensuring privacy
     msg!("🔒 Storing encrypted salary ciphertext (32 bytes)");
     msg!("   ✅ Salary amount is private - never decrypted on-chain");
 

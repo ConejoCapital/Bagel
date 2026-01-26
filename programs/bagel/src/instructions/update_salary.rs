@@ -14,7 +14,7 @@ pub fn handler(
 
     let payroll_jar = &mut ctx.accounts.payroll_jar;
 
-    // TODO: Encrypt new salary using Arcium
+    // TODO: Encrypt new salary using Inco Lightning
     let encrypted_salary = new_salary_per_second.to_le_bytes().to_vec();
 
     payroll_jar.encrypted_salary_per_second = encrypted_salary;

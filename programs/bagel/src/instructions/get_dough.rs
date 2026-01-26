@@ -8,13 +8,8 @@ use crate::{constants::*, error::*, privacy::*, state::*};
 
 /// Withdraw accrued salary (get your dough!)
 /// 
-/// **UPDATED:** This now redirects to `queue_get_dough_mpc` for real MPC computation.
-/// The actual payout happens asynchronously via `finalize_get_dough_from_mpc_callback`.
-/// 
-/// **REAL PRIVACY:** Salary calculation happens via Arcium MPC (encrypted computation).
-/// 
-/// **LEGACY:** This instruction is kept for backward compatibility but now
-/// calculates elapsed time and queues the MPC computation instead of computing locally.
+/// **PRIVACY:** Salary calculation uses Inco Lightning encrypted computation.
+/// The accrued amount is calculated using homomorphic operations on encrypted values.
 pub fn handler(
     ctx: Context<GetDough>,
 ) -> Result<()> {

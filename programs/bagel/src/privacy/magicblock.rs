@@ -4,7 +4,6 @@
 //! payroll streaming with sub-second precision using Intel TDX TEE.
 //!
 //! **LEAN BAGEL STACK**
-//! Prize Target: $5,000
 //! Documentation: https://docs.magicblock.gg
 //!
 //! **KEY FEATURES:**

@@ -3,7 +3,6 @@
  * 
  * Provides RPC and DAS API integration for the Privacy Audit page.
  * 
- * Prize Target: $5,000 (Best privacy project using Helius)
  * Documentation: https://www.helius.dev/docs
  */
 

@@ -6,7 +6,6 @@
  * Provides encrypted computation integration using Inco Lightning.
  * Stores salary balances as encrypted values that only authorized parties can decrypt.
  * 
- * Prize Target: $6,000 (Payments: $2k, DeFi: $2k, Consumer: $2k)
  * Documentation: https://docs.inco.org/svm/js-sdk/overview
  * 
  * **ENCRYPTION MODEL:**

@@ -1,6 +1,5 @@
 # ShadowWire Integration Guide
 
-**Prize:** $15,000 (Grand Prize: $10k, Best USD1: $2.5k, Best Integration: $2.5k)  
 **Difficulty:** LOW-MEDIUM  
 **Status:** MAINNET READY (verify devnet support)
 

@@ -4,7 +4,6 @@
  * REAL SDK Implementation using @radr/shadowwire
  *
  * **LEAN BAGEL STACK**
- * Prize Target: $15,000 (Grand Prize: $10k, Best Integration: $2.5k)
  * Documentation: https://github.com/Radrdotfun/ShadowWire
  *
  * **KEY FEATURES:**

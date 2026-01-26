@@ -5,7 +5,6 @@
  * with sub-second updates in a Trusted Execution Environment (Intel TDX).
  * 
  * **LEAN BAGEL STACK**
- * Prize Target: $5,000
  * Documentation: https://docs.magicblock.gg
  * 
  * **KEY FEATURES:**

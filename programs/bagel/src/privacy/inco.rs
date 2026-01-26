@@ -12,8 +12,6 @@
 //! - Encrypted comparisons (ge, le, eq)
 //! - Access-controlled decryption
 //!
-//! **PRIZE TARGET:** Inco $6,000 (Payments category)
-//!
 //! Documentation: https://docs.inco.org/svm/rust-sdk/overview
 
 use anchor_lang::prelude::*;

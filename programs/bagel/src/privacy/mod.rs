@@ -9,12 +9,6 @@
 //! Real-time streaming: MagicBlock PER (Devnet)
 //! Compliance: Range API
 //!
-//! Prize Targets:
-//! - Inco: $6,000 (Payments category)
-//! - ShadowWire: $15,000
-//! - MagicBlock: $5,000
-//! - Range: $1,500
-//!
 //! **SECURITY WARNING:** Using mock encryption for demo!
 //! Production will use real Inco Lightning encryption.
 
@@ -23,22 +17,13 @@ use anchor_lang::prelude::*;
 // Inco SVM integration module (PRIMARY - Lean Bagel)
 pub mod inco;
 
-// Arcium module (LEGACY - kept for compatibility)
-pub mod arcium;
-
 // ShadowWire private transfers module
 pub mod shadowwire;
 
 // MagicBlock streaming payments module
 pub mod magicblock;
 
-// Privacy Cash yield generation module (simulated in Lean Bagel)
-pub mod privacycash;
-
-// Kamino Finance yield integration module (dropped from Lean Bagel)
-pub mod kamino;
-
-// MPC output types
+// MPC output types (legacy, may be removed if unused)
 pub mod mpc_output;
 
 /// Encrypted u64 type using Inco SVM
@@ -88,12 +73,6 @@ pub use shadowwire::{execute_private_payout, initialize_encrypted_balance, Shado
 
 // Re-export MagicBlock functions
 pub use magicblock::{delegate_payroll_jar, commit_and_undelegate, get_er_balance, ERConfig};
-
-// Re-export Privacy Cash functions (simulated yield in Lean Bagel)
-pub use privacycash::{deposit_to_vault, calculate_employee_yield_bonus, YieldVaultPosition, YieldDistribution};
-
-// Re-export Kamino functions (legacy, not used in Lean Bagel)
-pub use kamino::{deposit_to_kamino_vault, KaminoVaultPosition};
 
 /// Calculate accrued salary using Inco encrypted computation
 ///

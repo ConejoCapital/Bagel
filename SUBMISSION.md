@@ -37,18 +37,15 @@
 
 ---
 
-## Sponsor Bounties Targeted
+## Sponsor Integrations
 
-| Sponsor | Bounty | Amount | Integration Status |
-|---------|--------|--------|-------------------|
-| **Helius** | Best Privacy Project | $5,000 | FULL - All transactions use Helius RPC |
-| **Range** | Compliant Privacy | $1,500+ | FULL - Compliance pre-screening |
-| **Inco** | Best Confidential Apps | $6,000 | FULL - FHE encrypted ledger |
-| **MagicBlock** | Real-time Privacy | $5,000 | READY - TEE delegation integrated |
-| **ShadowWire** | Private Transfers | $15,000 | SIMULATED - ZK Bulletproof payouts |
-| **Track 01** | Private Payments | $15,000 | ELIGIBLE |
-
-**Total Prize Target: $32,500+**
+| Sponsor | Integration Status |
+|---------|-------------------|
+| **Helius** | FULL - All transactions use Helius RPC |
+| **Range** | FULL - Compliance pre-screening |
+| **Inco** | FULL - FHE encrypted ledger |
+| **MagicBlock** | READY - TEE delegation integrated |
+| **ShadowWire** | SIMULATED - ZK Bulletproof payouts |
 
 ---
 

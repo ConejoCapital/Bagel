@@ -147,7 +147,7 @@ export class BagelClient {
 
     // Get or create WSOL ATA
     const wsolAccount = await getAssociatedTokenAddress(
-      WSOL_MINT,
+      NATIVE_MINT,
       this.wallet.publicKey
     );
 
@@ -165,7 +165,7 @@ export class BagelClient {
           this.wallet.publicKey,
           wsolAccount,
           this.wallet.publicKey,
-          WSOL_MINT
+          NATIVE_MINT
         )
       );
     }

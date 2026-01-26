@@ -1,6 +1,5 @@
 # Helius Integration Guide
 
-**Prize:** $5,000 (Best privacy project using Helius)  
 **Difficulty:** LOW  
 **Status:** READY (Devnet + Mainnet)
 

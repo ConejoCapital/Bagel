@@ -32,7 +32,6 @@ pub const KAMINO_USDC_RESERVE: &str = "D6q6wuQSrifJKZYpR1M8R4YawnLDtDsMmWM1NbBmg
 
 /// Inco SVM (Encrypted Ledger) - Devnet Beta
 /// Program ID: 5sjEbPiqgZrYwR31ahR6Uk9wf5awoX61YGg7jExQSwaj
-/// Prize Target: $6,000 (Payments category)
 /// Documentation: https://docs.inco.org/svm/home
 pub const INCO_PROGRAM_ID: &str = "5sjEbPiqgZrYwR31ahR6Uk9wf5awoX61YGg7jExQSwaj";
 
@@ -40,7 +39,6 @@ pub const INCO_PROGRAM_ID: &str = "5sjEbPiqgZrYwR31ahR6Uk9wf5awoX61YGg7jExQSwaj"
 /// Delegation Program: DELeGGvXpWV2fqJUhqcF5ZSYMS4JTLjteaAMARRSaeSh
 /// Permission Program: ACLseoPoyC3cBqoUtkbjZ4aDrkurZW86v19pXz2XQnp1
 /// TEE Endpoint: https://tee.magicblock.app
-/// Prize Target: $5,000
 /// Documentation: https://docs.magicblock.gg
 pub const MAGICBLOCK_DELEGATION_PROGRAM: &str = "DELeGGvXpWV2fqJUhqcF5ZSYMS4JTLjteaAMARRSaeSh";
 pub const MAGICBLOCK_PERMISSION_PROGRAM: &str = "ACLseoPoyC3cBqoUtkbjZ4aDrkurZW86v19pXz2XQnp1";
@@ -54,7 +52,6 @@ pub const MAGICBLOCK_VALIDATOR_US: &str = "MUS3hc9TCw4cGC12vHNoYcCGzJG1txjgQLZWV
 
 /// ShadowWire (Private Payouts) - Mainnet Ready
 /// Mainnet Program: GQBqwwoikYh7p6KEUHDUu5r9dHHXx9tMGskAPubmFPzD
-/// Prize Target: $15,000
 /// Documentation: https://github.com/Radrdotfun/ShadowWire
 pub const SHADOWWIRE_PROGRAM_ID: &str = "GQBqwwoikYh7p6KEUHDUu5r9dHHXx9tMGskAPubmFPzD";
 

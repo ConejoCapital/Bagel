@@ -3,8 +3,6 @@
 //! This module provides integration with ShadowWire (Radr Labs) for
 //! privacy-preserving token transfers using Bulletproofs zero-knowledge proofs.
 //! 
-//! **TARGET:** ShadowWire Sponsor Prize + Track 01 (Private Payments $15k)
-//! 
 //! **KEY FEATURES:**
 //! - Zero-knowledge private transfers (amounts hidden)
 //! - Bulletproofs for efficient ZK proofs

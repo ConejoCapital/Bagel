@@ -1,6 +1,5 @@
 # Range Compliance Integration Guide
 
-**Prize:** $1,500+ (free API credits for all participating teams)  
 **Difficulty:** LOW  
 **Status:** READY (API-based, works with any network)
 

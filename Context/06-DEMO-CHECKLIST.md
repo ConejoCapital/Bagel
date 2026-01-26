@@ -150,15 +150,6 @@
 - [ ] Program ID documented
 - [ ] Environment setup clear
 
-### Prize Category Selection
-- [ ] Track 01: Private Payments
-- [ ] Track 02: Privacy Tooling
-- [ ] Helius Bounty
-- [ ] Range Bounty
-- [ ] Inco Bounty
-- [ ] MagicBlock Bounty
-- [ ] ShadowWire Bounty
-
 ### Contact Info
 - [ ] Team name: Conejo Capital
 - [ ] Team members listed

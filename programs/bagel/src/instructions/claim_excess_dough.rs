@@ -1,6 +1,6 @@
 use anchor_lang::prelude::*;
 use crate::{constants::*, error::*, privacy::*, state::*};
-use crate::privacy::arcium::ConfidentialBalance;
+use crate::privacy::inco::ConfidentialBalance;
 
 /// Claim excess dough (yield profit) from Kamino vault
 /// 

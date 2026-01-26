@@ -91,21 +91,6 @@ A privacy-preserving payroll system with:
 
 ---
 
-## Prize Strategy
-
-| Sponsor | Prize Pool | Target | Confidence |
-|---------|-----------|--------|------------|
-| Helius | $5,000 | $5,000 | HIGH |
-| Range | $1,500+ | $1,500 | HIGH |
-| Inco | $6,000 | $2,000 | MEDIUM |
-| MagicBlock | $5,000 | $2,500 | MEDIUM |
-| ShadowWire | $15,000 | $2,500-5,000 | MEDIUM |
-| Track 01/02 | $15,000 | $5,000 | MEDIUM |
-
-**Realistic Total: $18,500 - $26,000**
-
----
-
 ## Key Files to Modify
 
 ### Backend (Rust/Anchor)

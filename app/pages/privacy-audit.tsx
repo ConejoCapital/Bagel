@@ -7,7 +7,6 @@
  * 
  * **LEAN BAGEL STACK**
  * Uses Helius DAS API for transaction fetching.
- * Prize Target: $5,000 (Helius bounty)
  */
 
 import { useWallet, useConnection } from '@solana/wallet-adapter-react';
@@ -392,7 +391,7 @@ export default function PrivacyAuditPage() {
           </div>
 
           <p className="text-sm text-gray-600 mb-4">
-            Powered by <strong>Helius DAS API</strong> - Prize Target: $5,000
+            Powered by <strong>Helius DAS API</strong>
           </p>
 
           <div className="overflow-x-auto">

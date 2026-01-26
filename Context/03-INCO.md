@@ -1,6 +1,5 @@
 # Inco Lightning Integration Guide
 
-**Prize:** $6,000 (DeFi: $2k, Consumer/Gaming: $2k, Payments: $2k)  
 **Difficulty:** MEDIUM  
 **Status:** DEVNET BETA
 

@@ -1,6 +1,5 @@
 # MagicBlock PER Integration Guide
 
-**Prize:** $5,000 (Best Private App: $2.5k, Second: $1.5k, Third: $1k)  
 **Difficulty:** MEDIUM  
 **Status:** DEVNET READY
 

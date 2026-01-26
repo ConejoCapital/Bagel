@@ -6,7 +6,6 @@
  * - Risk Score API: /v1/risk/address?address={addr}&network=solana
  * - Sanctions API: /v1/risk/sanctions/{addr}
  * 
- * Prize Target: $1,500+ (free API credits for all participating teams)
  * Documentation: https://docs.range.org/
  */
 
