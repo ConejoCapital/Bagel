@@ -14,38 +14,38 @@ Bagel is pivoting to a lean, achievable stack for the Solana Privacy Hackathon. 
 
 A privacy-preserving payroll system with:
 1. **Compliance Gate** - Range pre-screening before payroll creation
-2. **Encrypted Ledger** - Inco SVM for hidden salary balances
+2. **Encrypted Ledger** - Inco Lightning for hidden salary balances
 3. **Real-Time Streaming** - MagicBlock PER for sub-second updates
 4. **Private Payouts** - ShadowWire for ZK transfers
 5. **Privacy Audit** - Helius-powered verification UI
 
 ### What We Dropped
 
-- ❌ **Arcium MPC** - Too complex, circuit deployment issues
-- ❌ **Privacy Cash Yield** - No devnet support, simulate instead
-- ❌ **Kamino DeFi** - Not privacy-related
+- [DROPPED] **Arcium MPC** - Too complex, circuit deployment issues
+- [DROPPED] **Privacy Cash Yield** - No devnet support, simulate instead
+- [DROPPED] **Kamino DeFi** - Not privacy-related
 
 ---
 
 ## Architecture Flow
 
 ```
-┌─────────────┐     ┌────────────────┐     ┌──────────────────┐
-│  Employer   │────▶│ Range Compliance│────▶│  Inco Encrypted  │
-│  Wallet     │     │  Pre-Screen    │     │     Ledger       │
-└─────────────┘     └────────────────┘     └──────────────────┘
-                                                    │
-                                                    ▼
-┌─────────────┐     ┌────────────────┐     ┌──────────────────┐
-│  Employee   │◀────│ ShadowWire ZK  │◀────│  MagicBlock PER  │
-│  Wallet     │     │    Payout      │     │   Streaming      │
-└─────────────┘     └────────────────┘     └──────────────────┘
-                            │
-                            ▼
-                    ┌────────────────┐
-                    │ Helius Privacy │
-                    │   Audit UI     │
-                    └────────────────┘
++-------------+     +----------------+     +------------------+
+|  Employer   |---->| Range Compliance|---->|  Inco Encrypted  |
+|  Wallet     |     |  Pre-Screen    |     |     Ledger       |
++-------------+     +----------------+     +------------------+
+                                                    |
+                                                    v
++-------------+     +----------------+     +------------------+
+|  Employee   |<----|  ShadowWire ZK |<----|  MagicBlock PER  |
+|  Wallet     |     |    Payout      |     |   Streaming      |
++-------------+     +----------------+     +------------------+
+                            |
+                            v
+                    +----------------+
+                    | Helius Privacy |
+                    |   Audit UI     |
+                    +----------------+
 ```
 
 ---
@@ -56,7 +56,7 @@ A privacy-preserving payroll system with:
 |-------|------|---------|---------|
 | RPC | Helius | Fast, reliable RPC | Devnet + Mainnet |
 | Compliance | Range | Wallet screening | API (any network) |
-| Accounting | Inco SVM | Encrypted balances | Devnet Beta |
+| Accounting | Inco Lightning | Encrypted balances | Devnet Beta |
 | Streaming | MagicBlock | Real-time updates | Devnet |
 | Payout | ShadowWire | Private transfers | Mainnet (verify devnet) |
 
@@ -73,7 +73,7 @@ A privacy-preserving payroll system with:
 - [ ] Employer pre-screening
 
 ### Days 3-4: Encrypted Ledger
-- [ ] Inco SVM integration
+- [ ] Inco Lightning integration
 - [ ] Replace Arcium mocks
 
 ### Day 5: Streaming

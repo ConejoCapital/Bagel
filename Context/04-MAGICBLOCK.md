@@ -70,7 +70,7 @@ pub const TEE_VALIDATOR: &str = "FnE6VJT5QNZdedZPnCoLsARgBwoE6DeJNjBs2H1gySXA";
 
 /// Delegate PayrollJar to MagicBlock PER for real-time streaming
 pub fn delegate_payroll_to_per(ctx: Context<DelegatePayroll>) -> Result<()> {
-    msg!("⚡ Delegating PayrollJar to MagicBlock PER");
+    msg!("Delegating PayrollJar to MagicBlock PER");
     
     let validator = Pubkey::try_from(TEE_VALIDATOR)
         .map_err(|_| error!(BagelError::InvalidState))?;
@@ -85,13 +85,13 @@ pub fn delegate_payroll_to_per(ctx: Context<DelegatePayroll>) -> Result<()> {
         },
     )?;
     
-    msg!("✅ PayrollJar delegated to TEE");
+    msg!("PayrollJar delegated to TEE");
     Ok(())
 }
 
 /// Commit PER state back to L1 and undelegate
 pub fn commit_and_undelegate(ctx: Context<CommitPayroll>) -> Result<()> {
-    msg!("⚡ Committing PER state to L1");
+    msg!("Committing PER state to L1");
     
     use ephemeral_rollups_sdk::ephem::commit_and_undelegate_accounts;
     
@@ -102,7 +102,7 @@ pub fn commit_and_undelegate(ctx: Context<CommitPayroll>) -> Result<()> {
         ctx.accounts.magic_program.to_account_info(),
     )?;
     
-    msg!("✅ State committed and undelegated");
+    msg!("State committed and undelegated");
     Ok(())
 }
 
@@ -188,7 +188,7 @@ export class MagicBlockClient {
   async verifyTee(): Promise<boolean> {
     try {
       const isVerified = await verifyTeeRpcIntegrity(TEE_RPC_URL);
-      console.log(`🔍 TEE verification: ${isVerified ? 'PASSED' : 'FAILED'}`);
+      console.log(`TEE verification: ${isVerified ? 'PASSED' : 'FAILED'}`);
       return isVerified;
     } catch (error) {
       console.error('TEE verification failed:', error);
@@ -203,7 +203,7 @@ export class MagicBlockClient {
     walletPubkey: PublicKey,
     signMessage: (message: Uint8Array) => Promise<Uint8Array>
   ): Promise<string> {
-    console.log('🔐 Authenticating with MagicBlock TEE...');
+    console.log('Authenticating with MagicBlock TEE...');
 
     const token = await getAuthToken(
       TEE_RPC_URL,
@@ -212,7 +212,7 @@ export class MagicBlockClient {
     );
 
     this.authToken = token;
-    console.log('✅ TEE authentication successful');
+    console.log('TEE authentication successful');
     
     return token;
   }
@@ -356,22 +356,22 @@ export function useRealtimeBalance(payrollJarAddress: PublicKey | null) {
 
 ```
 1. Employer creates payroll
-   └── PayrollJar created on Solana L1
+   +-- PayrollJar created on Solana L1
 
 2. Delegate to PER
-   └── PayrollJar delegated to TEE validator
-   └── State now private in TEE
+   +-- PayrollJar delegated to TEE validator
+   +-- State now private in TEE
 
 3. Real-time streaming
-   └── Employee authenticates with TEE
-   └── Balance updates every ~10ms in TEE
-   └── Employee sees balance "ticking" in UI
+   +-- Employee authenticates with TEE
+   +-- Balance updates every ~10ms in TEE
+   +-- Employee sees balance "ticking" in UI
 
 4. Withdrawal
-   └── Employee requests withdrawal
-   └── State committed back to L1
-   └── PayrollJar undelegated
-   └── ShadowWire payout executed
+   +-- Employee requests withdrawal
+   +-- State committed back to L1
+   +-- PayrollJar undelegated
+   +-- ShadowWire payout executed
 ```
 
 ---

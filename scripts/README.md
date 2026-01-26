@@ -1,81 +1,59 @@
-# 🛠️ Bagel Deployment Scripts
+# Bagel Deployment Scripts
 
 This directory contains scripts for deploying Bagel components.
 
 ## Scripts
 
-### `deploy-arcium-circuit.sh`
-Deploy the payroll MPC circuit to Arcium network.
+### `deploy-arcium-circuit.sh` (Deprecated)
+Deploy the payroll MPC circuit to Arcium network. Note: This project now uses Inco Lightning instead of Arcium.
+
+### `deploy-mainnet.sh`
+Deploy Bagel program to Solana mainnet.
 
 **Usage:**
 ```bash
-# Deploy to devnet (default)
-./scripts/deploy-arcium-circuit.sh
-
-# Deploy to mainnet
-./scripts/deploy-arcium-circuit.sh mainnet
+./scripts/deploy-mainnet.sh
 ```
 
 **Prerequisites:**
-- Docker installed and running
-- Arcium CLI installed (`arcup install`)
-- SOL for deployment fees
-
-**What it does:**
-1. Validates circuit file exists
-2. Builds circuit with `arcium build`
-3. Deploys to specified network
-4. Retrieves circuit ID
-5. Updates `.env.local` automatically
-
-**Output:**
-- Circuit ID in terminal
-- Updated `.env.local` file
-- Next steps instructions
-
-## Future Scripts
-
-- `deploy-solana.sh` - Deploy Bagel program to Solana
-- `test-integration.sh` - Run end-to-end integration tests
-- `setup-dev.sh` - Set up local development environment
+- Solana CLI configured for mainnet
+- Sufficient SOL for deployment fees
+- Anchor CLI 0.31.1
 
 ## Environment Variables
 
-After running `deploy-arcium-circuit.sh`, check `app/.env.local`:
+After deployment, update `app/.env.local`:
 ```bash
-NEXT_PUBLIC_ARCIUM_CIRCUIT_ID=<circuit_id>
-NEXT_PUBLIC_BAGEL_PROGRAM_ID=8rgaVvV6m3SSaVJfJ2VNoBk67frTWbCS3WDBjrk7S6gU
+NEXT_PUBLIC_BAGEL_PROGRAM_ID=J45uxvT26szuQcmxvs5NRgtAMornKM9Ga9WaQ58bKUNE
+NEXT_PUBLIC_SOLANA_RPC_URL=https://devnet.helius-rpc.com/?api-key=YOUR_KEY
+NEXT_PUBLIC_HELIUS_API_KEY=YOUR_KEY
+NEXT_PUBLIC_RANGE_API_KEY=YOUR_KEY
 ```
+
+## Deployment Checklist
+
+1. Build the program: `anchor build`
+2. Run tests: `anchor test`
+3. Deploy to devnet first: `anchor deploy --provider.cluster devnet`
+4. Verify on explorer
+5. Deploy to mainnet when ready
 
 ## Troubleshooting
 
-**"Arcium CLI not found":**
-- Install Docker Desktop
-- Run: `curl https://install.arcium.com/ | bash`
-- Run: `arcup install`
-
-**"Circuit build failed":**
-- Check syntax in `programs/bagel/circuits/payroll.arcis`
-- Verify Arcium CLI version: `arcium --version`
-
-**"Deployment failed":**
+**"Insufficient funds":**
 - Check SOL balance for deployment fees
-- Verify network connectivity
-- Try manual deployment via dashboard
+- Devnet: Use faucet at https://faucet.solana.com/
 
-## Manual Deployment
+**"Program deploy failed":**
+- Verify Anchor version matches Cargo.toml
+- Check program size limits
 
-If CLI installation is not possible:
-
-1. Visit https://dashboard.arcium.com
-2. Upload `programs/bagel/circuits/payroll.arcis`
-3. Select network: devnet
-4. Copy circuit ID
-5. Add to `.env.local` manually
+**"Transaction failed":**
+- Check network connectivity
+- Verify RPC endpoint is responsive
 
 ## Notes
 
-- Circuit deployment is one-time setup
-- Circuit ID is needed for on-chain program
-- Keep circuit ID in version control (.env.example)
-- Redeploy only when circuit logic changes
+- Program deployment is one-time per network
+- Keep program ID in version control
+- Test thoroughly on devnet before mainnet

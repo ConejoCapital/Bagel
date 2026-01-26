@@ -1,4 +1,4 @@
-# Demo & Submission Checklist
+# Demo and Submission Checklist
 
 **Deadline:** February 1, 2026  
 **Video Length:** 3 minutes maximum
@@ -121,22 +121,22 @@
 ## Common Demo Pitfalls
 
 ### Avoid These
-- ❌ Wallet not connected at start
-- ❌ Insufficient SOL for transactions
-- ❌ Wrong network (mainnet instead of devnet)
-- ❌ API rate limits hit during demo
-- ❌ Console errors visible
-- ❌ Slow/laggy UI
-- ❌ Talking too fast
+- [FAIL] Wallet not connected at start
+- [FAIL] Insufficient SOL for transactions
+- [FAIL] Wrong network (mainnet instead of devnet)
+- [FAIL] API rate limits hit during demo
+- [FAIL] Console errors visible
+- [FAIL] Slow/laggy UI
+- [FAIL] Talking too fast
 
 ### Do These
-- ✅ Pre-fund all wallets
-- ✅ Clear browser cache
-- ✅ Close unnecessary tabs
-- ✅ Have backup video recording
-- ✅ Test full flow right before recording
-- ✅ Keep explanations simple
-- ✅ Show real transactions
+- [PASS] Pre-fund all wallets
+- [PASS] Clear browser cache
+- [PASS] Close unnecessary tabs
+- [PASS] Have backup video recording
+- [PASS] Test full flow right before recording
+- [PASS] Keep explanations simple
+- [PASS] Show real transactions
 
 ---
 

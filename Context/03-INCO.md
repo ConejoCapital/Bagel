@@ -1,4 +1,4 @@
-# Inco SVM Integration Guide
+# Inco Lightning Integration Guide
 
 **Prize:** $6,000 (DeFi: $2k, Consumer/Gaming: $2k, Payments: $2k)  
 **Difficulty:** MEDIUM  
@@ -40,7 +40,7 @@ inco-lightning = { version = "0.1.4", features = ["cpi"] }
 ```toml
 # Anchor.toml
 [programs.devnet]
-bagel = "8rgaVvV6m3SSaVJfJ2VNoBk67frTWbCS3WDBjrk7S6gU"
+bagel = "J45uxvT26szuQcmxvs5NRgtAMornKM9Ga9WaQ58bKUNE"
 inco_lightning = "5sjEbPiqgZrYwR31ahR6Uk9wf5awoX61YGg7jExQSwaj"
 ```
 
@@ -240,7 +240,7 @@ export class IncoClient {
   async encryptValue(value: bigint, ownerPubkey: PublicKey): Promise<EncryptedValue> {
     // For demo: simulate encryption
     // Real implementation would use Inco JS SDK
-    console.log(`🔐 Encrypting value via Inco: ${value}`);
+    console.log(`Encrypting value via Inco: ${value}`);
     
     return {
       handle: Buffer.from(value.toString()).toString('hex'),
@@ -258,7 +258,7 @@ export class IncoClient {
   ): Promise<bigint> {
     // For demo: simulate decryption
     // Real implementation requires signing a message to prove ownership
-    console.log(`🔓 Decrypting value via Inco`);
+    console.log(`Decrypting value via Inco`);
     
     return BigInt(Buffer.from(encrypted.handle, 'hex').toString());
   }

@@ -1,4 +1,4 @@
-# Network & Deployment Status
+# Network and Deployment Status
 
 **Last Updated:** January 25, 2026
 
@@ -8,11 +8,11 @@
 
 | Tool | Network | Status | Ready for Demo |
 |------|---------|--------|----------------|
-| **Helius** | Devnet + Mainnet | ✅ READY | YES |
-| **Range** | API (any) | ✅ READY | YES |
-| **Inco SVM** | Devnet Beta | ⚠️ BETA | YES (with caveats) |
-| **MagicBlock PER** | Devnet | ✅ READY | YES |
-| **ShadowWire** | Mainnet | ⚠️ VERIFY DEVNET | LIKELY |
+| **Helius** | Devnet + Mainnet | READY | YES |
+| **Range** | API (any) | READY | YES |
+| **Inco SVM** | Devnet Beta | BETA | YES (with caveats) |
+| **MagicBlock PER** | Devnet | READY | YES |
+| **ShadowWire** | Mainnet | VERIFY DEVNET | LIKELY |
 
 ---
 

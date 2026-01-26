@@ -1,4 +1,4 @@
-# 🥯 Bagel Real Transactions Implementation Guide
+# Bagel Real Transactions Implementation Guide
 
 **FOR**: Frontend team implementing actual Solana blockchain interactions  
 **CRITICAL**: Judges WILL test this - it must be REAL, not mocked!
@@ -13,24 +13,24 @@
 
 ```
 User Action (Frontend)
-    ↓
+    |
 Build Solana Transaction
-    ↓
+    |
 Wallet Signs Transaction
-    ↓
+    |
 Send to Solana Devnet via Helius RPC
-    ↓
+    |
 Transaction Confirmed
-    ↓
+    |
 Show Result + Explorer Link
 ```
 
 ## Deployed Program Info
 
-- **Program ID**: `8rgaVvV6m3SSaVJfJ2VNoBk67frTWbCS3WDBjrk7S6gU`
+- **Program ID**: `J45uxvT26szuQcmxvs5NRgtAMornKM9Ga9WaQ58bKUNE`
 - **Network**: Solana Devnet
-- **RPC**: Helius Devnet (`https://devnet.helius-rpc.com/?api-key=06227422-9d57-42de-a7b3-92f1491c58af`)
-- **Explorer**: https://explorer.solana.com/address/8rgaVvV6m3SSaVJfJ2VNoBk67frTWbCS3WDBjrk7S6gU?cluster=devnet
+- **RPC**: Helius Devnet (requires API key)
+- **Explorer**: https://explorer.solana.com/address/J45uxvT26szuQcmxvs5NRgtAMornKM9Ga9WaQ58bKUNE?cluster=devnet
 
 ## Client Library: `app/lib/bagel-client.ts`
 
@@ -165,11 +165,11 @@ export default function EmployerDashboard() {
       setTxid(signature);
       
       // Show success with explorer link
-      alert(`✅ Payroll created!\n\nTransaction: ${signature}\n\nView on Explorer: https://explorer.solana.com/tx/${signature}?cluster=devnet`);
+      alert(`Payroll created!\n\nTransaction: ${signature}\n\nView on Explorer: https://explorer.solana.com/tx/${signature}?cluster=devnet`);
       
     } catch (error: any) {
       console.error('Error:', error);
-      alert(`❌ Failed: ${error.message}`);
+      alert(`Failed: ${error.message}`);
     } finally {
       setLoading(false);
     }
@@ -202,12 +202,12 @@ export default function EmployerDashboard() {
       
       {txid && (
         <div>
-          <p>✅ Transaction: {txid}</p>
+          <p>Transaction: {txid}</p>
           <a 
             href={`https://explorer.solana.com/tx/${txid}?cluster=devnet`}
             target="_blank"
           >
-            View on Explorer →
+            View on Explorer
           </a>
         </div>
       )}
@@ -247,7 +247,7 @@ export default function EmployeeDashboard() {
         
         if (data) {
           setPayrollData(data);
-          console.log('✅ Found payroll!', data);
+          console.log('Found payroll!', data);
         } else {
           console.log('No payroll found for this employee/employer pair');
         }
@@ -267,7 +267,7 @@ export default function EmployeeDashboard() {
       const now = Math.floor(Date.now() / 1000);
       const accrued = calculateAccrued(
         payrollData.lastWithdraw,
-        payrollData.salaryPerSecond, // You'd need to decrypt this
+        payrollData.salaryPerSecond,
         now
       );
       setBalance(accrued);
@@ -292,7 +292,7 @@ export default function EmployeeDashboard() {
           <h2>Your Payroll</h2>
           <p>Employer: {payrollData.employer.toBase58()}</p>
           <p>Last Withdraw: {new Date(payrollData.lastWithdraw * 1000).toLocaleString()}</p>
-          <p>Is Active: {payrollData.isActive ? '✅ Yes' : '❌ No'}</p>
+          <p>Is Active: {payrollData.isActive ? 'Yes' : 'No'}</p>
           
           <h3>Current Balance</h3>
           <p className="text-4xl">{lamportsToSOL(balance).toFixed(9)} SOL</p>
@@ -318,9 +318,9 @@ import { useMemo } from 'react';
 import '@solana/wallet-adapter-react-ui/styles.css';
 
 export default function App({ Component, pageProps }: AppProps) {
-  // Helius Devnet RPC
+  // Helius Devnet RPC - use your own API key
   const endpoint = useMemo(
-    () => 'https://devnet.helius-rpc.com/?api-key=06227422-9d57-42de-a7b3-92f1491c58af',
+    () => process.env.NEXT_PUBLIC_SOLANA_RPC_URL || 'https://api.devnet.solana.com',
     []
   );
 
@@ -349,26 +349,26 @@ export default function App({ Component, pageProps }: AppProps) {
 3. Enter employee wallet address
 4. Enter salary (e.g., 0.000001 SOL/second)
 5. Click "Create Payroll"
-6. ✅ **Wallet prompts for signature**
-7. ✅ **Transaction sends to blockchain**
-8. ✅ **Get transaction ID back**
-9. ✅ **Click explorer link to verify**
+6. [PASS] **Wallet prompts for signature**
+7. [PASS] **Transaction sends to blockchain**
+8. [PASS] **Get transaction ID back**
+9. [PASS] **Click explorer link to verify**
 
 **Expected Result**: Transaction visible on Solana Explorer with:
-- Program: `8rgaVvV6m3SSaVJfJ2VNoBk67frTWbCS3WDBjrk7S6gU`
+- Program: `J45uxvT26szuQcmxvs5NRgtAMornKM9Ga9WaQ58bKUNE`
 - Instruction: `bakePayroll`
-- Status: Success ✅
+- Status: Success
 
 ### Step 2: Employee Views Payroll
 1. Open employee dashboard with the EMPLOYEE wallet
 2. Enter the EMPLOYER's wallet address
 3. Click "Fetch Payroll"
-4. ✅ **See payroll data from blockchain**
-5. ✅ **Balance updates every second**
+4. [PASS] **See payroll data from blockchain**
+5. [PASS] **Balance updates every second**
 
 **Expected Result**: Real on-chain data displayed
 
-## Common Issues & Solutions
+## Common Issues and Solutions
 
 ### Issue 1: "Account does not exist"
 **Cause**: PayrollJar wasn't created yet  
@@ -386,13 +386,11 @@ export default function App({ Component, pageProps }: AppProps) {
 **Cause**: Various (see error message)  
 **Solution**: Check console logs, verify all accounts are correct
 
-## Privacy Layer Integration (Future)
+## Privacy Layer Integration
 
-Once privacy SDKs have production APIs:
-
-### Arcium MPC (Encrypted Salaries)
+### Inco Lightning (Encrypted Salaries)
 ```typescript
-import { encryptSalary } from '../lib/arcium';
+import { encryptSalary } from '../lib/inco';
 
 // Encrypt before sending
 const encryptedSalary = await encryptSalary(salaryPerSecond);
@@ -421,8 +419,6 @@ stream.on('update', (newBalance) => {
 ## Resources
 
 - **Bagel Client**: `app/lib/bagel-client.ts`
-- **Solana Best Practices**: `.cursor/skills/solana-best-practices.md`
-- **Frontend Guidelines**: `.cursor/rules/04-frontend-bagel.md`
 - **Solana Explorer (Devnet)**: https://explorer.solana.com/?cluster=devnet
 - **Get Devnet SOL**: https://faucet.solana.com/
 
@@ -439,4 +435,4 @@ If you get stuck:
 
 **Remember**: Every user action that modifies state MUST send a real transaction!
 
-🥯 **Simple payroll, private paydays, REAL transactions!**
+**Simple payroll, private paydays, REAL transactions!**

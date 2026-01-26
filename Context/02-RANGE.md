@@ -182,7 +182,7 @@ import { rangeClient } from '../lib/range';
 
 const handleCreatePayroll = async () => {
   // Step 1: Full compliance check BEFORE transaction
-  console.log('🔍 Running compliance check...');
+  console.log('Running compliance check...');
   
   try {
     const compliance = await rangeClient.fullComplianceCheck(
@@ -198,7 +198,7 @@ const handleCreatePayroll = async () => {
       return;
     }
 
-    console.log(`✅ Compliance check passed (Risk: ${compliance.riskScore}/10)`);
+    console.log(`Compliance check passed (Risk: ${compliance.riskScore}/10)`);
     
     // Step 2: Proceed with payroll creation
     await createPayroll();
@@ -240,10 +240,10 @@ export function ComplianceBadge({ address }: Props) {
 
   return (
     <div className={`badge ${status}`}>
-      {status === 'loading' && '🔍 Checking...'}
-      {status === 'safe' && '✅ Range Verified'}
-      {status === 'flagged' && '⚠️ Compliance Issue'}
-      {status === 'error' && '❓ Could not verify'}
+      {status === 'loading' && 'Checking...'}
+      {status === 'safe' && '[VERIFIED] Range Compliant'}
+      {status === 'flagged' && '[WARNING] Compliance Issue'}
+      {status === 'error' && '[UNKNOWN] Could not verify'}
     </div>
   );
 }
@@ -301,18 +301,18 @@ curl -X GET 'https://api.range.org/v1/risk/sanctions/YOUR_ADDRESS' \
 ## Privacy Model Clarification
 
 ```
-┌─────────────────────────────────────────────────────────────────────────┐
-│ ENCRYPTED (Private)              │ VISIBLE (Public Blockchain)         │
-├─────────────────────────────────────────────────────────────────────────┤
-│ - Salary rate in PayrollJar      │ - Native SOL balance changes        │
-│ - Inco Euint128 ciphertext       │ - Transaction signatures            │
-│ - MagicBlock TEE state           │ - Account addresses                 │
-│ - Program log amounts            │ - Instruction names                 │
-├─────────────────────────────────────────────────────────────────────────┤
-│ SHADOWWIRE (Mainnet Only)                                               │
-│ - ZK Bulletproof hides transfer amounts                                 │
-│ - Range proof ensures validity without revealing value                  │
-└─────────────────────────────────────────────────────────────────────────┘
++-------------------------------------------------------------------------+
+| ENCRYPTED (Private)              | VISIBLE (Public Blockchain)         |
++-------------------------------------------------------------------------+
+| - Salary rate in PayrollJar      | - Native SOL balance changes        |
+| - Inco Euint128 ciphertext       | - Transaction signatures            |
+| - MagicBlock TEE state           | - Account addresses                 |
+| - Program log amounts            | - Instruction names                 |
++-------------------------------------------------------------------------+
+| SHADOWWIRE (Mainnet Only)                                               |
+| - ZK Bulletproof hides transfer amounts                                 |
+| - Range proof ensures validity without revealing value                  |
++-------------------------------------------------------------------------+
 ```
 
 > **Note:** The `+0.09 SOL` balance change visible on explorer is because native SOL transfers are public by design. ShadowWire's Bulletproof ZK proofs (mainnet only) are the way to hide this.

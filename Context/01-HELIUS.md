@@ -31,7 +31,7 @@ cluster = "Devnet"
 wallet = "~/.config/solana/id.json"
 
 [programs.devnet]
-bagel = "8rgaVvV6m3SSaVJfJ2VNoBk67frTWbCS3WDBjrk7S6gU"
+bagel = "J45uxvT26szuQcmxvs5NRgtAMornKM9Ga9WaQ58bKUNE"
 
 # Use Helius RPC
 [provider.cluster]
@@ -45,7 +45,7 @@ devnet = "https://devnet.helius-rpc.com/?api-key=YOUR_API_KEY"
 NEXT_PUBLIC_SOLANA_RPC_URL=https://devnet.helius-rpc.com/?api-key=YOUR_API_KEY
 
 # Bagel Program
-NEXT_PUBLIC_PROGRAM_ID=8rgaVvV6m3SSaVJfJ2VNoBk67frTWbCS3WDBjrk7S6gU
+NEXT_PUBLIC_PROGRAM_ID=J45uxvT26szuQcmxvs5NRgtAMornKM9Ga9WaQ58bKUNE
 
 # Helius API Key (for DAS API)
 NEXT_PUBLIC_HELIUS_API_KEY=YOUR_API_KEY

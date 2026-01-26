@@ -1,37 +1,151 @@
 # Bagel - Privacy-First Payroll on Solana
 
-**Real-time streaming payments with zero-knowledge transfers and automated yield generation.**
+**Bringing the $80 billion payroll market on-chain with end-to-end privacy.**
 
-[![Deployed](https://img.shields.io/badge/Deployed-Devnet-success)](https://explorer.solana.com/address/8rgaVvV6m3SSaVJfJ2VNoBk67frTWbCS3WDBjrk7S6gU?cluster=devnet)
-[![Built with Anchor](https://img.shields.io/badge/Anchor-0.32.1-blueviolet)](https://www.anchor-lang.com/)
-
----
-
-## Overview
-
-Bagel is a privacy-preserving payroll system built on Solana. It solves the "Glass Office" problem where traditional crypto payroll exposes sensitive financial data on-chain.
-
-**Key Features:**
-- Encrypted salary storage via Arcium MPC
-- Zero-knowledge transfers via ShadowWire Bulletproofs
-- Real-time streaming via MagicBlock Ephemeral Rollups
-- Automated yield generation via Privacy Cash Vaults
-
-**Program ID:** `8rgaVvV6m3SSaVJfJ2VNoBk67frTWbCS3WDBjrk7S6gU`
+[![Deployed on Devnet](https://img.shields.io/badge/Deployed-Devnet-success)](https://explorer.solana.com/address/J45uxvT26szuQcmxvs5NRgtAMornKM9Ga9WaQ58bKUNE?cluster=devnet)
+[![Built with Anchor](https://img.shields.io/badge/Anchor-0.31.1-blueviolet)](https://www.anchor-lang.com/)
+[![Solana Privacy Hackathon](https://img.shields.io/badge/Hackathon-Privacy%20Hack%202026-orange)](https://solana.com/privacyhack)
 
 ---
 
-## Prerequisites
+## The Problem: Glass Office Payroll
 
-- **Rust** 1.92.0+
-- **Solana CLI** 2.0+
-- **Anchor CLI** 0.32.1
-- **Node.js** 18+
-- **Bun** or **npm**
+Traditional crypto payroll is **embarrassingly public**:
+
+- **Competitors see your burn rate** - Every payment is visible on-chain
+- **Colleagues see each other's salaries** - Awkward and damaging to culture
+- **Zero financial privacy** - Wallet addresses linked to real identities
+- **Employer-employee relationships exposed** - Anyone can map your org chart
+
+This "Glass Office" problem prevents institutional adoption of crypto payroll. The $80B+ payroll industry cannot move on-chain until privacy is solved.
 
 ---
 
-## Installation
+## The Solution: Bagel
+
+Bagel is **privacy-preserving payroll infrastructure** for stablecoin payments on Solana. We encrypt everything from storage to payout using a 5-layer privacy stack.
+
+### What Makes Bagel Different
+
+| Traditional Crypto Payroll | Bagel |
+|---------------------------|-------|
+| Salaries visible on-chain | Salaries encrypted (Inco Lightning) |
+| Employer-employee links exposed | Index-based PDAs hide relationships |
+| Individual balances trackable | Single Master Vault pools all funds |
+| Withdrawal amounts public | ZK proofs hide amounts (ShadowWire) |
+| Batch payments only | Real-time streaming (MagicBlock TEE) |
+
+---
+
+## Architecture
+
+```mermaid
+flowchart TB
+    subgraph Compliance [Compliance Layer]
+        RANGE[Range API]
+    end
+
+    subgraph Public [Public On-Chain]
+        MV[MasterVault]
+        TX[Transaction Signatures]
+        IDX[Index Counters]
+    end
+
+    subgraph Encrypted [Encrypted Storage - Inco Lightning]
+        EID[encrypted_employer_id]
+        EMID[encrypted_employee_id]
+        EBAL[encrypted_balance]
+        ESAL[encrypted_salary]
+        EACC[encrypted_accrued]
+    end
+
+    subgraph Streaming [Real-Time - MagicBlock TEE]
+        TEE[Private Ephemeral Rollup]
+        STREAM[Balance Streaming]
+    end
+
+    subgraph Payout [Private Payout - ShadowWire]
+        ZK[Bulletproof ZK Proof]
+        HIDE[Amount Hidden]
+    end
+
+    Employer -->|Pre-screen| RANGE
+    RANGE -->|Approved| MV
+    MV -->|Encrypt via CPI| Encrypted
+    Encrypted -->|Delegate| Streaming
+    Streaming -->|Commit + Withdraw| Payout
+    Payout -->|Private Transfer| Employee
+```
+
+### Privacy Stack
+
+| Layer | Technology | Purpose | Status |
+|-------|------------|---------|--------|
+| Compliance | Range API | Wallet pre-screening (OFAC, risk scores) | Production |
+| Infrastructure | Helius RPC | High-performance RPC + DAS API | Production |
+| Encryption | Inco Lightning | FHE encrypted salaries, IDs, balances | Devnet |
+| Streaming | MagicBlock PER | Real-time balance updates in TEE | Devnet |
+| Payouts | ShadowWire | ZK Bulletproof amount hiding | Mainnet |
+
+---
+
+## Privacy Matrix
+
+### What is Encrypted vs Public
+
+| Data | Status | Tool | Notes |
+|------|--------|------|-------|
+| Employer Identity | ENCRYPTED | Inco Lightning | Hash of pubkey stored as Euint128 ciphertext |
+| Employee Identity | ENCRYPTED | Inco Lightning | Hash of pubkey stored as Euint128 ciphertext |
+| Salary Rate | ENCRYPTED | Inco Lightning | Per-second rate as ciphertext |
+| Accrued Balance | ENCRYPTED | Inco Lightning | Employee earnings hidden |
+| Business Balance | ENCRYPTED | Inco Lightning | Per-business allocation hidden |
+| Business/Employee Counts | ENCRYPTED | Inco Lightning | Total counts hidden from observers |
+| Real-time Balance | PRIVATE | MagicBlock TEE | Computed inside trusted enclave |
+| Withdrawal Amount | HIDDEN | ShadowWire | Bulletproof ZK proof (mainnet) |
+| Total Vault Balance | PUBLIC | Solana L1 | Unavoidable - but aggregated across all businesses |
+| Transaction Signatures | PUBLIC | Solana L1 | Unavoidable |
+| PDA Addresses | PUBLIC | Solana L1 | Index-based, NOT linked to identities |
+
+### Privacy Model
+
+1. **Index-Based PDAs**: No employer/employee pubkeys in PDA seeds
+   - BusinessEntry: `["entry", master_vault, entry_index]`
+   - EmployeeEntry: `["employee", business_entry, employee_index]`
+   - Observers cannot derive relationships from addresses
+
+2. **Single Master Vault**: All funds pool into one account
+   - Observers see only aggregate balance changes
+   - Cannot correlate deposits/withdrawals to specific businesses
+
+3. **Encrypted Identities**: Pubkey hashes stored as Inco ciphertext
+   - Only authorized parties can decrypt and verify
+
+4. **Optional ZK Payouts**: ShadowWire hides withdrawal amounts on mainnet
+
+---
+
+## Program IDs
+
+| Component | Program ID | Network |
+|-----------|------------|---------|
+| **Bagel** | `J45uxvT26szuQcmxvs5NRgtAMornKM9Ga9WaQ58bKUNE` | Devnet |
+| Inco Lightning | `5sjEbPiqgZrYwR31ahR6Uk9wf5awoX61YGg7jExQSwaj` | Devnet |
+| MagicBlock Delegation | `DELeGGvXpWV2fqJUhqcF5ZSYMS4JTLjteaAMARRSaeSh` | Devnet |
+| ShadowWire | `GQBqwwoikYh7p6KEUHDUu5r9dHHXx9tMGskAPubmFPzD` | Mainnet |
+
+---
+
+## Quick Start
+
+### Prerequisites
+
+- Rust 1.92.0+
+- Solana CLI 2.0+
+- Anchor CLI 0.31.1
+- Node.js 18+
+
+### Installation
 
 ```bash
 # Clone the repository
@@ -41,45 +155,37 @@ cd Bagel
 # Install Rust dependencies
 cargo build
 
-# Install root dependencies
+# Install Node dependencies
 npm install
 
 # Build the Solana program
 anchor build
 ```
 
----
+### Run E2E Test
 
-## Running the App
+```bash
+# Run the full privacy test on devnet
+node tests/test-real-privacy-onchain.mjs
+```
 
-### Frontend Development
+This test will:
+1. Create test wallets and fund them
+2. Run Range compliance checks
+3. Register businesses with encrypted IDs
+4. Deposit to the Master Vault
+5. Add employees with encrypted salaries
+6. Process withdrawals with ShadowWire simulation
+7. Output a full privacy audit report
+
+### Run Frontend
 
 ```bash
 cd app
-
-# Install dependencies
 npm install
-# or
-bun install
-
-# Start the development server
 npm run dev
-# or
-bun dev
+# Open http://localhost:3000
 ```
-
-Open [http://localhost:3000](http://localhost:3000) in your browser.
-
-### Available Pages
-
-| Page | URL | Description |
-|------|-----|-------------|
-| Landing | `/landing` | Marketing landing page |
-| Dashboard | `/dashboard` | Employer overview with charts |
-| Employer | `/employer` | Create and manage payrolls |
-| Employee | `/employee` | View earnings and withdraw |
-| Employees | `/employees` | Manage employee list |
-| History | `/history` | Transaction history |
 
 ---
 
@@ -88,218 +194,149 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 ```
 Bagel/
 ├── programs/bagel/src/          # Solana program (Rust/Anchor)
-│   ├── lib.rs                   # Program entry point
-│   ├── instructions/            # Instruction handlers
-│   │   ├── bake_payroll.rs      # Create new payroll
-│   │   ├── deposit_dough.rs     # Fund payroll vault
-│   │   ├── get_dough.rs         # Employee withdrawal
-│   │   ├── update_salary.rs     # Modify salary rate
-│   │   └── close_jar.rs         # Close payroll
+│   ├── lib.rs                   # Maximum privacy architecture
+│   ├── constants.rs             # Privacy tool program IDs
 │   ├── privacy/                 # Privacy integrations
-│   │   ├── arcium.rs            # MPC encrypted calculations
-│   │   ├── shadowwire.rs        # ZK Bulletproof transfers
-│   │   ├── magicblock.rs        # Streaming payments
-│   │   ├── kamino.rs            # DeFi yield integration
-│   │   └── privacycash.rs       # Yield vaults
-│   └── state/                   # Account structures
-│
-├── encrypted-ixs/circuits/      # Arcium MPC circuits
-│   └── payroll.arcis            # Salary calculation circuit
+│   │   ├── inco.rs              # Inco Lightning FHE
+│   │   ├── magicblock.rs        # MagicBlock PER
+│   │   └── shadowwire.rs        # ShadowWire ZK
+│   └── instructions/            # Instruction handlers
 │
 ├── app/                         # Frontend (Next.js 15)
-│   ├── pages/                   # Application routes
-│   ├── lib/                     # SDK clients
-│   │   ├── bagel-client.ts      # Main Bagel SDK
-│   │   ├── arcium.ts            # MPC client
-│   │   ├── shadowwire.ts        # ZK transfer client
-│   │   ├── magicblock.ts        # Streaming client
-│   │   └── privacycash.ts       # Yield client
-│   └── components/              # React components
+│   ├── pages/
+│   │   ├── landing.tsx          # Landing page
+│   │   ├── employer.tsx         # Employer dashboard
+│   │   ├── employee.tsx         # Employee dashboard
+│   │   └── privacy-audit.tsx    # Privacy verification
+│   └── lib/
+│       ├── helius.ts            # Helius RPC client
+│       ├── inco.ts              # Inco encryption client
+│       ├── range.ts             # Range compliance client
+│       ├── magicblock.ts        # MagicBlock streaming client
+│       └── shadowwire.ts        # ShadowWire ZK client
 │
-├── scripts/                     # Deployment scripts
-│   ├── deploy-arcium-cli.sh     # Arcium deployment
-│   ├── deploy-arcium-circuit.sh # Circuit deployment
-│   └── deploy-mainnet.sh        # Mainnet deployment
-│
-├── tests/                       # Integration tests
-└── docs-site/                   # Documentation website
+├── Context/                     # Integration guides (00-07)
+├── docs/                        # Architecture documentation
+├── docs-site/                   # Docusaurus documentation
+├── tests/                       # E2E test files
+└── scripts/                     # Deployment scripts
 ```
 
 ---
 
-## Scripts
-
-### Root Commands
-
-```bash
-# Start frontend dev server
-npm run dev
-
-# Build program + frontend
-npm run build
-
-# Run Anchor tests
-npm run test
-
-# Deploy program
-npm run deploy
-
-# Lint frontend
-npm run lint
-```
-
-### App Commands (from `/app`)
-
-```bash
-npm run dev      # Start Next.js dev server
-npm run build    # Build for production
-npm run start    # Start production server
-npm run lint     # Run ESLint
-npm run test     # Run Jest tests
-```
-
-### Anchor Commands
-
-```bash
-anchor build                           # Build program
-anchor test                            # Run tests with local validator
-anchor test --skip-local-validator     # Run tests on devnet
-anchor deploy                          # Deploy to configured cluster
-```
-
----
-
-## Configuration
-
-### Solana Cluster
-
-Edit `Anchor.toml` to change the target cluster:
-
-```toml
-[provider]
-cluster = "Devnet"  # Options: Localnet, Devnet, Mainnet
-wallet = "~/.config/solana/id.json"
-```
-
-### Environment Variables (Frontend)
+## Environment Setup
 
 Create `app/.env.local`:
 
 ```bash
-NEXT_PUBLIC_SOLANA_RPC_URL=https://api.devnet.solana.com
-NEXT_PUBLIC_PROGRAM_ID=8rgaVvV6m3SSaVJfJ2VNoBk67frTWbCS3WDBjrk7S6gU
+# Solana RPC (Helius recommended)
+NEXT_PUBLIC_SOLANA_RPC_URL=https://devnet.helius-rpc.com/?api-key=YOUR_HELIUS_KEY
+NEXT_PUBLIC_BAGEL_PROGRAM_ID=J45uxvT26szuQcmxvs5NRgtAMornKM9Ga9WaQ58bKUNE
+
+# Privacy Tools
+NEXT_PUBLIC_HELIUS_API_KEY=YOUR_HELIUS_KEY
+NEXT_PUBLIC_RANGE_API_KEY=YOUR_RANGE_KEY
+NEXT_PUBLIC_INCO_PROGRAM_ID=5sjEbPiqgZrYwR31ahR6Uk9wf5awoX61YGg7jExQSwaj
+NEXT_PUBLIC_MAGICBLOCK_TEE_URL=https://tee.magicblock.app
+NEXT_PUBLIC_SHADOWWIRE_PROGRAM_ID=GQBqwwoikYh7p6KEUHDUu5r9dHHXx9tMGskAPubmFPzD
 ```
 
 ---
 
-## Privacy Architecture
+## How It Works
 
-### How It Works
+### 1. Employer Creates Payroll
+- Range API pre-screens wallet for compliance
+- Business registered with index-based PDA (no pubkey in seeds)
+- Employer ID encrypted via Inco Lightning CPI
 
-1. **Employer creates payroll** - Salary is encrypted via Arcium MPC before storing on-chain
-2. **Funds are deposited** - SOL goes into a vault that earns yield automatically
-3. **Employee accrues salary** - Calculated every second via MagicBlock streaming
-4. **Employee withdraws** - Amount is hidden via ShadowWire Bulletproofs
-5. **Yield is distributed** - 80% to employee, 20% to employer
+### 2. Funds Deposited
+- SOL transferred to single Master Vault
+- Business balance updated via encrypted homomorphic addition
+- Observer sees only total vault balance change
 
-### Privacy Stack
+### 3. Employee Added
+- Employee registered with index-based PDA
+- Employee ID and salary encrypted via Inco Lightning
+- No link between employee wallet and PDA address
 
-| Layer | Technology | Purpose |
-|-------|------------|---------|
-| Storage | Arcium C-SPL | Encrypted on-chain state |
-| Computation | Arcium MPC | Private salary calculations |
-| Transfers | ShadowWire | Zero-knowledge withdrawals |
-| Streaming | MagicBlock | Real-time balance updates |
-| Yield | Privacy Cash | Private lending vaults |
+### 4. Real-Time Streaming (Optional)
+- Employee entry delegated to MagicBlock TEE
+- Balance computed in private ephemeral rollup
+- Updates every ~10ms without on-chain transactions
 
----
-
-## Testing
-
-```bash
-# Run all tests
-anchor test
-
-# Run specific test file
-anchor test tests/bagel.ts
-
-# Run tests on devnet
-anchor test --skip-local-validator
-```
+### 5. Private Withdrawal
+- State committed back to L1 from TEE
+- ShadowWire ZK proof hides withdrawal amount (mainnet)
+- Employee receives funds with transaction amount hidden
 
 ---
 
-## Deployment
+## Sponsor Integrations
 
-### Devnet
+### Helius - RPC Infrastructure
+- All transactions use Helius RPC endpoints
+- DAS API for transaction fetching in privacy audit
+- Prize target: $5,000
 
-```bash
-# Configure for devnet
-solana config set --url devnet
+### Range - Compliance
+- Pre-screen wallets before payroll creation
+- Risk score + OFAC sanctions check
+- Prize target: $1,500+
 
-# Airdrop SOL for deployment
-solana airdrop 5
+### Inco - Encrypted Ledger
+- FHE encryption for all sensitive data
+- Homomorphic operations (add, subtract) on encrypted values
+- Prize target: $6,000
 
-# Build and deploy
-anchor build
-anchor deploy
-```
+### MagicBlock - Real-Time Privacy
+- Private Ephemeral Rollups for streaming payments
+- TEE-based computation for live balance updates
+- Prize target: $5,000
 
-### Mainnet
+### ShadowWire - ZK Payouts
+- Bulletproof zero-knowledge proofs
+- Hide withdrawal amounts on mainnet
+- Prize target: $15,000
 
-```bash
-# Use the mainnet deployment script
-./scripts/deploy-mainnet.sh
-```
-
-### Arcium Circuit
-
-```bash
-# Deploy MPC circuit
-./scripts/deploy-arcium-circuit.sh
-
-# Update circuit ID in program
-./scripts/update-circuit-id.sh
-```
+**Total Prize Target: $32,500**
 
 ---
 
-## Tech Stack
+## Test Results
 
-**Blockchain:**
-- Solana
-- Anchor Framework 0.32.1
+See [TEST_RESULTS_2026-01-26.md](TEST_RESULTS_2026-01-26.md) for full E2E test output.
 
-**Privacy:**
-- Arcium MPC (v0.5.4)
-- ShadowWire Bulletproofs
-- MagicBlock Ephemeral Rollups
-- Privacy Cash Vaults
+**Summary:**
+- Status: PASSED
+- Businesses registered: 2
+- Employees added: 4
+- Withdrawals successful: 4/4 (100%)
+- All privacy tools integrated and verified
 
-**Frontend:**
-- Next.js 15
-- React 18
-- TailwindCSS
-- Recharts
-- Framer Motion
+---
 
-**Wallets:**
-- Solana Wallet Adapter
-- Phantom, Solflare, etc.
+## Team
+
+- **@ConejoCapital** - Backend, Privacy Integrations, Architecture
+- **@tomi204_** - Frontend, UI/UX, Documentation
 
 ---
 
 ## License
 
-MIT License - see [LICENSE](./LICENSE)
+MIT License - See [LICENSE](LICENSE)
 
 ---
 
 ## Links
 
-- **GitHub:** [github.com/ConejoCapital/Bagel](https://github.com/ConejoCapital/Bagel)
-- **Explorer:** [Program on Solana Explorer](https://explorer.solana.com/address/8rgaVvV6m3SSaVJfJ2VNoBk67frTWbCS3WDBjrk7S6gU?cluster=devnet)
+- **GitHub**: [github.com/ConejoCapital/Bagel](https://github.com/ConejoCapital/Bagel)
+- **Program Explorer**: [Solana Explorer](https://explorer.solana.com/address/J45uxvT26szuQcmxvs5NRgtAMornKM9Ga9WaQ58bKUNE?cluster=devnet)
+- **Hackathon**: [Solana Privacy Hack 2026](https://solana.com/privacyhack)
 
 ---
 
-Built by [@ConejoCapital](https://twitter.com/ConejoCapital) & [@tomi204_](https://twitter.com/tomi204_)
+**Simple payroll. Private paydays.**
+
+*Built for Solana Privacy Hackathon 2026*

@@ -1,4 +1,4 @@
-# Contributing to Bagel 🥯
+# Contributing to Bagel
 
 Thank you for your interest in contributing to Bagel! This document provides guidelines and instructions for contributing.
 
@@ -17,11 +17,10 @@ Be respectful, collaborative, and constructive. We're building privacy tools tha
 ## Getting Started
 
 ### Prerequisites
-- Rust 1.75+
-- Solana CLI 1.18+
-- Anchor CLI 0.32+
+- Rust 1.92+
+- Solana CLI 2.0+
+- Anchor CLI 0.31.1
 - Node.js 18+
-- Docker (for Arcium local development)
 
 ### Setup
 ```bash
@@ -139,25 +138,20 @@ When working with privacy features:
 3. **Document privacy guarantees** clearly
 4. **Follow SDK best practices** for each integration
 
-### Arcium Integration
-- Use MPC circuits for encrypted computations
+### Inco Lightning Integration
+- Use FHE encryption for all sensitive data
 - Never decrypt salary amounts unless absolutely necessary
-- Document circuit behavior clearly
+- Document encrypted fields clearly
 
 ### ShadowWire Integration
 - Generate Bulletproofs client-side
 - Never expose plaintext transfer amounts
-- Test with devnet USD1 tokens
+- Test with devnet tokens
 
 ### MagicBlock Integration
 - Use PERs for high-frequency updates
 - Commit to L1 only when necessary
 - Handle rollback scenarios
-
-### Privacy Cash Integration
-- Document yield distribution clearly
-- Handle vault failures gracefully
-- Test yield calculations thoroughly
 
 ## Documentation
 

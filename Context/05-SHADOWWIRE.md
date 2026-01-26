@@ -93,7 +93,7 @@ class BagelShadowWireClient {
     wallet: { signMessage: (message: Uint8Array) => Promise<Uint8Array> }
   ): Promise<TransferResult> {
     try {
-      console.log('🔒 Executing ShadowWire private transfer...');
+      console.log('Executing ShadowWire private transfer...');
       console.log(`   Amount: ${params.amount} ${params.token} (will be HIDDEN)`);
       console.log(`   Type: ${params.type}`);
 
@@ -106,7 +106,7 @@ class BagelShadowWireClient {
         wallet: { signMessage: wallet.signMessage },
       });
 
-      console.log('✅ Private transfer complete');
+      console.log('Private transfer complete');
       console.log(`   Signature: ${result.signature}`);
       console.log(`   Amount: HIDDEN (Bulletproof)`);
 
@@ -115,7 +115,7 @@ class BagelShadowWireClient {
         signature: result.signature,
       };
     } catch (error) {
-      console.error('❌ Private transfer failed:', error);
+      console.error('Private transfer failed:', error);
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error',
@@ -246,11 +246,11 @@ const handleWithdraw = async () => {
 
   try {
     // Step 1: Commit MagicBlock state back to L1
-    console.log('⚡ Committing PER state to L1...');
+    console.log('Committing PER state to L1...');
     await magicBlockClient.commitAndUndelegate(payrollJarAddress);
 
     // Step 2: Execute private transfer via ShadowWire
-    console.log('🔒 Executing private withdrawal...');
+    console.log('Executing private withdrawal...');
     const result = await shadowWireClient.executePrivateTransfer(
       {
         sender: vaultAddress.toBase58(),
@@ -346,7 +346,7 @@ export function PrivateWithdrawButton({
         disabled={loading}
         className="w-full py-2 px-4 bg-orange-500 text-white rounded-lg hover:bg-orange-600 disabled:opacity-50"
       >
-        {loading ? '🔒 Processing...' : '🔒 Withdraw Privately'}
+        {loading ? 'Processing...' : 'Withdraw Privately'}
       </button>
       
       <p className="text-xs text-gray-400">
