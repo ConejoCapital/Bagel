@@ -27,7 +27,7 @@ import {
   registerBusiness as registerBusinessFunction,
   BAGEL_PROGRAM_ID,
   INCO_LIGHTNING_ID
-} from './app/lib/bagel-client';
+} from '../app/lib/bagel-client';
 
 // ============================================================
 // Configuration
@@ -471,7 +471,7 @@ async function verifyHeliusPrivacy(
   const report: string[] = [];
   report.push('=== HELIUS-VERIFIED PRIVACY REPORT ===');
   report.push(`Transaction: ${transactionSignature}`);
-  report.push(`Explorer: https://explorer.solana.com/tx/${transactionSignature}?cluster=devnet`);
+  report.push(`Explorer: https://orbmarkets.io/tx/${transactionSignature}?cluster=devnet`);
   report.push('');
 
   // Get chain view
@@ -770,7 +770,7 @@ async function main() {
   );
   log(`✅ Business registered: ${registerTx}`, 'success');
   log(`   Business Entry Index: ${businessIndex}`, 'info');
-  log(`   Explorer: https://explorer.solana.com/tx/${registerTx}?cluster=devnet`, 'info');
+  log(`   Explorer: https://orbmarkets.io/tx/${registerTx}?cluster=devnet`, 'info');
   
   const [businessEntryPda] = getBusinessEntryPDA(masterVaultPda, businessIndex);
   log(`   Business Entry PDA: ${businessEntryPda.toBase58()}`, 'privacy');
@@ -788,7 +788,7 @@ async function main() {
   );
   log(`✅ Employee added: ${addEmployeeTx}`, 'success');
   log(`   Employee Index: ${employeeIndex}`, 'info');
-  log(`   Explorer: https://explorer.solana.com/tx/${addEmployeeTx}?cluster=devnet`, 'info');
+  log(`   Explorer: https://orbmarkets.io/tx/${addEmployeeTx}?cluster=devnet`, 'info');
   
   const [employeeEntryPda] = getEmployeeEntryPDA(businessEntryPda, employeeIndex);
   log(`   Employee Entry PDA: ${employeeEntryPda.toBase58()}`, 'privacy');
@@ -827,7 +827,7 @@ async function main() {
   );
   
   log(`✅ Deposit transaction: ${depositSig}`, 'success');
-  log(`   Explorer: https://explorer.solana.com/tx/${depositSig}?cluster=devnet`, 'info');
+  log(`   Explorer: https://orbmarkets.io/tx/${depositSig}?cluster=devnet`, 'info');
   
   // Verify transaction succeeded
   await new Promise(resolve => setTimeout(resolve, 2000));
@@ -884,7 +884,7 @@ async function main() {
     }, 'confirmed');
     
     log(`✅ Delegated to TEE: ${delegateSig}`, 'success');
-    log(`   Explorer: https://explorer.solana.com/tx/${delegateSig}?cluster=devnet`, 'info');
+    log(`   Explorer: https://orbmarkets.io/tx/${delegateSig}?cluster=devnet`, 'info');
     log('   ✅ EmployeeEntry state now in TEE (private!)', 'tee');
     log('   ✅ Balance updates happen off-chain in trusted enclave', 'tee');
     
@@ -969,7 +969,7 @@ async function main() {
     }, 'confirmed');
     
     log(`✅ Committed from TEE: ${commitSig}`, 'success');
-    log(`   Explorer: https://explorer.solana.com/tx/${commitSig}?cluster=devnet`, 'info');
+    log(`   Explorer: https://orbmarkets.io/tx/${commitSig}?cluster=devnet`, 'info');
     log('   ✅ TEE state synchronized to L1 (encrypted)', 'tee');
     
     results.phase5 = { commitTx: commitSig };
@@ -1005,7 +1005,7 @@ async function main() {
   );
   
   log(`✅ Withdrawal transaction: ${withdrawalSig}`, 'success');
-  log(`   Explorer: https://explorer.solana.com/tx/${withdrawalSig}?cluster=devnet`, 'info');
+  log(`   Explorer: https://orbmarkets.io/tx/${withdrawalSig}?cluster=devnet`, 'info');
   
   // Verify transaction succeeded
   await new Promise(resolve => setTimeout(resolve, 2000));
@@ -1180,20 +1180,20 @@ async function main() {
   log('', 'info');
   log('Transaction Links:', 'info');
   if (results.phase1) {
-    log(`   Register Business: https://explorer.solana.com/tx/${results.phase1.registerTx}?cluster=devnet`, 'info');
-    log(`   Add Employee: https://explorer.solana.com/tx/${results.phase1.addEmployeeTx}?cluster=devnet`, 'info');
+    log(`   Register Business: https://orbmarkets.io/tx/${results.phase1.registerTx}?cluster=devnet`, 'info');
+    log(`   Add Employee: https://orbmarkets.io/tx/${results.phase1.addEmployeeTx}?cluster=devnet`, 'info');
   }
   if (results.phase2) {
-    log(`   Deposit: https://explorer.solana.com/tx/${results.phase2.depositTx}?cluster=devnet`, 'info');
+    log(`   Deposit: https://orbmarkets.io/tx/${results.phase2.depositTx}?cluster=devnet`, 'info');
   }
   if (results.phase3?.delegateTx && results.phase3.delegateTx !== 'SKIPPED') {
-    log(`   Delegate to TEE: https://explorer.solana.com/tx/${results.phase3.delegateTx}?cluster=devnet`, 'info');
+    log(`   Delegate to TEE: https://orbmarkets.io/tx/${results.phase3.delegateTx}?cluster=devnet`, 'info');
   }
   if (results.phase5?.commitTx && results.phase5.commitTx !== 'SKIPPED') {
-    log(`   Commit from TEE: https://explorer.solana.com/tx/${results.phase5.commitTx}?cluster=devnet`, 'info');
+    log(`   Commit from TEE: https://orbmarkets.io/tx/${results.phase5.commitTx}?cluster=devnet`, 'info');
   }
   if (results.phase6) {
-    log(`   Withdrawal: https://explorer.solana.com/tx/${results.phase6.withdrawalTx}?cluster=devnet`, 'info');
+    log(`   Withdrawal: https://orbmarkets.io/tx/${results.phase6.withdrawalTx}?cluster=devnet`, 'info');
   }
   log('', 'info');
   log('🎉 All privacy layers verified! Zero privacy leaks detected.', 'success');
@@ -1276,11 +1276,11 @@ This test demonstrates **ALL privacy layers** in the Bagel payroll system, showi
 
 **Verification:**
 ${results.phase3?.delegateTx && results.phase3.delegateTx !== 'SKIPPED' 
-  ? `- ✅ Delegated to TEE: [${results.phase3.delegateTx}](https://explorer.solana.com/tx/${results.phase3.delegateTx}?cluster=devnet)
+  ? `- ✅ Delegated to TEE: [${results.phase3.delegateTx}](https://orbmarkets.io/tx/${results.phase3.delegateTx}?cluster=devnet)
 - ✅ State in trusted enclave (off-chain)
 - ✅ On-chain state unchanged during streaming
 ${results.phase5?.commitTx && results.phase5.commitTx !== 'SKIPPED' 
-  ? `- ✅ Committed from TEE: [${results.phase5.commitTx}](https://explorer.solana.com/tx/${results.phase5.commitTx}?cluster=devnet)`
+  ? `- ✅ Committed from TEE: [${results.phase5.commitTx}](https://orbmarkets.io/tx/${results.phase5.commitTx}?cluster=devnet)`
   : '- ⚠️  Commit skipped (TEE not available)'}`
   : `- ⚠️  TEE delegation skipped (TEE not available on devnet)
 - On mainnet with active TEE, this would enable real-time streaming`}
@@ -1340,13 +1340,13 @@ ${heliusReports.withdrawal}
 ## Account Addresses
 
 - **Master Vault:** \`${addresses.masterVault}\`  
-  Explorer: https://explorer.solana.com/address/${addresses.masterVault}?cluster=devnet
+  Explorer: https://orbmarkets.io/address/${addresses.masterVault}?cluster=devnet
 
 - **Business Entry:** \`${addresses.businessEntry}\`  
-  Explorer: https://explorer.solana.com/address/${addresses.businessEntry}?cluster=devnet
+  Explorer: https://orbmarkets.io/address/${addresses.businessEntry}?cluster=devnet
 
 - **Employee Entry:** \`${addresses.employeeEntry}\`  
-  Explorer: https://explorer.solana.com/address/${addresses.employeeEntry}?cluster=devnet
+  Explorer: https://orbmarkets.io/address/${addresses.employeeEntry}?cluster=devnet
 
 ---
 

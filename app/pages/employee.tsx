@@ -193,7 +193,7 @@ export default function EmployeeDashboard() {
                       Transaction ID: {withdrawTxid}
                     </p>
                     <a
-                      href={`https://explorer.solana.com/tx/${withdrawTxid}?cluster=devnet`}
+                      href={`https://orbmarkets.io/tx/${withdrawTxid}?cluster=devnet`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="inline-block bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded transition-all duration-300 text-sm"

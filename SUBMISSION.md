@@ -33,7 +33,7 @@
 
 **Network:** Solana Devnet
 
-**Explorer:** https://explorer.solana.com/address/J45uxvT26szuQcmxvs5NRgtAMornKM9Ga9WaQ58bKUNE?cluster=devnet
+**Explorer:** https://orbmarkets.io/address/J45uxvT26szuQcmxvs5NRgtAMornKM9Ga9WaQ58bKUNE?cluster=devnet
 
 ---
 
@@ -93,8 +93,8 @@
 - `app/lib/magicblock.ts` - TEE RPC client, auth token generation, streaming balance queries
 
 **On-Chain Transaction Proof:**
-- **Delegate to PER:** [`38Q33b2Uk7MvUgRoBCySspeeaTN5VXpdf8LaJvUpwrWCQzKjKhBF7ZLoTa6qB2rFsdHFVbYLGW7b3CKDZrpiNgTh`](https://explorer.solana.com/tx/38Q33b2Uk7MvUgRoBCySspeeaTN5VXpdf8LaJvUpwrWCQzKjKhBF7ZLoTa6qB2rFsdHFVbYLGW7b3CKDZrpiNgTh?cluster=devnet)
-- **Commit from PER:** [`NiGNzfJVahCLxgPZuyYKE2TNjFd3grDi4AB1PGMh8WTkvHrc8MFPwEkzZ6QjohjWoNF4raZeCZVpx8c2NLpsAQk`](https://explorer.solana.com/tx/NiGNzfJVahCLxgPZuyYKE2TNjFd3grDi4AB1PGMh8WTkvHrc8MFPwEkzZ6QjohjWoNF4raZeCZVpx8c2NLpsAQk?cluster=devnet)
+- **Delegate to PER:** [`38Q33b2Uk7MvUgRoBCySspeeaTN5VXpdf8LaJvUpwrWCQzKjKhBF7ZLoTa6qB2rFsdHFVbYLGW7b3CKDZrpiNgTh`](https://orbmarkets.io/tx/38Q33b2Uk7MvUgRoBCySspeeaTN5VXpdf8LaJvUpwrWCQzKjKhBF7ZLoTa6qB2rFsdHFVbYLGW7b3CKDZrpiNgTh?cluster=devnet)
+- **Commit from PER:** [`NiGNzfJVahCLxgPZuyYKE2TNjFd3grDi4AB1PGMh8WTkvHrc8MFPwEkzZ6QjohjWoNF4raZeCZVpx8c2NLpsAQk`](https://orbmarkets.io/tx/NiGNzfJVahCLxgPZuyYKE2TNjFd3grDi4AB1PGMh8WTkvHrc8MFPwEkzZ6QjohjWoNF4raZeCZVpx8c2NLpsAQk?cluster=devnet)
 
 **Documentation Reference:** https://docs.magicblock.gg/pages/private-ephemeral-rollups-pers/how-to-guide/quickstart
 
@@ -236,7 +236,7 @@ Bagel/
 | Resource | URL |
 |----------|-----|
 | GitHub | https://github.com/ConejoCapital/Bagel |
-| Program Explorer | https://explorer.solana.com/address/J45uxvT26szuQcmxvs5NRgtAMornKM9Ga9WaQ58bKUNE?cluster=devnet |
+| Program Explorer | https://orbmarkets.io/address/J45uxvT26szuQcmxvs5NRgtAMornKM9Ga9WaQ58bKUNE?cluster=devnet |
 | Hackathon | https://solana.com/privacyhack |
 | MagicBlock PER Docs | https://docs.magicblock.gg/pages/private-ephemeral-rollups-pers/how-to-guide/quickstart |
 

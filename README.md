@@ -2,7 +2,7 @@
 
 **Bringing the $80 billion global payroll market on-chain with end-to-end privacy.**
 
-[![Deployed on Devnet](https://img.shields.io/badge/Deployed-Devnet-success)](https://explorer.solana.com/address/J45uxvT26szuQcmxvs5NRgtAMornKM9Ga9WaQ58bKUNE?cluster=devnet)
+[![Deployed on Devnet](https://img.shields.io/badge/Deployed-Devnet-success)](https://orbmarkets.io/address/J45uxvT26szuQcmxvs5NRgtAMornKM9Ga9WaQ58bKUNE?cluster=devnet)
 [![Built with Anchor](https://img.shields.io/badge/Anchor-0.31.1-blueviolet)](https://www.anchor-lang.com/)
 [![Solana Privacy Hackathon](https://img.shields.io/badge/Hackathon-Privacy%20Hack%202026-orange)](https://solana.com/privacyhack)
 
@@ -224,10 +224,10 @@ npm run dev
 - **Zero Privacy Leaks Detected**
 
 **Key Transaction Links:**
-- **Register Business:** [View on Explorer](https://explorer.solana.com/tx/3eTNPvvomkbHS2MTgoCtHw3KTj4E25dKiac6ZgEcvAWSsJxnPmQMjMe7w4MvptUXXg1qJRvQiGkZSAjLbsrsyjU6?cluster=devnet)
-- **Deposit (10,000 USDBagel):** [View on Explorer](https://explorer.solana.com/tx/4bSEkczrmKMWBJkUQMmDH5v82AhdQwGNHgQVZWBB9xBid4DW9RCCCCNjaexAtM9ZSxwsUkY7kNJgvyXNDrMrUrzx?cluster=devnet)
-- **Delegate to PER:** [View on Explorer](https://explorer.solana.com/tx/38Q33b2Uk7MvUgRoBCySspeeaTN5VXpdf8LaJvUpwrWCQzKjKhBF7ZLoTa6qB2rFsdHFVbYLGW7b3CKDZrpiNgTh?cluster=devnet)
-- **Withdrawal (~1,000 USDBagel):** [View on Explorer](https://explorer.solana.com/tx/61tc3SS8jRfjDgSGKchghdhRTJEsd9QYv9uP3e3HUcfmeimGUhKs5Qpgonr6zMowC1F2qzQzRo7L15SQNETz3vfV?cluster=devnet)
+- **Register Business:** [View on Explorer](https://orbmarkets.io/tx/3eTNPvvomkbHS2MTgoCtHw3KTj4E25dKiac6ZgEcvAWSsJxnPmQMjMe7w4MvptUXXg1qJRvQiGkZSAjLbsrsyjU6?cluster=devnet)
+- **Deposit (10,000 USDBagel):** [View on Explorer](https://orbmarkets.io/tx/4bSEkczrmKMWBJkUQMmDH5v82AhdQwGNHgQVZWBB9xBid4DW9RCCCCNjaexAtM9ZSxwsUkY7kNJgvyXNDrMrUrzx?cluster=devnet)
+- **Delegate to PER:** [View on Explorer](https://orbmarkets.io/tx/38Q33b2Uk7MvUgRoBCySspeeaTN5VXpdf8LaJvUpwrWCQzKjKhBF7ZLoTa6qB2rFsdHFVbYLGW7b3CKDZrpiNgTh?cluster=devnet)
+- **Withdrawal (~1,000 USDBagel):** [View on Explorer](https://orbmarkets.io/tx/61tc3SS8jRfjDgSGKchghdhRTJEsd9QYv9uP3e3HUcfmeimGUhKs5Qpgonr6zMowC1F2qzQzRo7L15SQNETz3vfV?cluster=devnet)
 
 See [COMPREHENSIVE_PRIVACY_LAYERS_REPORT.md](COMPREHENSIVE_PRIVACY_LAYERS_REPORT.md) for complete details.
 
@@ -312,8 +312,8 @@ We are using **MagicBlock Private Ephemeral Rollups (PER)** via **TEE (Trusted E
 - **Commit Status:** `commit_and_undelegate_accounts` SDK call is implemented in code. On devnet, the commit transaction succeeds, but the SDK's CPI to the MagicBlock delegation program may encounter infrastructure limitations. The account state synchronization is handled, and on mainnet with fully operational MagicBlock infrastructure, the complete commit flow would execute.
 
 **On-Chain Verification:**
-- **Delegate to PER:** [Transaction verified on Solana devnet](https://explorer.solana.com/tx/38Q33b2Uk7MvUgRoBCySspeeaTN5VXpdf8LaJvUpwrWCQzKjKhBF7ZLoTa6qB2rFsdHFVbYLGW7b3CKDZrpiNgTh?cluster=devnet)
-- **Commit from PER:** [Transaction verified on Solana devnet](https://explorer.solana.com/tx/NiGNzfJVahCLxgPZuyYKE2TNjFd3grDi4AB1PGMh8WTkvHrc8MFPwEkzZ6QjohjWoNF4raZeCZVpx8c2NLpsAQk?cluster=devnet)
+- **Delegate to PER:** [Transaction verified on Solana devnet](https://orbmarkets.io/tx/38Q33b2Uk7MvUgRoBCySspeeaTN5VXpdf8LaJvUpwrWCQzKjKhBF7ZLoTa6qB2rFsdHFVbYLGW7b3CKDZrpiNgTh?cluster=devnet)
+- **Commit from PER:** [Transaction verified on Solana devnet](https://orbmarkets.io/tx/NiGNzfJVahCLxgPZuyYKE2TNjFd3grDi4AB1PGMh8WTkvHrc8MFPwEkzZ6QjohjWoNF4raZeCZVpx8c2NLpsAQk?cluster=devnet)
 
 **Documentation Reference:** https://docs.magicblock.gg/pages/private-ephemeral-rollups-pers/how-to-guide/quickstart
 
@@ -373,7 +373,7 @@ MIT License - See [LICENSE](LICENSE)
 ## Links
 
 - **GitHub**: [github.com/ConejoCapital/Bagel](https://github.com/ConejoCapital/Bagel)
-- **Program Explorer**: [Solana Explorer](https://explorer.solana.com/address/J45uxvT26szuQcmxvs5NRgtAMornKM9Ga9WaQ58bKUNE?cluster=devnet)
+- **Program Explorer**: [Solana Explorer](https://orbmarkets.io/address/J45uxvT26szuQcmxvs5NRgtAMornKM9Ga9WaQ58bKUNE?cluster=devnet)
 - **Hackathon**: [Solana Privacy Hack 2026](https://solana.com/privacyhack)
 
 ---

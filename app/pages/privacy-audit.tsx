@@ -418,7 +418,7 @@ export default function PrivacyAuditPage() {
                   <tr key={idx} className="border-b hover:bg-gray-50">
                     <td className="py-2 px-3 font-mono text-xs">
                       <a
-                        href={`https://explorer.solana.com/tx/${tx.signature}?cluster=devnet`}
+                        href={`https://orbmarkets.io/tx/${tx.signature}?cluster=devnet`}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-blue-600 hover:underline"
@@ -514,7 +514,7 @@ export default function PrivacyAuditPage() {
             </div>
             <div>
               <a
-                href={`https://explorer.solana.com/address/${BAGEL_PROGRAM_ID}?cluster=devnet`}
+                href={`https://orbmarkets.io/address/${BAGEL_PROGRAM_ID}?cluster=devnet`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-blue-600 hover:underline"

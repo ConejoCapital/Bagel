@@ -1,6 +1,6 @@
 # Comprehensive Privacy Layers Test Report
 
-**Test Date:** 1/27/2026, 3:00:40 PM  
+**Test Date:** 1/27/2026, 3:54:20 PM  
 **Status:** ✅ **ALL LAYERS VERIFIED**  
 **Network:** devnet
 
@@ -24,13 +24,13 @@ This test demonstrates **ALL privacy layers** in the Bagel payroll system, showi
 - **NO pubkeys in PDA seeds**
 
 **Verification:**
-- Business Entry PDA: `ACRYrcBmw1YYv8M9VAVZUhcumrZMNvT9PrSY4qbxuBB7`
-- Employee Entry PDA: `5xmiHGznnHYfpNP2fsHUPxjqYxf5s6o7LUjFFvwaAcTa`
+- Business Entry PDA: `9aGaFPKGHCvHTU5RxNckzvqJPDkN8mrqLYcauu7ArwMm`
+- Employee Entry PDA: `5u2uxkP2AqA9njWnyS4FzapokmqZU9gLkDK6R59swgRz`
 - ✅ Observers cannot derive relationships from addresses
 
 **Transactions:**
-- Register Business: [3eTNPvvomkbHS2MTgoCtHw3KTj4E25dKiac6ZgEcvAWSsJxnPmQMjMe7w4MvptUXXg1qJRvQiGkZSAjLbsrsyjU6](https://explorer.solana.com/tx/3eTNPvvomkbHS2MTgoCtHw3KTj4E25dKiac6ZgEcvAWSsJxnPmQMjMe7w4MvptUXXg1qJRvQiGkZSAjLbsrsyjU6?cluster=devnet)
-- Add Employee: [4a7Xtg7KkGxfW3egN89V6XXjpp5MQk1uCZZUnKuLGrapXHh4P32rPe1GhMpb5GdwHCYpasaXFJnBVLtWWen5Jmqj](https://explorer.solana.com/tx/4a7Xtg7KkGxfW3egN89V6XXjpp5MQk1uCZZUnKuLGrapXHh4P32rPe1GhMpb5GdwHCYpasaXFJnBVLtWWen5Jmqj?cluster=devnet)
+- Register Business: [2RfkMgazQUXqkBMcUhnAK7RooT7egPNEzC2YiUHX9Rt4GrjHTJjisN5mY2jbXRPfSNZ9tRu3pDg9DMR1PyrCXFqj](https://orbmarkets.io/tx/2RfkMgazQUXqkBMcUhnAK7RooT7egPNEzC2YiUHX9Rt4GrjHTJjisN5mY2jbXRPfSNZ9tRu3pDg9DMR1PyrCXFqj?cluster=devnet)
+- Add Employee: [4Hp2ih9Ba4H4UQERrtXZg15NTKZzw3pszcRqgqThxmLhRFz5d1dy5GZGBrRro2CBPqWvKXV5CPHQvJTrsaTSog2N](https://orbmarkets.io/tx/4Hp2ih9Ba4H4UQERrtXZg15NTKZzw3pszcRqgqThxmLhRFz5d1dy5GZGBrRro2CBPqWvKXV5CPHQvJTrsaTSog2N?cluster=devnet)
 
 ---
 
@@ -49,8 +49,8 @@ This test demonstrates **ALL privacy layers** in the Bagel payroll system, showi
 - ✅ Account data contains Euint128 handles (encrypted)
 
 **Transactions:**
-- Deposit: [4bSEkczrmKMWBJkUQMmDH5v82AhdQwGNHgQVZWBB9xBid4DW9RCCCCNjaexAtM9ZSxwsUkY7kNJgvyXNDrMrUrzx](https://explorer.solana.com/tx/4bSEkczrmKMWBJkUQMmDH5v82AhdQwGNHgQVZWBB9xBid4DW9RCCCCNjaexAtM9ZSxwsUkY7kNJgvyXNDrMrUrzx?cluster=devnet)
-- Withdrawal: [61tc3SS8jRfjDgSGKchghdhRTJEsd9QYv9uP3e3HUcfmeimGUhKs5Qpgonr6zMowC1F2qzQzRo7L15SQNETz3vfV](https://explorer.solana.com/tx/61tc3SS8jRfjDgSGKchghdhRTJEsd9QYv9uP3e3HUcfmeimGUhKs5Qpgonr6zMowC1F2qzQzRo7L15SQNETz3vfV?cluster=devnet)
+- Deposit: [2KoYynbixsD36FUUYagCkytsBhVPe1n4dh3iKKWeafXQWmgTVfoy6Dfky9ToU4AiRvdGx5GzDKcUaxCjHVZpbU5Q](https://orbmarkets.io/tx/2KoYynbixsD36FUUYagCkytsBhVPe1n4dh3iKKWeafXQWmgTVfoy6Dfky9ToU4AiRvdGx5GzDKcUaxCjHVZpbU5Q?cluster=devnet)
+- Withdrawal: [4jNzEYhKtNafGt3bb9WE38wULrMyU3HFpmJTRsN2AjhHhBSKX6FUz5vpigBGu8on27F1GHCyxqK4ttQkqMjiYnzU](https://orbmarkets.io/tx/4jNzEYhKtNafGt3bb9WE38wULrMyU3HFpmJTRsN2AjhHhBSKX6FUz5vpigBGu8on27F1GHCyxqK4ttQkqMjiYnzU?cluster=devnet)
 
 ---
 
@@ -64,10 +64,10 @@ This test demonstrates **ALL privacy layers** in the Bagel payroll system, showi
 - State committed back to L1 on withdrawal
 
 **Verification:**
-- ✅ Delegated to TEE: [38Q33b2Uk7MvUgRoBCySspeeaTN5VXpdf8LaJvUpwrWCQzKjKhBF7ZLoTa6qB2rFsdHFVbYLGW7b3CKDZrpiNgTh](https://explorer.solana.com/tx/38Q33b2Uk7MvUgRoBCySspeeaTN5VXpdf8LaJvUpwrWCQzKjKhBF7ZLoTa6qB2rFsdHFVbYLGW7b3CKDZrpiNgTh?cluster=devnet)
+- ✅ Delegated to TEE: [XAvpSwF41deMjBVssxJQjygKjbPW2fCuNMA2ShUpp9s1LUAtp8bL8PRpfoUhXqFqHKbVqm6pNYzsm7zAnPjTMER](https://orbmarkets.io/tx/XAvpSwF41deMjBVssxJQjygKjbPW2fCuNMA2ShUpp9s1LUAtp8bL8PRpfoUhXqFqHKbVqm6pNYzsm7zAnPjTMER?cluster=devnet)
 - ✅ State in trusted enclave (off-chain)
 - ✅ On-chain state unchanged during streaming
-- ✅ Committed from TEE: [NiGNzfJVahCLxgPZuyYKE2TNjFd3grDi4AB1PGMh8WTkvHrc8MFPwEkzZ6QjohjWoNF4raZeCZVpx8c2NLpsAQk](https://explorer.solana.com/tx/NiGNzfJVahCLxgPZuyYKE2TNjFd3grDi4AB1PGMh8WTkvHrc8MFPwEkzZ6QjohjWoNF4raZeCZVpx8c2NLpsAQk?cluster=devnet)
+- ✅ Committed from TEE: [3e1XpfdDSvVqakoQsBaBiG9QhiZMjP6ZYWBY5TLh4p6Dct6ZgqvzqPKGe4UAhXy7B5VPZXVtncm6HNMs1Fipt6N](https://orbmarkets.io/tx/3e1XpfdDSvVqakoQsBaBiG9QhiZMjP6ZYWBY5TLh4p6Dct6ZgqvzqPKGe4UAhXy7B5VPZXVtncm6HNMs1Fipt6N?cluster=devnet)
 
 ---
 
@@ -103,22 +103,22 @@ This test demonstrates **ALL privacy layers** in the Bagel payroll system, showi
 
 ```
 === HELIUS-VERIFIED PRIVACY REPORT ===
-Transaction: 4bSEkczrmKMWBJkUQMmDH5v82AhdQwGNHgQVZWBB9xBid4DW9RCCCCNjaexAtM9ZSxwsUkY7kNJgvyXNDrMrUrzx
-Explorer: https://explorer.solana.com/tx/4bSEkczrmKMWBJkUQMmDH5v82AhdQwGNHgQVZWBB9xBid4DW9RCCCCNjaexAtM9ZSxwsUkY7kNJgvyXNDrMrUrzx?cluster=devnet
+Transaction: 2KoYynbixsD36FUUYagCkytsBhVPe1n4dh3iKKWeafXQWmgTVfoy6Dfky9ToU4AiRvdGx5GzDKcUaxCjHVZpbU5Q
+Explorer: https://orbmarkets.io/tx/2KoYynbixsD36FUUYagCkytsBhVPe1n4dh3iKKWeafXQWmgTVfoy6Dfky9ToU4AiRvdGx5GzDKcUaxCjHVZpbU5Q?cluster=devnet
 
 --- INSTRUCTION DATA (CHAIN VIEW) ---
-Raw hex: 0736562b6d83033cdce838d3bd49ca42d6ac747e9586301fb550153d9dd0
+Raw hex: 0736562b6d83033cdce838d3bd49ca42d6ac747e9585a3ec11d1fbe5c357
 Length: 30 bytes
 Option tag (byte 8): 0xdc
 
 --- ACCOUNT DATA (CHAIN VIEW) ---
 Account: 4U5usGTemATaB5fNL9oFvpyK7p8PXZFqihCuErpyWs2V
-Raw hex (first 128 bytes): c0795673bd9d710166e711308d2cd50dd7b906a969bfb5ac52c45ebac5d8125d45c8fd4a7edffd4e8027001200000000b8020af25bce23b98de761d50244338f1c274c704fb884e6658f7e0abbad32b2330000000000000001ff864d54c46dae1349c914a11e151a4f084539ac62e5e8e4d15d81e9bb4f60f8af010000000000...
+Raw hex (first 128 bytes): c0795673bd9d710166e711308d2cd50dd7b906a969bfb5ac52c45ebac5d8125d45c8fd4a7edffd4e8027001200000000d5d3294fbaf57a8ee9a606d81bbdd9bc8302d88d342284a7f870171f79965503340000000000000001ff864d54c46dae1349c914a11e151a4f084539ac62e5e8e4d15d81e9bb4f60f8af010000000000...
 Total size: 154 bytes
 ✅ Account data present (encrypted fields are Euint128 handles)
 
-Account: ACRYrcBmw1YYv8M9VAVZUhcumrZMNvT9PrSY4qbxuBB7
-Raw hex (first 128 bytes): 40fb55725a2e1cb533834bcb21c9bb048d70b2ea1115c1c8e21d7570d7cf39dc93a7b90f291d50863200000000000000dd0ebe9e518909c701621de375064309335fe6831daf0d82fe2ccc2ae7d2711a945ffe0fdafb48f3150f0e67308475c0010000000000000001fe00000000000000000000000000000000000000000000...
+Account: 9aGaFPKGHCvHTU5RxNckzvqJPDkN8mrqLYcauu7ArwMm
+Raw hex (first 128 bytes): 40fb55725a2e1cb533834bcb21c9bb048d70b2ea1115c1c8e21d7570d7cf39dc93a7b90f291d50863300000000000000dd0ebe9e518909c701621de37506430908c1bf38bacf0e11d47bfdf16c17ad55945ffe0fdafb48f3150f0e67308475c0010000000000000001fe00000000000000000000000000000000000000000000...
 Total size: 138 bytes
 ✅ Account data present (encrypted fields are Euint128 handles)
 
@@ -138,28 +138,28 @@ AUTHORIZED VIEW: Only authorized parties can decrypt
 
 ```
 === HELIUS-VERIFIED PRIVACY REPORT ===
-Transaction: 61tc3SS8jRfjDgSGKchghdhRTJEsd9QYv9uP3e3HUcfmeimGUhKs5Qpgonr6zMowC1F2qzQzRo7L15SQNETz3vfV
-Explorer: https://explorer.solana.com/tx/61tc3SS8jRfjDgSGKchghdhRTJEsd9QYv9uP3e3HUcfmeimGUhKs5Qpgonr6zMowC1F2qzQzRo7L15SQNETz3vfV?cluster=devnet
+Transaction: 4jNzEYhKtNafGt3bb9WE38wULrMyU3HFpmJTRsN2AjhHhBSKX6FUz5vpigBGu8on27F1GHCyxqK4ttQkqMjiYnzU
+Explorer: https://orbmarkets.io/tx/4jNzEYhKtNafGt3bb9WE38wULrMyU3HFpmJTRsN2AjhHhBSKX6FUz5vpigBGu8on27F1GHCyxqK4ttQkqMjiYnzU?cluster=devnet
 
 --- INSTRUCTION DATA (CHAIN VIEW) ---
-Raw hex: b0cbaad49a67862301d8d7dc0dae4a6108b55a3f5e9aa804aedf6a1fa15f
+Raw hex: b0cbaad49a67862301d8d7dc0dae4a6108b55a3f5e9178698c1afacec9c3
 Length: 30 bytes
 Option tag (byte 8): 0x1
 ⚠️  Option::Some - plaintext amount present (SOL fallback mode)
 
 --- ACCOUNT DATA (CHAIN VIEW) ---
 Account: 4U5usGTemATaB5fNL9oFvpyK7p8PXZFqihCuErpyWs2V
-Raw hex (first 128 bytes): c0795673bd9d710166e711308d2cd50dd7b906a969bfb5ac52c45ebac5d8125d45c8fd4a7edffd4e8027001200000000b8020af25bce23b98de761d50244338f1c274c704fb884e6658f7e0abbad32b2330000000000000001ff864d54c46dae1349c914a11e151a4f084539ac62e5e8e4d15d81e9bb4f60f8af010000000000...
+Raw hex (first 128 bytes): c0795673bd9d710166e711308d2cd50dd7b906a969bfb5ac52c45ebac5d8125d45c8fd4a7edffd4e8027001200000000d5d3294fbaf57a8ee9a606d81bbdd9bc8302d88d342284a7f870171f79965503340000000000000001ff864d54c46dae1349c914a11e151a4f084539ac62e5e8e4d15d81e9bb4f60f8af010000000000...
 Total size: 154 bytes
 ✅ Account data present (encrypted fields are Euint128 handles)
 
-Account: ACRYrcBmw1YYv8M9VAVZUhcumrZMNvT9PrSY4qbxuBB7
-Raw hex (first 128 bytes): 40fb55725a2e1cb533834bcb21c9bb048d70b2ea1115c1c8e21d7570d7cf39dc93a7b90f291d50863200000000000000dd0ebe9e518909c701621de375064309335fe6831daf0d82fe2ccc2ae7d2711a945ffe0fdafb48f3150f0e67308475c0010000000000000001fe00000000000000000000000000000000000000000000...
+Account: 9aGaFPKGHCvHTU5RxNckzvqJPDkN8mrqLYcauu7ArwMm
+Raw hex (first 128 bytes): 40fb55725a2e1cb533834bcb21c9bb048d70b2ea1115c1c8e21d7570d7cf39dc93a7b90f291d50863300000000000000dd0ebe9e518909c701621de37506430908c1bf38bacf0e11d47bfdf16c17ad55945ffe0fdafb48f3150f0e67308475c0010000000000000001fe00000000000000000000000000000000000000000000...
 Total size: 138 bytes
 ✅ Account data present (encrypted fields are Euint128 handles)
 
-Account: 5xmiHGznnHYfpNP2fsHUPxjqYxf5s6o7LUjFFvwaAcTa
-Raw hex (first 128 bytes): 885a35ad84314ad488a654427113bd87ac6a6d228392c47711165ee96dcf79b9588ec8c86ca28c020000000000000000fc28416c1e4a4cfdd6870ceb55973a73c00afbe7e98309eb43917ce67e40d6fee02a3247192ac6faa6c0dd5fa5e716ea631979690000000001fe00000000000000000000000000000000000000000000...
+Account: 5u2uxkP2AqA9njWnyS4FzapokmqZU9gLkDK6R59swgRz
+Raw hex (first 128 bytes): 885a35ad84314ad47f634555294de85100fa89c863c3270b943ce606ed0b4f145bfe54083636cd440000000000000000cd03bbbbf6866fa1eae9356c1fcebb4e9c313851b14844aa815e5d2fab0755639bf7899dba4ac7e4a3f493953bce010df82579690000000001ff00000000000000000000000000000000000000000000...
 Total size: 138 bytes
 ✅ Account data present (encrypted fields are Euint128 handles)
 
@@ -188,13 +188,13 @@ AUTHORIZED VIEW: Only authorized parties can decrypt
 ## Account Addresses
 
 - **Master Vault:** `4U5usGTemATaB5fNL9oFvpyK7p8PXZFqihCuErpyWs2V`  
-  Explorer: https://explorer.solana.com/address/4U5usGTemATaB5fNL9oFvpyK7p8PXZFqihCuErpyWs2V?cluster=devnet
+  Explorer: https://orbmarkets.io/address/4U5usGTemATaB5fNL9oFvpyK7p8PXZFqihCuErpyWs2V?cluster=devnet
 
-- **Business Entry:** `ACRYrcBmw1YYv8M9VAVZUhcumrZMNvT9PrSY4qbxuBB7`  
-  Explorer: https://explorer.solana.com/address/ACRYrcBmw1YYv8M9VAVZUhcumrZMNvT9PrSY4qbxuBB7?cluster=devnet
+- **Business Entry:** `9aGaFPKGHCvHTU5RxNckzvqJPDkN8mrqLYcauu7ArwMm`  
+  Explorer: https://orbmarkets.io/address/9aGaFPKGHCvHTU5RxNckzvqJPDkN8mrqLYcauu7ArwMm?cluster=devnet
 
-- **Employee Entry:** `5xmiHGznnHYfpNP2fsHUPxjqYxf5s6o7LUjFFvwaAcTa`  
-  Explorer: https://explorer.solana.com/address/5xmiHGznnHYfpNP2fsHUPxjqYxf5s6o7LUjFFvwaAcTa?cluster=devnet
+- **Employee Entry:** `5u2uxkP2AqA9njWnyS4FzapokmqZU9gLkDK6R59swgRz`  
+  Explorer: https://orbmarkets.io/address/5u2uxkP2AqA9njWnyS4FzapokmqZU9gLkDK6R59swgRz?cluster=devnet
 
 ---
 
@@ -228,5 +228,5 @@ AUTHORIZED VIEW: Only authorized parties can decrypt
 
 ---
 
-**Report Generated:** 2026-01-27T20:00:40.203Z  
+**Report Generated:** 2026-01-27T20:54:20.939Z  
 **Test Script:** test-privacy-layers-comprehensive.ts

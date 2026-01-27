@@ -445,7 +445,7 @@ export default function EmployerDashboard() {
                     </div>
 
                     <a
-                      href={`https://explorer.solana.com/tx/${txid}?cluster=devnet`}
+                      href={`https://orbmarkets.io/tx/${txid}?cluster=devnet`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="inline-block bg-[#FF6B35] hover:bg-[#E55A24] text-white font-bold py-3 px-6 rounded-lg transition-all duration-300"
@@ -538,7 +538,7 @@ export default function EmployerDashboard() {
                     <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
                       <p className="text-green-800 font-medium mb-2">✅ Deposit successful!</p>
                       <a
-                        href={`https://explorer.solana.com/tx/${depositTxid}?cluster=devnet`}
+                        href={`https://orbmarkets.io/tx/${depositTxid}?cluster=devnet`}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-green-700 hover:text-green-900 text-sm font-medium"
