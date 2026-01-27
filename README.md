@@ -190,8 +190,6 @@ anchor build
 # Run the comprehensive privacy layers test (all 8 phases)
 npm run test-privacy-layers
 
-# Run the confidential token test (encrypted transfers)
-npm run test-confidential-e2e
 ```
 
 ### Run Frontend
@@ -353,7 +351,7 @@ Bagel/
 │
 ├── docs/                        # Architecture documentation
 ├── tests/                       # E2E test files
-├── test-privacy-layers-comprehensive.ts  # Comprehensive privacy test
+│   └── test-privacy-layers-comprehensive.ts  # Comprehensive privacy test
 └── scripts/                     # Deployment scripts
 ```
 

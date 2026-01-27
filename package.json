@@ -21,8 +21,7 @@
     "test": "anchor test",
     "lint": "cd app && npm run lint",
     "deploy": "anchor deploy",
-    "test-confidential-e2e": "ts-node test-confidential-payroll-e2e.ts",
-    "test-privacy-layers": "ts-node test-privacy-layers-comprehensive.ts"
+    "test-privacy-layers": "ts-node tests/test-privacy-layers-comprehensive.ts"
   },
   "dependencies": {
     "@coral-xyz/anchor": "^0.32.1",
