@@ -222,80 +222,57 @@ pub mod bagel {
     ///
     /// Funds go to the single master vault. Business allocation
     /// is tracked via encrypted balance in BusinessEntry.
+    ///
+    /// PRIVACY: Only encrypted_amount is used - no plaintext amount parameter
     pub fn deposit(
         ctx: Context<Deposit>,
-        amount: u64,
         encrypted_amount: Vec<u8>,
     ) -> Result<()> {
-        require!(amount > 0, BagelError::InvalidAmount);
         require!(!encrypted_amount.is_empty(), BagelError::InvalidCiphertext);
 
         let vault = &mut ctx.accounts.master_vault;
         let entry = &mut ctx.accounts.business_entry;
 
-        // PRIVACY: Transfer funds (SOL or Confidential Token)
-        // When vault.use_confidential_tokens is true, use inco_token::transfer() for encrypted transfers
-        if vault.use_confidential_tokens && vault.confidential_mint != Pubkey::default() {
-            // Use Inco Confidential Token transfer with encrypted amount
-            msg!("🔒 Using confidential token transfer (encrypted amount)");
-            msg!("   Confidential mint: {}", vault.confidential_mint);
-            
-            // Verify token accounts are provided
-            require!(
-                ctx.accounts.depositor_token_account.is_some() 
-                    && ctx.accounts.master_vault_token_account.is_some(),
-                BagelError::InvalidState
-            );
-            require!(
-                ctx.accounts.inco_token_program.is_some(),
-                BagelError::InvalidState
-            );
+        // PRIVACY: Only confidential token transfers are allowed
+        // This ensures amount is NEVER visible on-chain
+        require!(
+            vault.use_confidential_tokens && vault.confidential_mint != Pubkey::default(),
+            BagelError::InvalidState
+        );
 
-            let depositor_token = ctx.accounts.depositor_token_account.as_ref().unwrap();
-            let vault_token = ctx.accounts.master_vault_token_account.as_ref().unwrap();
-            let inco_token_program = ctx.accounts.inco_token_program.as_ref().unwrap();
+        // Verify token accounts are provided
+        require!(
+            ctx.accounts.depositor_token_account.is_some()
+                && ctx.accounts.master_vault_token_account.is_some(),
+            BagelError::InvalidState
+        );
+        require!(
+            ctx.accounts.inco_token_program.is_some(),
+            BagelError::InvalidState
+        );
 
-            // Build CPI context for confidential token transfer
-            // Note: Authority must be writable for Inco token transfer
-            let depositor_info = ctx.accounts.depositor.to_account_info();
-            // Ensure depositor is marked as writable (it should be from Deposit struct)
-            let cpi_accounts = IncoTransfer {
-                source: depositor_token.to_account_info(),
-                destination: vault_token.to_account_info(),
-                authority: depositor_info,
-                inco_lightning_program: ctx.accounts.inco_lightning_program.to_account_info(),
-                system_program: ctx.accounts.system_program.to_account_info(),
-            };
-            let cpi_ctx = CpiContext::new(
-                inco_token_program.to_account_info(),
-                cpi_accounts,
-            );
+        let depositor_token = ctx.accounts.depositor_token_account.as_ref().unwrap();
+        let vault_token = ctx.accounts.master_vault_token_account.as_ref().unwrap();
+        let inco_token_program = ctx.accounts.inco_token_program.as_ref().unwrap();
 
-            // Transfer with encrypted amount (input_type = 0 for hex-encoded ciphertext)
-            transfer(cpi_ctx, encrypted_amount.clone(), 0)?;
+        // Build CPI context for confidential token transfer
+        let depositor_info = ctx.accounts.depositor.to_account_info();
+        let cpi_accounts = IncoTransfer {
+            source: depositor_token.to_account_info(),
+            destination: vault_token.to_account_info(),
+            authority: depositor_info,
+            inco_lightning_program: ctx.accounts.inco_lightning_program.to_account_info(),
+            system_program: ctx.accounts.system_program.to_account_info(),
+        };
+        let cpi_ctx = CpiContext::new(
+            inco_token_program.to_account_info(),
+            cpi_accounts,
+        );
 
-            msg!("✅ Confidential token transfer completed");
-            // Note: For confidential tokens, we don't update vault.total_balance
-            // because the balance is encrypted and stored in the token account
-        } else {
-            // Transfer SOL to master vault (fallback when confidential tokens not enabled)
-            let transfer_ix = anchor_lang::solana_program::system_instruction::transfer(
-                &ctx.accounts.depositor.key(),
-                &vault.key(),
-                amount,
-            );
-            
-            anchor_lang::solana_program::program::invoke(
-                &transfer_ix,
-                &[
-                    ctx.accounts.depositor.to_account_info(),
-                    vault.to_account_info(),
-                    ctx.accounts.system_program.to_account_info(),
-                ],
-            )?;
+        // Transfer with encrypted amount (input_type = 0 for hex-encoded ciphertext)
+        transfer(cpi_ctx, encrypted_amount.clone(), 0)?;
 
-            vault.total_balance = vault.total_balance.checked_add(amount).ok_or(BagelError::Overflow)?;
-        }
+        msg!("✅ Confidential deposit completed");
 
         // Update business encrypted balance via homomorphic addition
         let cpi_accounts1 = Operation {
@@ -321,10 +298,9 @@ pub mod bagel {
             0,
         )?;
 
-        msg!("💰 Deposit received");
+        msg!("💰 Deposit received (PRIVATE)");
         msg!("   Entry: {}", entry.entry_index);
-        msg!("   Business balance: ENCRYPTED (updated)");
-        // NOTE: Amount intentionally NOT logged
+        msg!("   Amount: ENCRYPTED");
 
         emit!(FundsDeposited {
             entry_index: entry.entry_index,
@@ -465,91 +441,68 @@ pub mod bagel {
     ///
     /// Employee signs to prove they own the wallet. Program verifies
     /// against encrypted_employee_id. Amount comes from encrypted_accrued.
+    ///
+    /// PRIVACY: Only encrypted_amount is used - no plaintext amount parameter
     pub fn request_withdrawal(
         ctx: Context<RequestWithdrawal>,
-        amount: u64,
         encrypted_amount: Vec<u8>,
         use_shadowwire: bool, // Optional ZK amount hiding (simulated on devnet)
     ) -> Result<()> {
-        require!(amount > 0, BagelError::NoAccruedDough);
+        require!(!encrypted_amount.is_empty(), BagelError::InvalidCiphertext);
 
         let vault = &mut ctx.accounts.master_vault;
         let employee = &mut ctx.accounts.employee_entry;
         let clock = Clock::get()?;
 
         require!(employee.is_active, BagelError::PayrollInactive);
-        
+
         let time_elapsed = clock.unix_timestamp
             .checked_sub(employee.last_action)
             .ok_or(BagelError::InvalidTimestamp)?;
         require!(time_elapsed >= MIN_WITHDRAW_INTERVAL, BagelError::WithdrawTooSoon);
 
-        // PRIVACY: Transfer funds (SOL or Confidential Token)
-        // When vault.use_confidential_tokens is true, use inco_token::transfer() for encrypted transfers
-        if vault.use_confidential_tokens && vault.confidential_mint != Pubkey::default() {
-            // For confidential tokens, we can't check balance (it's encrypted)
-            // The Inco token program will handle balance validation
-            // Skip SOL balance checks when using confidential tokens
-            // Use Inco Confidential Token transfer with encrypted amount
-            msg!("🔒 Using confidential token transfer (encrypted amount)");
-            msg!("   Confidential mint: {}", vault.confidential_mint);
-            
-            // Verify token accounts are provided
-            require!(
-                ctx.accounts.master_vault_token_account.is_some() 
-                    && ctx.accounts.employee_token_account.is_some(),
-                BagelError::InvalidState
-            );
-            require!(
-                ctx.accounts.inco_token_program.is_some(),
-                BagelError::InvalidState
-            );
+        // PRIVACY: Only confidential token transfers are allowed
+        // This ensures amount is NEVER visible on-chain
+        require!(
+            vault.use_confidential_tokens && vault.confidential_mint != Pubkey::default(),
+            BagelError::InvalidState
+        );
 
-            let vault_token = ctx.accounts.master_vault_token_account.as_ref().unwrap();
-            let employee_token = ctx.accounts.employee_token_account.as_ref().unwrap();
-            let inco_token_program = ctx.accounts.inco_token_program.as_ref().unwrap();
+        // Verify token accounts are provided
+        require!(
+            ctx.accounts.master_vault_token_account.is_some()
+                && ctx.accounts.employee_token_account.is_some(),
+            BagelError::InvalidState
+        );
+        require!(
+            ctx.accounts.inco_token_program.is_some(),
+            BagelError::InvalidState
+        );
 
-            // Build CPI context for confidential token transfer
-            // Note: Authority is the master vault PDA (signed via seeds)
-            let bump = vault.bump;
-            let seeds: &[&[&[u8]]] = &[&[MASTER_VAULT_SEED, &[bump]]];
-            let cpi_accounts = IncoTransfer {
-                source: vault_token.to_account_info(),
-                destination: employee_token.to_account_info(),
-                authority: vault.to_account_info(),
-                inco_lightning_program: ctx.accounts.inco_lightning_program.to_account_info(),
-                system_program: ctx.accounts.system_program.to_account_info(),
-            };
-            let cpi_ctx = CpiContext::new_with_signer(
-                inco_token_program.to_account_info(),
-                cpi_accounts,
-                seeds,
-            );
+        let vault_token = ctx.accounts.master_vault_token_account.as_ref().unwrap();
+        let employee_token = ctx.accounts.employee_token_account.as_ref().unwrap();
+        let inco_token_program = ctx.accounts.inco_token_program.as_ref().unwrap();
 
-            // Transfer with encrypted amount (input_type = 0 for hex-encoded ciphertext)
-            transfer(cpi_ctx, encrypted_amount.clone(), 0)?;
+        // Build CPI context for confidential token transfer
+        let bump = vault.bump;
+        let seeds: &[&[&[u8]]] = &[&[MASTER_VAULT_SEED, &[bump]]];
+        let cpi_accounts = IncoTransfer {
+            source: vault_token.to_account_info(),
+            destination: employee_token.to_account_info(),
+            authority: vault.to_account_info(),
+            inco_lightning_program: ctx.accounts.inco_lightning_program.to_account_info(),
+            system_program: ctx.accounts.system_program.to_account_info(),
+        };
+        let cpi_ctx = CpiContext::new_with_signer(
+            inco_token_program.to_account_info(),
+            cpi_accounts,
+            seeds,
+        );
 
-            msg!("✅ Confidential token withdrawal completed");
-        } else {
-            // For SOL transfers, check balance and rent-exempt minimum
-            require!(amount <= vault.total_balance, BagelError::InsufficientFunds);
-            
-            // Check rent-exempt minimum
-            let rent = anchor_lang::prelude::Rent::get()?;
-            let min_lamports = rent.minimum_balance(vault.to_account_info().data_len());
-            let vault_lamports = vault.to_account_info().lamports();
-            require!(
-                vault_lamports.saturating_sub(amount) >= min_lamports,
-                BagelError::InsufficientFunds
-            );
-            
-            // Update vault balance tracking (for SOL mode)
-            vault.total_balance = vault.total_balance.checked_sub(amount).ok_or(BagelError::Underflow)?;
-            
-            // Transfer SOL using sub_lamports/add_lamports pattern (fallback when confidential tokens not enabled)
-            vault.sub_lamports(amount)?;
-            ctx.accounts.withdrawer.add_lamports(amount)?;
-        }
+        // Transfer with encrypted amount (input_type = 0 for hex-encoded ciphertext)
+        transfer(cpi_ctx, encrypted_amount.clone(), 0)?;
+
+        msg!("✅ Confidential withdrawal completed");
 
         // Update encrypted accrued balance via Inco Lightning CPI
         let cpi_accounts = Operation {
@@ -577,22 +530,18 @@ pub mod bagel {
 
         employee.last_action = clock.unix_timestamp;
 
-        if use_shadowwire {
-            msg!("💸 Withdrawal processed (ShadowWire SIMULATED)");
-            msg!("   On mainnet, amount would be hidden via ZK proof");
-        } else {
-            msg!("💸 Withdrawal processed");
-        }
-        msg!("   Business Entry: {}", ctx.accounts.business_entry.entry_index);
+        msg!("💸 Withdrawal processed (PRIVATE)");
         msg!("   Employee Index: {}", employee.employee_index);
-        // NOTE: Amount intentionally NOT logged
+        msg!("   Amount: ENCRYPTED");
+        if use_shadowwire {
+            msg!("   ShadowWire: ENABLED");
+        }
 
         emit!(WithdrawalProcessed {
             business_index: ctx.accounts.business_entry.entry_index,
             employee_index: employee.employee_index,
             timestamp: clock.unix_timestamp,
             shadowwire_enabled: use_shadowwire,
-            // Amount NOT included for privacy
         });
 
         Ok(())
@@ -876,7 +825,7 @@ pub struct RegisterBusiness<'info> {
 }
 
 #[derive(Accounts)]
-#[instruction(amount: u64, encrypted_amount: Vec<u8>)]
+#[instruction(encrypted_amount: Vec<u8>)]
 pub struct Deposit<'info> {
     #[account(mut)]
     pub depositor: Signer<'info>,
@@ -977,7 +926,7 @@ pub struct AddEmployee<'info> {
 }
 
 #[derive(Accounts)]
-#[instruction(amount: u64, encrypted_amount: Vec<u8>, use_shadowwire: bool)]
+#[instruction(encrypted_amount: Vec<u8>, use_shadowwire: bool)]
 pub struct RequestWithdrawal<'info> {
     #[account(mut)]
     pub withdrawer: Signer<'info>,

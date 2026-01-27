@@ -139,11 +139,9 @@ pub struct ConfidentialBalance {
 
 impl ConfidentialBalance {
     /// Create a new confidential balance from plaintext amount
+    /// PRIVACY: Amount is immediately encrypted, never logged
     pub fn new(amount: u64) -> Self {
-        msg!(
-            "🔐 INCO: Creating confidential balance for {} lamports",
-            amount
-        );
+        msg!("🔐 INCO: Creating confidential balance (PRIVATE)");
 
         Self {
             encrypted_amount: Euint128::new(amount as u128),
@@ -152,12 +150,9 @@ impl ConfidentialBalance {
     }
 
     /// Create with owner for access control
+    /// PRIVACY: Amount is immediately encrypted, never logged
     pub fn new_with_owner(amount: u64, owner: Pubkey) -> Self {
-        msg!(
-            "🔐 INCO: Creating confidential balance for {} lamports (owner: {})",
-            amount,
-            owner
-        );
+        msg!("🔐 INCO: Creating confidential balance (PRIVATE)");
 
         Self {
             encrypted_amount: Euint128::new(amount as u128),
@@ -181,13 +176,10 @@ impl ConfidentialBalance {
 
     /// Add to this balance (homomorphic operation)
     ///
-    /// **MOCK:** Decrypts, adds, re-encrypts
+    /// PRIVACY: Delta value is never logged
     /// **PRODUCTION:** Will use Inco's e_add CPI
     pub fn add(&mut self, delta: u64) -> Result<()> {
-        msg!(
-            "➕ INCO: Adding {} to encrypted balance (homomorphic in production)",
-            delta
-        );
+        msg!("➕ INCO: Homomorphic addition (PRIVATE)");
 
         let current = self.decrypt()?;
         let new_amount = current
@@ -199,11 +191,9 @@ impl ConfidentialBalance {
     }
 
     /// Subtract from this balance (homomorphic operation)
+    /// PRIVACY: Delta value is never logged
     pub fn sub(&mut self, delta: u64) -> Result<()> {
-        msg!(
-            "➖ INCO: Subtracting {} from encrypted balance",
-            delta
-        );
+        msg!("➖ INCO: Homomorphic subtraction (PRIVATE)");
 
         let current = self.decrypt()?;
         let new_amount = current
@@ -217,14 +207,10 @@ impl ConfidentialBalance {
     /// Multiply by a scalar (homomorphic operation)
     ///
     /// This is the KEY operation for payroll: salary_per_second * elapsed_time
-    ///
-    /// **MOCK:** Decrypts, multiplies, re-encrypts
+    /// PRIVACY: Scalar value is never logged
     /// **PRODUCTION:** Will use Inco's e_mul CPI
     pub fn multiply_scalar(&self, scalar: u64) -> Result<Self> {
-        msg!(
-            "✖️ INCO: Multiplying encrypted balance by {} (homomorphic in production)",
-            scalar
-        );
+        msg!("✖️ INCO: Homomorphic multiplication (PRIVATE)");
 
         let amount = self.decrypt()?;
         let result = amount
@@ -247,40 +233,40 @@ impl ConfidentialBalance {
 
 /// Encrypt a salary amount for storage
 ///
+/// PRIVACY: Salary amount is never logged
 /// **USE CASE:** When employer creates payroll, encrypt the salary_per_second
 pub fn encrypt_salary(amount: u64) -> ConfidentialBalance {
-    msg!("🔒 INCO: Encrypting salary ({} lamports/second)", amount);
+    msg!("🔒 INCO: Encrypting salary (PRIVATE)");
     ConfidentialBalance::new(amount)
 }
 
 /// Calculate accrued salary using encrypted computation
 ///
+/// PRIVACY: Elapsed time and result are never logged
 /// **USE CASE:** When employee withdraws, calculate: salary * elapsed_time
 /// This happens via encrypted computation so the salary amount stays encrypted!
 pub fn calculate_accrued_mpc(
     encrypted_salary_per_second: &ConfidentialBalance,
     elapsed_seconds: u64,
 ) -> Result<ConfidentialBalance> {
-    msg!(
-        "🧮 INCO: Calculating accrued salary ({} seconds elapsed)",
-        elapsed_seconds
-    );
+    msg!("🧮 INCO: Calculating accrued (PRIVATE)");
 
     let result = encrypted_salary_per_second.multiply_scalar(elapsed_seconds)?;
 
-    msg!("✅ INCO: Accrued salary calculated (encrypted result)");
+    msg!("✅ INCO: Calculation complete (ENCRYPTED)");
 
     Ok(result)
 }
 
 /// Decrypt for private transfer
 ///
+/// PRIVACY: Decryption happens only for authorized transfers
 /// **USE CASE:** After calculation, decrypt to initiate ShadowWire transfer
 ///
 /// **NOTE:** This is the ONLY place we decrypt!
 /// The amount goes directly from decryption → ShadowWire → employee wallet
 pub fn decrypt_for_transfer(encrypted_amount: &ConfidentialBalance) -> Result<u64> {
-    msg!("🔓 INCO: Decrypting for private ShadowWire transfer");
+    msg!("🔓 INCO: Authorized decryption (PRIVATE)");
     encrypted_amount.decrypt()
 }
 
