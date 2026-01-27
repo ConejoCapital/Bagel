@@ -20,7 +20,9 @@
     "build": "anchor build && cd app && npm run build",
     "test": "anchor test",
     "lint": "cd app && npm run lint",
-    "deploy": "anchor deploy"
+    "deploy": "anchor deploy",
+    "test-confidential-e2e": "ts-node test-confidential-payroll-e2e.ts",
+    "test-privacy-layers": "ts-node test-privacy-layers-comprehensive.ts"
   },
   "dependencies": {
     "@coral-xyz/anchor": "^0.32.1",
@@ -32,7 +34,8 @@
     "@solana/web3.js": "^1.98.4"
   },
   "devDependencies": {
-    "@types/node": "^20.0.0",
+    "@types/node": "^20.19.30",
+    "ts-node": "^10.9.2",
     "typescript": "^5.3.3"
   }
 }

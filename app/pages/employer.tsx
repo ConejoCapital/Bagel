@@ -470,9 +470,9 @@ export default function EmployerDashboard() {
                         ✅ What Just Happened (REAL):
                       </p>
                       <ul className="text-xs space-y-1 text-green-800">
-                        <li>✅ BusinessEntry PDA created on Solana devnet</li>
-                        <li>✅ EmployeeEntry PDA created on Solana devnet</li>
-                        <li>✅ Encrypted employer & employee IDs stored on-chain</li>
+                        <li>✅ PayrollJar PDA created on Solana devnet</li>
+                        <li>✅ bake_payroll instruction executed successfully</li>
+                        <li>✅ Employer & employee addresses stored on-chain</li>
                         <li>✅ Initial state written to blockchain</li>
                         <li>✅ 100% verifiable on Solana Explorer</li>
                       </ul>

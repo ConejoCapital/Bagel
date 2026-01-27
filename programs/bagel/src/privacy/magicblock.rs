@@ -78,73 +78,28 @@ impl ERConfig {
 
 /// Delegate EmployeeEntry to MagicBlock Ephemeral Rollup
 /// 
-/// This moves the EmployeeEntry account to the ER for real-time streaming.
-/// 
-/// **CURRENT:** Mock implementation
-/// **PRODUCTION:** Will use ephemeral-rollups-sdk
-/// 
-/// ```ignore
-/// use ephemeral_rollups_sdk::prelude::*;
-/// 
-/// delegate_account(
-///     ctx,
-///     &payroll_jar,
-///     &er_config,
-/// )?;
-/// ```
-/// Delegate EmployeeEntry to MagicBlock Ephemeral Rollup
-/// 
-/// **NOTE:** This is a helper function. The actual delegation is handled
+/// **NOTE:** This helper function is deprecated. The actual delegation is handled
 /// by the ephemeral-rollups-sdk via the #[delegate] macro in lib.rs.
-/// This function provides configuration utilities.
+/// 
+/// The `delegate_to_tee()` instruction uses the #[delegate] macro which
+/// automatically handles delegation via account constraints.
+/// 
+/// This function is kept for reference but is no longer called.
+/// 
+/// **DEPRECATED:** Use `delegate_to_tee()` instruction instead, which uses the #[delegate] macro.
 pub fn delegate_employee_entry(
     _ctx: &Context<DelegateEmployeeEntry>,
     er_config: ERConfig,
 ) -> Result<()> {
     use crate::constants::program_ids::MAGICBLOCK_PROGRAM_ID;
     
-    msg!("⚡ Delegating EmployeeEntry to MagicBlock Ephemeral Rollup");
+    msg!("⚠️  delegate_employee_entry() helper is deprecated");
+    msg!("   Use delegate_to_tee() instruction with #[delegate] macro instead");
     msg!("   Program: {}", MAGICBLOCK_PROGRAM_ID);
     msg!("   Validator: {}", er_config.validator);
-    msg!("   Lifetime: {} seconds", er_config.lifetime);
-    msg!("   Sync Frequency: {} seconds", er_config.sync_frequency);
     
-    // REAL MAGICBLOCK CPI: Using ephemeral-rollups-sdk v0.7.2
-    // Devnet Endpoint: https://devnet.magicblock.app/
-    // Program ID: DELeGGvXpWV2fqJUhqcF5ZSYMS4JTLjteaAMARRSaeSh
-    // 
-    // NOTE: The SDK provides delegate/undelegate functions, but exact CPI structure
-    // depends on the SDK version. For now, we log the delegation intent.
-    // Full implementation requires account context from instruction.
-    // 
-    // Real CPI structure (when accounts are available in instruction):
-    // use ephemeral_rollups_sdk::instruction::delegate;
-    // use ephemeral_rollups_sdk::prelude::*;
-    // 
-    // let magicblock_program = Pubkey::try_from(MAGICBLOCK_PROGRAM_ID)?;
-    // 
-    // // Delegate EmployeeEntry to MagicBlock ER for real-time streaming
-    // let delegate_ix = delegate(
-    //     magicblock_program,
-    //     ctx.accounts.employee_entry.key(),
-    //     er_config.validator,
-    //     er_config.lifetime,
-    //     er_config.sync_frequency,
-    // )?;
-    // 
-    // anchor_lang::solana_program::program::invoke(
-    //     &delegate_ix,
-    //     &[
-    //         ctx.accounts.payroll_jar.to_account_info(),
-    //         ctx.accounts.delegation_program.to_account_info(),
-    //         ctx.accounts.employer.to_account_info(),
-    //     ],
-    // )?;
-    
-    msg!("✅ EmployeeEntry delegation configured for MagicBlock ER");
-    msg!("   Program ID: {} (active)", MAGICBLOCK_PROGRAM_ID);
-    msg!("   NOTE: Full CPI requires account context in instruction");
-    msg!("   SDK v0.7.2 ready for integration");
+    // This function is no longer used - delegation is handled by #[delegate] macro
+    // in delegate_to_tee() instruction via account constraints
     
     Ok(())
 }
@@ -217,19 +172,31 @@ pub fn commit_and_undelegate(
 /// by the ephemeral-rollups-sdk via the #[delegate] macro in lib.rs.
 /// 
 /// **PRODUCTION:** Will query ER RPC endpoint for real-time balance
+/// 
+/// **PRIVACY:** Balance is still encrypted (Euint128) - this function would
+/// query the TEE and return the encrypted handle, not the decrypted value.
+/// Decryption requires authorization and should be done client-side.
 pub fn get_er_balance(
     _employee_entry_key: Pubkey,
 ) -> Result<u64> {
-    // TODO: Query ER RPC for real-time balance
+    // NOTE: TEE balance query is implemented client-side in app/lib/magicblock.ts
+    // This Rust function is a placeholder for program-side queries if needed
     // 
-    // let er_rpc = "https://devnet.magicblock.app/";
-    // let balance = query_er_account(er_rpc, employee_entry_key)?;
+    // The actual balance is encrypted in EmployeeEntry.encrypted_accrued
+    // Client-side implementation uses TEE RPC with auth token to query balance
     // 
-    // return balance;
+    // For program-side usage, we would need to:
+    // 1. Make CPI to TEE RPC (not directly supported in Solana programs)
+    // 2. Or return the encrypted handle from EmployeeEntry.encrypted_accrued
+    // 
+    // Since TEE queries require auth tokens and are best done client-side,
+    // this function remains a placeholder. The real implementation is in the frontend.
     
-    // Note: Actual balance is encrypted in EmployeeEntry.encrypted_accrued
-    // This function would query the ER and return the decrypted value
-    Ok(0) // Placeholder - actual balance is encrypted
+    msg!("⚠️  TEE balance query should be done client-side with auth token");
+    msg!("   Use app/lib/magicblock.ts getStreamBalance() for real-time balance");
+    
+    // Return 0 as placeholder - actual balance is encrypted and queried client-side
+    Ok(0)
 }
 
 /// Accounts for delegating EmployeeEntry to ER

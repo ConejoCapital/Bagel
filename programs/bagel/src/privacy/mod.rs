@@ -68,7 +68,8 @@ pub use inco::{encrypt_salary, decrypt_for_transfer, calculate_accrued_mpc};
 pub use shadowwire::{execute_private_payout, initialize_encrypted_balance, ShadowWireTransfer};
 
 // Re-export MagicBlock functions
-pub use magicblock::{delegate_employee_entry, commit_and_undelegate, get_er_balance, ERConfig};
+// Note: delegate_employee_entry is deprecated - use delegate_to_tee() instruction with #[delegate] macro
+pub use magicblock::{commit_and_undelegate, get_er_balance, ERConfig};
 
 /// Calculate accrued salary using Inco encrypted computation
 ///

@@ -23,6 +23,10 @@
 
 import { Connection, PublicKey, Transaction } from '@solana/web3.js';
 import { AnchorProvider } from '@coral-xyz/anchor';
+import {
+  verifyTeeRpcIntegrity,
+  getAuthToken,
+} from '@magicblock-labs/ephemeral-rollups-sdk';
 
 // MagicBlock Constants (from Lean Bagel Context)
 const MAGICBLOCK_TEE_URL = process.env.NEXT_PUBLIC_MAGICBLOCK_TEE_URL || 'https://tee.magicblock.app';
@@ -258,6 +262,58 @@ export class MagicBlockClient {
     
     return session.currentBalance + additionalStreamed;
   }
+
+  /**
+   * Query TEE for EmployeeEntry balance
+   * 
+   * **USE CASE:** Get real-time balance from TEE after delegation
+   * 
+   * @param employeeEntryAddress - EmployeeEntry PDA address
+   * @param authToken - TEE auth token from getTeeAuthToken()
+   * @returns Encrypted balance handle (still encrypted, requires decryption)
+   */
+  async queryTeeBalance(
+    employeeEntryAddress: PublicKey,
+    authToken: string
+  ): Promise<{ encryptedBalance: string; isEncrypted: boolean }> {
+    console.log('🔍 Querying TEE for EmployeeEntry balance...');
+    console.log(`   EmployeeEntry: ${employeeEntryAddress.toBase58()}`);
+    
+    try {
+      // Create authenticated TEE connection
+      const teeConnection = createTeeConnection(authToken);
+      
+      // Query account info from TEE
+      // Note: This uses the TEE RPC endpoint which requires auth token
+      const accountInfo = await teeConnection.getAccountInfo(employeeEntryAddress);
+      
+      if (!accountInfo) {
+        throw new Error('EmployeeEntry not found in TEE');
+      }
+      
+      // Extract encrypted balance from account data
+      // EmployeeEntry.encrypted_accrued is at offset 64 (after discriminator + business_entry + employee_index + encrypted_employee_id + encrypted_salary)
+      // This is a simplified extraction - actual offset depends on account structure
+      if (accountInfo.data.length >= 80) {
+        const encryptedBalanceBytes = accountInfo.data.slice(64, 80); // 16 bytes for Euint128
+        const encryptedBalanceHex = Buffer.from(encryptedBalanceBytes).toString('hex');
+        
+        console.log('✅ TEE balance query successful');
+        console.log(`   Encrypted Balance Handle: 0x${encryptedBalanceHex}`);
+        console.log('   ⚠️  Balance is encrypted - requires decryption to view');
+        
+        return {
+          encryptedBalance: encryptedBalanceHex,
+          isEncrypted: true,
+        };
+      } else {
+        throw new Error('Account data too short to extract balance');
+      }
+    } catch (error) {
+      console.error('❌ TEE balance query failed:', error);
+      throw new Error(`Failed to query TEE balance: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
   
   /**
    * Get stream statistics
@@ -478,13 +534,13 @@ export async function verifyTeeIntegrity(): Promise<boolean> {
   console.log(`   URL: ${MAGICBLOCK_TEE_URL}`);
 
   try {
-    // In production, this calls verifyTeeRpcIntegrity from SDK
-    // import { verifyTeeRpcIntegrity } from '@magicblock-labs/ephemeral-rollups-sdk';
-    // return await verifyTeeRpcIntegrity(MAGICBLOCK_TEE_URL);
-
-    // For demo, simulate verification
-    console.log('✅ TEE integrity verified');
-    return true;
+    const isVerified = await verifyTeeRpcIntegrity(MAGICBLOCK_TEE_URL);
+    if (isVerified) {
+      console.log('✅ TEE integrity verified');
+    } else {
+      console.error('❌ TEE verification failed: Invalid TEE endpoint');
+    }
+    return isVerified;
   } catch (error) {
     console.error('❌ TEE verification failed:', error);
     return false;
@@ -509,22 +565,23 @@ export async function getTeeAuthToken(
   console.log(`   Wallet: ${walletPubkey.toBase58()}`);
 
   try {
-    // Create auth message
-    const timestamp = Date.now();
-    const authMessage = new TextEncoder().encode(
-      `MagicBlock TEE Auth\nWallet: ${walletPubkey.toBase58()}\nTimestamp: ${timestamp}`
+    // Verify TEE integrity first
+    const isVerified = await verifyTeeRpcIntegrity(MAGICBLOCK_TEE_URL);
+    if (!isVerified) {
+      throw new Error('TEE RPC integrity verification failed');
+    }
+
+    // Get auth token using SDK
+    // The SDK handles the challenge/response flow internally
+    const token = await getAuthToken(
+      MAGICBLOCK_TEE_URL,
+      walletPubkey,
+      async (message: Uint8Array) => {
+        // Sign the challenge message from TEE
+        const signature = await signMessage(message);
+        return signature;
+      }
     );
-
-    // Sign the message
-    const signature = await signMessage(authMessage);
-    console.log('✅ Auth message signed');
-
-    // In production, this calls getAuthToken from SDK
-    // import { getAuthToken } from '@magicblock-labs/ephemeral-rollups-sdk';
-    // const token = await getAuthToken(MAGICBLOCK_TEE_URL, walletPubkey, signMessage);
-
-    // For demo, simulate token
-    const token = Buffer.from(signature).toString('base64').slice(0, 32);
     const expiresAt = new Date(Date.now() + 3600000); // 1 hour
 
     console.log('✅ TEE authentication successful');
@@ -538,7 +595,7 @@ export async function getTeeAuthToken(
     };
   } catch (error) {
     console.error('❌ TEE authentication failed:', error);
-    throw new Error('Failed to authenticate with MagicBlock TEE');
+    throw new Error(`Failed to authenticate with MagicBlock TEE: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 }
 

@@ -219,12 +219,28 @@ export async function deposit(
   // Encrypt amount for encrypted balance tracking and/or confidential transfer
   const encryptedAmount = await encryptForInco(amountLamports);
   
-  // Build instruction data: discriminator + amount (u64) + encrypted_amount (Vec<u8>)
-  const amountBuf = Buffer.alloc(8);
-  amountBuf.writeBigUInt64LE(BigInt(amountLamports));
+  // Determine if confidential tokens are enabled (presence of token accounts indicates this)
+  const useConfidentialTokens = depositorTokenAccount && vaultTokenAccount;
+  
+  // Build instruction data with Option<u64> serialization:
+  // Option<u64> format: 0x00 (None) or 0x01 + u64 (Some)
+  // - Confidential tokens: [discriminator][0x00][enc_len][encrypted_amount] (None)
+  // - SOL fallback: [discriminator][0x01][amount][enc_len][encrypted_amount] (Some)
   const encLen = Buffer.alloc(4);
   encLen.writeUInt32LE(encryptedAmount.length);
-  const data = Buffer.concat([DISCRIMINATORS.deposit, amountBuf, encLen, encryptedAmount]);
+  
+  let data: Buffer;
+  if (useConfidentialTokens) {
+    // PRIVACY: Option::None when confidential tokens enabled
+    const optionTag = Buffer.from([0x00]); // None
+    data = Buffer.concat([DISCRIMINATORS.deposit, optionTag, encLen, encryptedAmount]);
+  } else {
+    // Option::Some(u64) for SOL fallback mode
+    const optionTag = Buffer.from([0x01]); // Some
+    const amountBuf = Buffer.alloc(8);
+    amountBuf.writeBigUInt64LE(BigInt(amountLamports));
+    data = Buffer.concat([DISCRIMINATORS.deposit, optionTag, amountBuf, encLen, encryptedAmount]);
+  }
   
   // Build instruction keys
   const keys = [
@@ -235,7 +251,7 @@ export async function deposit(
   ];
 
   // Add optional confidential token accounts if provided
-  if (depositorTokenAccount && vaultTokenAccount) {
+  if (useConfidentialTokens) {
     const INCO_TOKEN_PROGRAM_ID = incoTokenProgram || 
       (process.env.NEXT_PUBLIC_INCO_TOKEN_PROGRAM_ID 
         ? new PublicKey(process.env.NEXT_PUBLIC_INCO_TOKEN_PROGRAM_ID)
@@ -244,8 +260,8 @@ export async function deposit(
     if (INCO_TOKEN_PROGRAM_ID) {
       keys.push(
         { pubkey: INCO_TOKEN_PROGRAM_ID, isSigner: false, isWritable: false }, // inco_token_program (optional)
-        { pubkey: depositorTokenAccount, isSigner: false, isWritable: true }, // depositor_token_account (optional)
-        { pubkey: vaultTokenAccount, isSigner: false, isWritable: true }, // master_vault_token_account (optional)
+        { pubkey: depositorTokenAccount!, isSigner: false, isWritable: true }, // depositor_token_account (optional)
+        { pubkey: vaultTokenAccount!, isSigner: false, isWritable: true }, // master_vault_token_account (optional)
       );
     }
   }
@@ -380,14 +396,30 @@ export async function requestWithdrawal(
   // Encrypt amount for encrypted balance tracking and/or confidential transfer
   const encryptedAmount = await encryptForInco(amountLamports);
   
-  // Build instruction data: discriminator + amount (u64) + encrypted_amount (Vec<u8>) + use_shadowwire (bool)
-  const amountBuf = Buffer.alloc(8);
-  amountBuf.writeBigUInt64LE(BigInt(amountLamports));
+  // Determine if confidential tokens are enabled (presence of token accounts indicates this)
+  const useConfidentialTokens = vaultTokenAccount && employeeTokenAccount;
+  
+  // Build instruction data with Option<u64> serialization:
+  // Option<u64> format: 0x00 (None) or 0x01 + u64 (Some)
+  // - Confidential tokens: [discriminator][0x00][enc_len][encrypted_amount][use_shadowwire] (None)
+  // - SOL fallback: [discriminator][0x01][amount][enc_len][encrypted_amount][use_shadowwire] (Some)
   const encLen = Buffer.alloc(4);
   encLen.writeUInt32LE(encryptedAmount.length);
   const shadowwireBuf = Buffer.alloc(1);
   shadowwireBuf.writeUInt8(useShadowwire ? 1 : 0);
-  const data = Buffer.concat([DISCRIMINATORS.request_withdrawal, amountBuf, encLen, encryptedAmount, shadowwireBuf]);
+  
+  let data: Buffer;
+  if (useConfidentialTokens) {
+    // PRIVACY: Option::None when confidential tokens enabled
+    const optionTag = Buffer.from([0x00]); // None
+    data = Buffer.concat([DISCRIMINATORS.request_withdrawal, optionTag, encLen, encryptedAmount, shadowwireBuf]);
+  } else {
+    // Option::Some(u64) for SOL fallback mode
+    const optionTag = Buffer.from([0x01]); // Some
+    const amountBuf = Buffer.alloc(8);
+    amountBuf.writeBigUInt64LE(BigInt(amountLamports));
+    data = Buffer.concat([DISCRIMINATORS.request_withdrawal, optionTag, amountBuf, encLen, encryptedAmount, shadowwireBuf]);
+  }
   
   // Build instruction keys
   const keys = [
@@ -399,7 +431,7 @@ export async function requestWithdrawal(
   ];
 
   // Add optional confidential token accounts if provided
-  if (vaultTokenAccount && employeeTokenAccount) {
+  if (useConfidentialTokens) {
     const INCO_TOKEN_PROGRAM_ID = incoTokenProgram || 
       (process.env.NEXT_PUBLIC_INCO_TOKEN_PROGRAM_ID 
         ? new PublicKey(process.env.NEXT_PUBLIC_INCO_TOKEN_PROGRAM_ID)
@@ -408,8 +440,8 @@ export async function requestWithdrawal(
     if (INCO_TOKEN_PROGRAM_ID) {
       keys.push(
         { pubkey: INCO_TOKEN_PROGRAM_ID, isSigner: false, isWritable: false }, // inco_token_program (optional)
-        { pubkey: vaultTokenAccount, isSigner: false, isWritable: true }, // master_vault_token_account (optional)
-        { pubkey: employeeTokenAccount, isSigner: false, isWritable: true }, // employee_token_account (optional)
+        { pubkey: vaultTokenAccount!, isSigner: false, isWritable: true }, // master_vault_token_account (optional)
+        { pubkey: employeeTokenAccount!, isSigner: false, isWritable: true }, // employee_token_account (optional)
       );
     }
   }
