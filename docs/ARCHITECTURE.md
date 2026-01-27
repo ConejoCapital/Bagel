@@ -240,7 +240,7 @@ pub struct EmployeeEntry {
 
 ### Devnet (Current)
 - **RPC**: Helius Devnet
-- **Explorer**: https://explorer.solana.com?cluster=devnet
+- **Explorer**: https://orbmarkets.io?cluster=devnet
 - **Faucet**: https://faucet.solana.com
 - **Confidential Tokens**: Enabled
 - **USDBagel Mint**: `A3G2NBGL7xH9T6BYwVkwRGsSYxtFPdg4HSThfTmV94ht`

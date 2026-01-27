@@ -167,7 +167,7 @@ async function main() {
     }, 'confirmed');
     
     console.log(`✅ Mint initialized successfully!`);
-    console.log(`   Transaction: https://explorer.solana.com/tx/${tx}?cluster=devnet\n`);
+    console.log(`   Transaction: https://orbmarkets.io/tx/${tx}?cluster=devnet\n`);
     
     // Verify mint was created
     await sleep(2000);

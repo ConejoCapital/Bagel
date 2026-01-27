@@ -13,7 +13,7 @@ anchor-lang = "0.32.1"
 anchor-spl = "0.32.1"
 
 # MagicBlock
-ephemeral-rollups-sdk = { version = "0.7.2", features = ["anchor"] }
+ephemeral-rollups-sdk = { version = "0.8.3", features = ["anchor"] }
 
 # Other dependencies
 blake3 = "=1.8.2"

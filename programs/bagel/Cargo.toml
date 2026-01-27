@@ -17,8 +17,8 @@ no-log-ix-name = []
 idl-build = ["anchor-lang/idl-build"]
 
 [dependencies]
-# Anchor 0.31.1 (required for Inco Lightning compatibility)
-anchor-lang = { version = "0.31.1", features = ["init-if-needed"] }
+# Anchor 0.32.1 (required for MagicBlock compatibility)
+anchor-lang = { version = "0.32.1", features = ["init-if-needed"] }
 
 # Inco Lightning SDK for confidential computation on Solana (Devnet Beta)
 # Program ID: 5sjEbPiqgZrYwR31ahR6Uk9wf5awoX61YGg7jExQSwaj

@@ -73,7 +73,7 @@ async function main() {
     }, 'confirmed');
     
     console.log(`✅ Vault closed successfully!`);
-    console.log(`   Transaction: https://explorer.solana.com/tx/${tx}?cluster=devnet\n`);
+    console.log(`   Transaction: https://orbmarkets.io/tx/${tx}?cluster=devnet\n`);
   } catch (error) {
     console.error(`❌ Error closing vault: ${error.message}\n`);
     if (error.message.includes('total_balance == 0')) {

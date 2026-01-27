@@ -1,5 +1,5 @@
-# Rust toolchain configuration for Arcium compatibility
-# Arcium migration docs recommend Rust 1.89.0+ for edition2024 support
+# Rust toolchain configuration for Bagel program
+# Rust 1.89.0+ recommended for latest features
 [toolchain]
 channel = "1.89.0"
 components = ["rustfmt", "clippy"]

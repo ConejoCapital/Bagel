@@ -1240,8 +1240,8 @@ This test demonstrates **ALL privacy layers** in the Bagel payroll system, showi
 - ✅ Observers cannot derive relationships from addresses
 
 **Transactions:**
-- Register Business: [${results.phase1?.registerTx || 'N/A'}](https://explorer.solana.com/tx/${results.phase1?.registerTx || ''}?cluster=devnet)
-- Add Employee: [${results.phase1?.addEmployeeTx || 'N/A'}](https://explorer.solana.com/tx/${results.phase1?.addEmployeeTx || ''}?cluster=devnet)
+- Register Business: [${results.phase1?.registerTx || 'N/A'}](https://orbmarkets.io/tx/${results.phase1?.registerTx || ''}?cluster=devnet)
+- Add Employee: [${results.phase1?.addEmployeeTx || 'N/A'}](https://orbmarkets.io/tx/${results.phase1?.addEmployeeTx || ''}?cluster=devnet)
 
 ---
 
@@ -1260,8 +1260,8 @@ This test demonstrates **ALL privacy layers** in the Bagel payroll system, showi
 - ✅ Account data contains Euint128 handles (encrypted)
 
 **Transactions:**
-- Deposit: [${results.phase2?.depositTx || 'N/A'}](https://explorer.solana.com/tx/${results.phase2?.depositTx || ''}?cluster=devnet)
-- Withdrawal: [${results.phase6?.withdrawalTx || 'N/A'}](https://explorer.solana.com/tx/${results.phase6?.withdrawalTx || ''}?cluster=devnet)
+- Deposit: [${results.phase2?.depositTx || 'N/A'}](https://orbmarkets.io/tx/${results.phase2?.depositTx || ''}?cluster=devnet)
+- Withdrawal: [${results.phase6?.withdrawalTx || 'N/A'}](https://orbmarkets.io/tx/${results.phase6?.withdrawalTx || ''}?cluster=devnet)
 
 ---
 

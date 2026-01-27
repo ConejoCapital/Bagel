@@ -93,12 +93,12 @@ Example:
  * Connect to the Bagel program and fetch payroll data
  * @param connection - Solana RPC connection
  * @param wallet - Connected wallet
- * @returns PayrollJar account data
+ * @returns EmployeeEntry account data
  */
-export async function fetchPayrollJar(
+export async function fetchEmployeeEntry(
   connection: Connection,
   wallet: PublicKey,
-): Promise<PayrollJar> {
+): Promise<EmployeeEntry> {
   // Implementation
 }
 ```

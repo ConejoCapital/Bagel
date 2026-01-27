@@ -158,7 +158,7 @@ else
 fi
 echo -e "   5. Run E2E test: node test-confidential-payroll.mjs\n"
 echo -e "${BLUE}🔗 Explorer:${NC}"
-echo -e "   Bagel Program: https://explorer.solana.com/address/$PROGRAM_ID?cluster=devnet\n"
+echo -e "   Bagel Program: https://orbmarkets.io/address/$PROGRAM_ID?cluster=devnet\n"
 if [ -n "$INCO_TOKEN_PROGRAM_ID" ]; then
-    echo -e "   Confidential Token Program: https://explorer.solana.com/address/$INCO_TOKEN_PROGRAM_ID?cluster=devnet\n"
+    echo -e "   Confidential Token Program: https://orbmarkets.io/address/$INCO_TOKEN_PROGRAM_ID?cluster=devnet\n"
 fi
