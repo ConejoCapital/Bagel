@@ -19,7 +19,7 @@
 | Requirement | Status | Evidence |
 |-------------|--------|----------|
 | All code is open source | COMPLETE | MIT License, public GitHub repo |
-| Integrates with Solana | COMPLETE | Anchor 0.31.1 program deployed |
+| Integrates with Solana | COMPLETE | Anchor 0.32.1 program deployed |
 | Uses privacy-preserving technologies | COMPLETE | 5-layer privacy stack |
 | Program deployed to devnet/mainnet | COMPLETE | Devnet: `J45uxvT26szuQcmxvs5NRgtAMornKM9Ga9WaQ58bKUNE` |
 | Demo video (max 3 minutes) | PENDING | See demo script below |
@@ -158,7 +158,7 @@
 ### Prerequisites
 - Rust 1.92.0+
 - Solana CLI 2.0+
-- Anchor CLI 0.31.1
+- Anchor CLI 0.32.1
 - Node.js 18+
 
 ### Setup

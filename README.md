@@ -3,7 +3,7 @@
 **Bringing the $80 billion global payroll market on-chain with end-to-end privacy.**
 
 [![Deployed on Devnet](https://img.shields.io/badge/Deployed-Devnet-success)](https://orbmarkets.io/address/J45uxvT26szuQcmxvs5NRgtAMornKM9Ga9WaQ58bKUNE?cluster=devnet)
-[![Built with Anchor](https://img.shields.io/badge/Anchor-0.31.1-blueviolet)](https://www.anchor-lang.com/)
+[![Built with Anchor](https://img.shields.io/badge/Anchor-0.32.1-blueviolet)](https://www.anchor-lang.com/)
 [![Solana Privacy Hackathon](https://img.shields.io/badge/Hackathon-Privacy%20Hack%202026-orange)](https://solana.com/privacyhack)
 
 ---
@@ -164,7 +164,7 @@ flowchart TB
 
 - Rust 1.92.0+
 - Solana CLI 2.0+
-- Anchor CLI 0.31.1
+- Anchor CLI 0.32.1
 - Node.js 18+
 
 ### Installation
