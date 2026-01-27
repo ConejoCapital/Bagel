@@ -33,7 +33,8 @@
 
 **Network:** Solana Devnet
 
-**Explorer:** https://orbmarkets.io/address/J45uxvT26szuQcmxvs5NRgtAMornKM9Ga9WaQ58bKUNE?cluster=devnet
+**Explorer:** https://orbmarkets.io/address/J45uxvT26szuQcmxvs5NRgtAMornKM9Ga9WaQ58bKUNE?cluster=devnet  
+**Program IDL:** https://orbmarkets.io/address/J45uxvT26szuQcmxvs5NRgtAMornKM9Ga9WaQ58bKUNE/anchor-idl?cluster=devnet
 
 ---
 
@@ -237,6 +238,7 @@ Bagel/
 |----------|-----|
 | GitHub | https://github.com/ConejoCapital/Bagel |
 | Program Explorer | https://orbmarkets.io/address/J45uxvT26szuQcmxvs5NRgtAMornKM9Ga9WaQ58bKUNE?cluster=devnet |
+| Program IDL | https://orbmarkets.io/address/J45uxvT26szuQcmxvs5NRgtAMornKM9Ga9WaQ58bKUNE/anchor-idl?cluster=devnet |
 | Hackathon | https://solana.com/privacyhack |
 | MagicBlock PER Docs | https://docs.magicblock.gg/pages/private-ephemeral-rollups-pers/how-to-guide/quickstart |
 

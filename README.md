@@ -224,10 +224,12 @@ npm run dev
 - **Zero Privacy Leaks Detected**
 
 **Key Transaction Links:**
-- **Register Business:** [View on Explorer](https://orbmarkets.io/tx/3eTNPvvomkbHS2MTgoCtHw3KTj4E25dKiac6ZgEcvAWSsJxnPmQMjMe7w4MvptUXXg1qJRvQiGkZSAjLbsrsyjU6?cluster=devnet)
-- **Deposit (10,000 USDBagel):** [View on Explorer](https://orbmarkets.io/tx/4bSEkczrmKMWBJkUQMmDH5v82AhdQwGNHgQVZWBB9xBid4DW9RCCCCNjaexAtM9ZSxwsUkY7kNJgvyXNDrMrUrzx?cluster=devnet)
-- **Delegate to PER:** [View on Explorer](https://orbmarkets.io/tx/38Q33b2Uk7MvUgRoBCySspeeaTN5VXpdf8LaJvUpwrWCQzKjKhBF7ZLoTa6qB2rFsdHFVbYLGW7b3CKDZrpiNgTh?cluster=devnet)
-- **Withdrawal (~1,000 USDBagel):** [View on Explorer](https://orbmarkets.io/tx/61tc3SS8jRfjDgSGKchghdhRTJEsd9QYv9uP3e3HUcfmeimGUhKs5Qpgonr6zMowC1F2qzQzRo7L15SQNETz3vfV?cluster=devnet)
+- **Register Business:** [View on Orb](https://orbmarkets.io/tx/2RfkMgazQUXqkBMcUhnAK7RooT7egPNEzC2YiUHX9Rt4GrjHTJjisN5mY2jbXRPfSNZ9tRu3pDg9DMR1PyrCXFqj?cluster=devnet)
+- **Add Employee:** [View on Orb](https://orbmarkets.io/tx/4Hp2ih9Ba4H4UQERrtXZg15NTKZzw3pszcRqgqThxmLhRFz5d1dy5GZGBrRro2CBPqWvKXV5CPHQvJTrsaTSog2N?cluster=devnet)
+- **Deposit (10,000 USDBagel):** [View on Orb](https://orbmarkets.io/tx/2KoYynbixsD36FUUYagCkytsBhVPe1n4dh3iKKWeafXQWmgTVfoy6Dfky9ToU4AiRvdGx5GzDKcUaxCjHVZpbU5Q?cluster=devnet)
+- **Delegate to PER:** [View on Orb](https://orbmarkets.io/tx/XAvpSwF41deMjBVssxJQjygKjbPW2fCuNMA2ShUpp9s1LUAtp8bL8PRpfoUhXqFqHKbVqm6pNYzsm7zAnPjTMER?cluster=devnet)
+- **Commit from PER:** [View on Orb](https://orbmarkets.io/tx/3e1XpfdDSvVqakoQsBaBiG9QhiZMjP6ZYWBY5TLh4p6Dct6ZgqvzqPKGe4UAhXy7B5VPZXVtncm6HNMs1Fipt6N?cluster=devnet)
+- **Withdrawal (~1,000 USDBagel):** [View on Orb](https://orbmarkets.io/tx/4jNzEYhKtNafGt3bb9WE38wULrMyU3HFpmJTRsN2AjhHhBSKX6FUz5vpigBGu8on27F1GHCyxqK4ttQkqMjiYnzU?cluster=devnet)
 
 See [COMPREHENSIVE_PRIVACY_LAYERS_REPORT.md](COMPREHENSIVE_PRIVACY_LAYERS_REPORT.md) for complete details.
 
@@ -373,7 +375,7 @@ MIT License - See [LICENSE](LICENSE)
 ## Links
 
 - **GitHub**: [github.com/ConejoCapital/Bagel](https://github.com/ConejoCapital/Bagel)
-- **Program Explorer**: [Solana Explorer](https://orbmarkets.io/address/J45uxvT26szuQcmxvs5NRgtAMornKM9Ga9WaQ58bKUNE?cluster=devnet)
+- **Program Explorer**: [Orb Explorer](https://orbmarkets.io/address/J45uxvT26szuQcmxvs5NRgtAMornKM9Ga9WaQ58bKUNE?cluster=devnet) | [Program IDL](https://orbmarkets.io/address/J45uxvT26szuQcmxvs5NRgtAMornKM9Ga9WaQ58bKUNE/anchor-idl?cluster=devnet)
 - **Hackathon**: [Solana Privacy Hack 2026](https://solana.com/privacyhack)
 
 ---
