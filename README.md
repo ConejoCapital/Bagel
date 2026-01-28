@@ -3,7 +3,7 @@
 **Bringing the $80 billion global payroll market on-chain with end-to-end privacy.**
 
 [![Deployed on Devnet](https://img.shields.io/badge/Deployed-Devnet-success)](https://orbmarkets.io/address/AEd52vEEAdXWUjKut1aQyLLJQnwMWqYMb4hSaHpxd8Hj?cluster=devnet)
-[![Built with Anchor](https://img.shields.io/badge/Anchor-0.31.1-blueviolet)](https://www.anchor-lang.com/)
+[![Built with Anchor](https://img.shields.io/badge/Anchor-0.32.1-blueviolet)](https://www.anchor-lang.com/)
 [![Solana Privacy Hackathon](https://img.shields.io/badge/Hackathon-Privacy%20Hack%202026-orange)](https://solana.com/privacyhack)
 
 ---
@@ -271,7 +271,7 @@ See [COMPREHENSIVE_PRIVACY_LAYERS_REPORT.md](COMPREHENSIVE_PRIVACY_LAYERS_REPORT
 
 | Component | Program ID | Network |
 |-----------|------------|---------|
-| **Bagel** | `J45uxvT26szuQcmxvs5NRgtAMornKM9Ga9WaQ58bKUNE` | Devnet |
+| **Bagel** | `AEd52vEEAdXWUjKut1aQyLLJQnwMWqYMb4hSaHpxd8Hj` | Devnet |
 | Inco Lightning | `5sjEbPiqgZrYwR31ahR6Uk9wf5awoX61YGg7jExQSwaj` | Devnet |
 | Inco Confidential Token | `HuUn2JwCPCLWwJ3z17m7CER73jseqsxvbcFuZN4JAw22` | Devnet |
 | MagicBlock Delegation | `DELeGGvXpWV2fqJUhqcF5ZSYMS4JTLjteaAMARRSaeSh` | Devnet |
@@ -281,7 +281,7 @@ See [COMPREHENSIVE_PRIVACY_LAYERS_REPORT.md](COMPREHENSIVE_PRIVACY_LAYERS_REPORT
 
 | Token | Mint Address | Network |
 |-------|--------------|---------|
-| **USDBagel** | `A3G2NBGL7xH9T6BYwVkwRGsSYxtFPdg4HSThfTmV94ht` | Devnet |
+| **USDBagel** | `8rQ7zU5iJ8o6prw4UGUq7fVNhQaw489rdtkaK5Gh8qsV` | Devnet |
 
 ---
 

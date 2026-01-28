@@ -59,6 +59,21 @@ Bagel is a privacy-preserving payroll protocol built on Solana that leverages **
 
 ## System Architecture
 
+### Payroll Program (`programs/bagel/`)
+- **Language**: Rust (Anchor Framework)
+- **Program ID**: `AEd52vEEAdXWUjKut1aQyLLJQnwMWqYMb4hSaHpxd8Hj` (Devnet)
+- **Instructions**:
+  - `initialize_vault` - Create master vault (one-time)
+  - `register_business` - Register employer business
+  - `deposit` - Deposit funds (confidential tokens)
+  - `add_employee` - Add employee with encrypted salary
+  - `request_withdrawal` - Employee withdrawal (confidential tokens)
+  - `configure_confidential_mint` - Enable confidential tokens
+  - `migrate_vault` - Upgrade vault schema
+  - `close_vault` - Close vault (testing)
+  - `delegate_to_tee` - Delegate to MagicBlock TEE
+  - `commit_from_tee` - Commit TEE state to L1
+
 ### High-Level Overview
 
 ```

@@ -79,7 +79,7 @@ This is the frontend for Bagel Privacy Payroll. The privacy integrations (Inco L
 ```env
 NEXT_PUBLIC_HELIUS_API_KEY=YOUR_HELIUS_API_KEY
 NEXT_PUBLIC_SOLANA_NETWORK=devnet
-NEXT_PUBLIC_BAGEL_PROGRAM_ID=J45uxvT26szuQcmxvs5NRgtAMornKM9Ga9WaQ58bKUNE
+NEXT_PUBLIC_BAGEL_PROGRAM_ID=AEd52vEEAdXWUjKut1aQyLLJQnwMWqYMb4hSaHpxd8Hj
 ```
 
 ### RPC Endpoints
