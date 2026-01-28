@@ -112,9 +112,6 @@ const guideSteps: GuideStep[] = [
   },
 ];
 
-// Employee type definition
-type Employee = typeof initialEmployees[0];
-
 // Helper function to format relative time
 function getRelativeTime(timestamp: number): string {
   const now = Date.now() / 1000;
@@ -150,7 +147,7 @@ interface PaymentModalProps {
   onClose: () => void;
   onDeposit: (entryIndex: number, amountLamports: number) => Promise<string>;
   businessEntryIndex: number | null;
-  employees: typeof initialEmployees;
+  employees: Employee[];
 }
 
 function PaymentModal({ isOpen, onClose, onDeposit, businessEntryIndex, employees }: PaymentModalProps) {
@@ -348,7 +345,7 @@ function PaymentModal({ isOpen, onClose, onDeposit, businessEntryIndex, employee
                     <div className="text-xs text-green-700 mt-1">Funds encrypted and deposited to vault</div>
                     <div className="text-xs text-green-700 break-all mt-1 font-mono">{txid}</div>
                     <a
-                      href={`https://explorer.solana.com/tx/${txid}?cluster=devnet`}
+                      href={`https://orbmarkets.io/tx/${txid}?cluster=devnet`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="inline-flex items-center gap-1 text-xs text-green-700 hover:text-green-900 mt-2 font-medium"
@@ -563,7 +560,7 @@ function TransferModal({ isOpen, onClose, onTransfer }: TransferModalProps) {
                     <div className="text-xs text-green-700 mt-1">Tokens sent successfully</div>
                     <div className="text-xs text-green-700 break-all mt-1 font-mono">{txid}</div>
                     <a
-                      href={`https://explorer.solana.com/tx/${txid}?cluster=devnet`}
+                      href={`https://orbmarkets.io/tx/${txid}?cluster=devnet`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="inline-flex items-center gap-1 text-xs text-green-700 hover:text-green-900 mt-2 font-medium"
@@ -618,7 +615,7 @@ function TransferModal({ isOpen, onClose, onTransfer }: TransferModalProps) {
 interface AddEmployeeModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onAddEmployee: (walletAddress: string, salaryPerSecond: number) => Promise<{ txid: string; employeeIndex: number }>;
+  onAddEmployee: (walletAddress: string, salaryPerSecond: number, name: string) => Promise<{ txid: string; employeeIndex: number }>;
   businessEntryIndex: number | null;
 }
 
@@ -688,7 +685,7 @@ function AddEmployeeModal({ isOpen, onClose, onAddEmployee, businessEntryIndex }
       const salaryPerSecond = calculateSalaryPerSecond(parseFloat(salary), paymentFrequency);
       const salaryLamports = solToLamports(salaryPerSecond);
 
-      const result = await onAddEmployee(wallet, salaryLamports);
+      const result = await onAddEmployee(wallet, salaryLamports, name || `Employee`);
       setTxid(result.txid);
       setEmployeeIndex(result.employeeIndex);
     } catch (err: any) {
@@ -893,7 +890,7 @@ function AddEmployeeModal({ isOpen, onClose, onAddEmployee, businessEntryIndex }
                     </div>
                     <div className="text-xs text-green-700 break-all mt-1">{txid}</div>
                     <a
-                      href={`https://explorer.solana.com/tx/${txid}?cluster=devnet`}
+                      href={`https://orbmarkets.io/tx/${txid}?cluster=devnet`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="inline-flex items-center gap-1 text-xs text-green-700 hover:text-green-900 mt-2 font-medium"
@@ -1070,7 +1067,7 @@ function MintTokensSection({ onMint }: MintTokensSectionProps) {
               </p>
               <code className="block text-xs text-green-600 mt-1 truncate">{txid}</code>
               <a
-                href={`https://explorer.solana.com/tx/${txid}?cluster=devnet`}
+                href={`https://orbmarkets.io/tx/${txid}?cluster=devnet`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-1 text-xs text-green-700 hover:text-green-900 mt-2 font-medium"
@@ -1114,64 +1111,24 @@ function MintTokensSection({ onMint }: MintTokensSectionProps) {
   );
 }
 
-// Initial mock employees (will be replaced/augmented with on-chain data)
-const initialEmployees = [
-  {
-    id: 1,
-    initials: 'AT',
-    name: 'Alex Thompson',
-    date: 'Jan 15, 2026',
-    wallet: '0x7a23...f8d9',
-    amount: 8500.00,
-    currency: 'SOL',
-    privacy: 'Maximum',
-    status: 'Paid',
-  },
-  {
-    id: 2,
-    initials: 'SC',
-    name: 'Sarah Chen',
-    date: 'Jan 14, 2026',
-    wallet: '0x3b91...c4e2',
-    amount: 12750.00,
-    currency: 'USDC',
-    privacy: 'Standard',
-    status: 'Pending',
-  },
-  {
-    id: 3,
-    initials: 'MR',
-    name: 'Michael Ross',
-    date: 'Jan 15, 2026',
-    wallet: '0x9f56...a7b3',
-    amount: 6200.00,
-    currency: 'SOL',
-    privacy: 'Maximum',
-    status: 'Paid',
-  },
-  {
-    id: 4,
-    initials: 'EW',
-    name: 'Emma Wilson',
-    date: 'Jan 13, 2026',
-    wallet: '0x2c84...d1f5',
-    amount: 9100.00,
-    currency: 'USDC',
-    privacy: 'Enhanced',
-    status: 'Processing',
-  },
-  {
-    id: 5,
-    initials: 'JK',
-    name: 'James Kim',
-    date: 'Jan 12, 2026',
-    wallet: '0x5d92...e3a1',
-    amount: 7800.00,
-    currency: 'SOL',
-    privacy: 'Maximum',
-    status: 'Paid',
-  },
-];
+// Employee interface for type safety
+interface Employee {
+  id: number;
+  employeeIndex: number;
+  initials: string;
+  name: string;
+  date: string;
+  wallet: string;
+  fullWallet: string;
+  amount: number;
+  currency: string;
+  privacy: 'Standard' | 'Enhanced' | 'Maximum';
+  status: 'Pending' | 'Paid' | 'Processing';
+  txid?: string;
+}
+
+// LocalStorage key for employees
+const EMPLOYEES_STORAGE_KEY = 'bagel_employees';
 
 export default function Dashboard() {
   const [searchQuery, setSearchQuery] = useState('');
@@ -1193,9 +1150,34 @@ export default function Dashboard() {
   const [registrationError, setRegistrationError] = useState('');
   const [registrationTxid, setRegistrationTxid] = useState('');
 
-  // Employees state (combines mock + on-chain)
-  const [employees, setEmployees] = useState<Employee[]>(initialEmployees);
+  // Employees state (loaded from localStorage)
+  const [employees, setEmployees] = useState<Employee[]>([]);
   const [employeeCount, setEmployeeCount] = useState(0);
+
+  // Load employees from localStorage
+  useEffect(() => {
+    if (typeof window !== 'undefined' && publicKey) {
+      const storageKey = `${EMPLOYEES_STORAGE_KEY}_${publicKey.toBase58()}`;
+      const stored = localStorage.getItem(storageKey);
+      if (stored) {
+        try {
+          const parsed = JSON.parse(stored) as Employee[];
+          setEmployees(parsed);
+          setEmployeeCount(parsed.length);
+        } catch (e) {
+          console.error('Failed to parse stored employees:', e);
+        }
+      }
+    }
+  }, [publicKey]);
+
+  // Save employees to localStorage when they change
+  useEffect(() => {
+    if (typeof window !== 'undefined' && publicKey && employees.length > 0) {
+      const storageKey = `${EMPLOYEES_STORAGE_KEY}_${publicKey.toBase58()}`;
+      localStorage.setItem(storageKey, JSON.stringify(employees));
+    }
+  }, [employees, publicKey]);
 
   // Load business index when wallet connects
   useEffect(() => {
@@ -1203,6 +1185,8 @@ export default function Dashboard() {
       loadBusinessIndex();
     } else {
       setBusinessEntryIndex(null);
+      setEmployees([]);
+      setEmployeeCount(0);
     }
   }, [publicKey, connection]);
 
@@ -1316,7 +1300,7 @@ export default function Dashboard() {
   }, [connection, wallet, publicKey]);
 
   // Add employee
-  const handleAddEmployee = useCallback(async (walletAddress: string, salaryLamports: number): Promise<{ txid: string; employeeIndex: number }> => {
+  const handleAddEmployee = useCallback(async (walletAddress: string, salaryLamports: number, employeeName: string): Promise<{ txid: string; employeeIndex: number }> => {
     if (!publicKey || !wallet.signTransaction) {
       throw new Error('Wallet not connected');
     }
@@ -1336,23 +1320,34 @@ export default function Dashboard() {
 
     console.log('✅ Employee added! Index:', result.employeeIndex);
 
+    // Generate initials from name
+    const initials = employeeName
+      .split(' ')
+      .map(word => word[0])
+      .join('')
+      .toUpperCase()
+      .slice(0, 2) || walletAddress.slice(0, 2).toUpperCase();
+
     // Add to local employees list
     const newEmployee: Employee = {
-      id: employees.length + 1,
-      initials: walletAddress.slice(0, 2).toUpperCase(),
-      name: `Employee ${result.employeeIndex}`,
+      id: Date.now(),
+      employeeIndex: result.employeeIndex,
+      initials,
+      name: employeeName || `Employee #${result.employeeIndex}`,
       date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
       wallet: `${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}`,
+      fullWallet: walletAddress,
       amount: lamportsToSOL(salaryLamports) * 31557600, // Annual salary
-      currency: 'SOL',
+      currency: 'USDBagel',
       privacy: 'Maximum',
       status: 'Pending',
+      txid: result.txid,
     };
     setEmployees(prev => [newEmployee, ...prev]);
     setEmployeeCount(prev => prev + 1);
 
     return result;
-  }, [connection, wallet, publicKey, businessEntryIndex, employees.length]);
+  }, [connection, wallet, publicKey, businessEntryIndex]);
 
   // Mint test tokens
   const handleMint = useCallback(async (amount: number): Promise<{ txid: string; amount: number }> => {
@@ -1556,7 +1551,7 @@ export default function Dashboard() {
                         <div className="text-sm text-green-700 font-medium">Business Registered Successfully!</div>
                         <div className="text-xs text-green-600 mt-1 break-all">{registrationTxid}</div>
                         <a
-                          href={`https://explorer.solana.com/tx/${registrationTxid}?cluster=devnet`}
+                          href={`https://orbmarkets.io/tx/${registrationTxid}?cluster=devnet`}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="inline-flex items-center gap-1 text-xs text-green-700 hover:text-green-900 mt-2 font-medium"
