@@ -518,15 +518,10 @@ export async function initializeConfidentialTokenAccount(
 }
 
 /**
- * Mint test USDBagel tokens (Demo Mode)
+ * Mint USDBagel tokens via Inco Confidential Token Program
  *
- * This creates an on-chain record of the mint via memo + logs the encrypted amount.
- * In production, this would call the actual Inco Confidential Token program.
- *
- * For the hackathon demo, this:
- * 1. Creates a verifiable on-chain transaction
- * 2. Includes encrypted amount in memo (simulating FHE)
- * 3. Can be viewed on Solana Explorer
+ * Calls the server-side API which has mint authority to create real
+ * confidential tokens with FHE-encrypted amounts.
  *
  * @param amount - Amount to mint (in token units, e.g., 100 = 100 USDBagel)
  */
@@ -536,58 +531,48 @@ export async function mintTestTokens(
   amount: number,
   tokenAccount?: PublicKey
 ): Promise<{ txid: string; amount: number; tokenAccount: PublicKey }> {
-  if (!wallet.publicKey || !wallet.signTransaction) {
+  if (!wallet.publicKey) {
     throw new Error('Wallet not connected');
   }
 
   // Derive token account if not provided
   let destTokenAccount = tokenAccount;
   if (!destTokenAccount) {
-    const [derivedAccount] = getConfidentialTokenAccount(wallet.publicKey);
+    const [derivedAccount] = getConfidentialTokenAccount(wallet.publicKey, USDBAGEL_MINT);
     destTokenAccount = derivedAccount;
   }
 
-  // Encrypt the amount (simulated FHE - in production use Inco SDK)
-  const amountWithDecimals = BigInt(amount) * BigInt(1_000_000_000); // 9 decimals
-  const encryptedAmount = await encryptForInco(Number(amountWithDecimals));
-  const encryptedHex = encryptedAmount.toString('hex');
+  console.log('🪙 Minting USDBagel tokens via Inco Token Program...');
+  console.log(`   Amount: ${amount} USDBagel`);
+  console.log(`   Destination: ${destTokenAccount.toBase58()}`);
 
-  // Create memo transaction with mint details
-  // This creates a verifiable on-chain record of the "mint"
-  const memoProgram = new PublicKey('MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr');
-  const memoData = Buffer.from(
-    `BAGEL:MINT:${amount}USDB:TO:${destTokenAccount.toBase58().slice(0, 8)}:ENC:${encryptedHex.slice(0, 16)}:${Date.now()}`
-  );
-
-  const instruction = new TransactionInstruction({
-    programId: memoProgram,
-    keys: [{ pubkey: wallet.publicKey, isSigner: true, isWritable: false }],
-    data: memoData,
+  // Call the mint API endpoint
+  const response = await fetch('/api/mint', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      amount,
+      destinationAccount: destTokenAccount.toBase58(),
+    }),
   });
 
-  const transaction = new Transaction().add(instruction);
-  const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('confirmed');
-  transaction.recentBlockhash = blockhash;
-  transaction.feePayer = wallet.publicKey;
+  const result = await response.json();
 
-  const signed = await wallet.signTransaction(transaction);
-  const txid = await connection.sendRawTransaction(signed.serialize(), {
-    skipPreflight: false,
-    maxRetries: 3,
-  });
+  if (!response.ok || !result.success) {
+    throw new Error(result.error || 'Failed to mint tokens');
+  }
 
-  await connection.confirmTransaction({
-    blockhash,
-    lastValidBlockHeight,
-    signature: txid,
-  }, 'confirmed');
+  console.log('✅ Tokens minted successfully!');
+  console.log(`   Transaction: ${result.txid}`);
+  console.log(`   Amount: ${result.amount} USDBagel (encrypted on-chain)`);
 
-  console.log('🪙 Demo mint recorded on-chain');
-  console.log(`   Amount: ${amount} USDBagel (encrypted: ${encryptedHex.slice(0, 16)}...)`);
-  console.log(`   Token Account: ${destTokenAccount.toBase58()}`);
-  console.log(`   Transaction: ${txid}`);
-
-  return { txid, amount, tokenAccount: destTokenAccount };
+  return {
+    txid: result.txid,
+    amount: result.amount,
+    tokenAccount: destTokenAccount,
+  };
 }
 
 /**
