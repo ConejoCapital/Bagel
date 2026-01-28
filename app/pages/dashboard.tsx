@@ -855,23 +855,30 @@ function MintTokensSection({ onMint }: MintTokensSectionProps) {
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="bg-gradient-to-br from-purple-50 to-indigo-50 border border-purple-100 rounded-lg p-6"
+      className="bg-white border border-gray-200 rounded overflow-hidden"
     >
-      <div className="flex items-center gap-3 mb-4">
-        <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
-          <Lightning className="w-5 h-5 text-purple-600" weight="fill" />
+      {/* Header */}
+      <div className="flex items-center justify-between p-4 border-b border-gray-100">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 bg-bagel-cream rounded flex items-center justify-center">
+            <Lightning className="w-5 h-5 text-bagel-orange" weight="fill" />
+          </div>
+          <div>
+            <h3 className="text-lg font-semibold text-bagel-dark">Mint Test Tokens</h3>
+            <p className="text-xs text-gray-500">Get USDBagel for the demo</p>
+          </div>
         </div>
-        <div>
-          <h3 className="text-lg font-semibold text-purple-900">Mint Test Tokens</h3>
-          <p className="text-xs text-purple-600">Get USDBagel tokens to try the demo</p>
-        </div>
+        <span className="px-2 py-1 bg-bagel-cream text-bagel-orange text-xs font-medium rounded">
+          Devnet
+        </span>
       </div>
 
-      <div className="space-y-4">
+      {/* Content */}
+      <div className="p-4 space-y-4">
         {/* Amount Input */}
         <div>
-          <label className="block text-sm font-medium text-purple-800 mb-2">
-            Amount (USDBagel)
+          <label className="block text-sm font-medium text-bagel-dark mb-2">
+            Amount
           </label>
           <div className="relative">
             <input
@@ -879,9 +886,9 @@ function MintTokensSection({ onMint }: MintTokensSectionProps) {
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
               placeholder="100"
-              className="w-full px-4 py-3 border border-purple-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-lg font-mono"
+              className="w-full px-4 py-3 border border-gray-200 rounded bg-gray-50 focus:outline-none focus:border-bagel-orange focus:bg-white text-lg font-mono text-bagel-dark transition-colors"
             />
-            <div className="absolute right-3 top-1/2 -translate-y-1/2 text-purple-500 font-medium">
+            <div className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm font-medium">
               USDB
             </div>
           </div>
@@ -893,33 +900,32 @@ function MintTokensSection({ onMint }: MintTokensSectionProps) {
             <button
               key={preset}
               onClick={() => setAmount(preset.toString())}
-              className={`px-3 py-1.5 text-sm rounded-full transition-all ${
+              className={`px-3 py-1.5 text-sm rounded transition-all ${
                 amount === preset.toString()
-                  ? 'bg-purple-600 text-white'
-                  : 'bg-white border border-purple-200 text-purple-700 hover:border-purple-400'
+                  ? 'bg-bagel-orange text-white'
+                  : 'bg-gray-50 border border-gray-200 text-gray-600 hover:border-bagel-orange hover:text-bagel-orange'
               }`}
             >
-              {preset} USDB
+              {preset}
             </button>
           ))}
         </div>
 
-        {/* Info */}
-        <div className="flex items-start gap-2 p-3 bg-purple-100/50 rounded text-xs text-purple-700">
-          <Info className="w-4 h-4 flex-shrink-0 mt-0.5" />
-          <div>
-            <strong>Demo Mode:</strong> These are test tokens on Solana Devnet.
-            The amount is encrypted on-chain using Inco FHE (Fully Homomorphic Encryption).
-          </div>
+        {/* Info Box */}
+        <div className="flex items-start gap-3 p-3 bg-bagel-cream/50 rounded">
+          <ShieldCheck className="w-4 h-4 text-bagel-orange flex-shrink-0 mt-0.5" />
+          <p className="text-xs text-gray-600">
+            <span className="font-medium text-bagel-dark">FHE Encrypted:</span> Token amounts are encrypted on-chain using Inco's Fully Homomorphic Encryption.
+          </p>
         </div>
 
         {/* Error Display */}
         {error && (
           <div className="flex items-start gap-3 p-3 bg-red-50 border border-red-100 rounded">
-            <Warning className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" weight="fill" />
+            <Warning className="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" weight="fill" />
             <div>
-              <div className="text-sm font-medium text-red-800">Error</div>
-              <div className="text-xs text-red-700">{error}</div>
+              <p className="text-sm font-medium text-red-800">Transaction Failed</p>
+              <p className="text-xs text-red-600 mt-0.5">{error}</p>
             </div>
           </div>
         )}
@@ -927,12 +933,12 @@ function MintTokensSection({ onMint }: MintTokensSectionProps) {
         {/* Success Display */}
         {txid && (
           <div className="flex items-start gap-3 p-3 bg-green-50 border border-green-100 rounded">
-            <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" weight="fill" />
-            <div className="flex-1">
-              <div className="text-sm font-medium text-green-800">
-                {mintedAmount} USDBagel Minted!
-              </div>
-              <div className="text-xs text-green-700 break-all mt-1">{txid}</div>
+            <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0 mt-0.5" weight="fill" />
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-green-800">
+                {mintedAmount.toLocaleString()} USDBagel Minted
+              </p>
+              <code className="block text-xs text-green-600 mt-1 truncate">{txid}</code>
               <a
                 href={`https://explorer.solana.com/tx/${txid}?cluster=devnet`}
                 target="_blank"
@@ -947,31 +953,31 @@ function MintTokensSection({ onMint }: MintTokensSectionProps) {
 
         {/* Mint Button */}
         <motion.button
-          whileHover={{ scale: loading ? 1 : 1.02 }}
-          whileTap={{ scale: loading ? 1 : 0.98 }}
+          whileHover={{ scale: loading ? 1 : 1.01 }}
+          whileTap={{ scale: loading ? 1 : 0.99 }}
           onClick={handleMint}
           disabled={loading}
-          className="w-full px-6 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-lg font-medium flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-purple-200"
+          className="w-full px-4 py-3 bg-bagel-orange text-white rounded font-medium flex items-center justify-center gap-2 hover:bg-bagel-orange/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
           {loading ? (
             <>
-              <CircleNotch className="w-5 h-5 animate-spin" />
-              Minting...
+              <CircleNotch className="w-4 h-4 animate-spin" />
+              Minting tokens...
             </>
           ) : (
             <>
-              <Lightning className="w-5 h-5" weight="fill" />
+              <Lightning className="w-4 h-4" weight="fill" />
               Mint {amount || '0'} USDBagel
             </>
           )}
         </motion.button>
+      </div>
 
-        {/* Program Info */}
-        <div className="pt-2 border-t border-purple-100 mt-4">
-          <div className="text-[10px] font-mono text-purple-500 space-y-1">
-            <div>Inco Token: {INCO_TOKEN_PROGRAM_ID.toBase58().slice(0, 20)}...</div>
-            <div>USDBagel Mint: {USDBAGEL_MINT.toBase58().slice(0, 20)}...</div>
-          </div>
+      {/* Footer */}
+      <div className="px-4 py-3 bg-gray-50 border-t border-gray-100">
+        <div className="flex items-center justify-between text-[10px] font-mono text-gray-400">
+          <span>Inco Token Program</span>
+          <code className="bg-white px-1.5 py-0.5 rounded text-gray-500">{INCO_TOKEN_PROGRAM_ID.toBase58().slice(0, 16)}...</code>
         </div>
       </div>
     </motion.div>
