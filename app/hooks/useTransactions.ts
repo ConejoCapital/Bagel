@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useWallet } from '@solana/wallet-adapter-react';
 
-const HELIUS_API_KEY = '06227422-9d57-42de-a7b3-92f1491c58af';
-const HELIUS_RPC_URL = `https://mainnet.helius-rpc.com/?api-key=${HELIUS_API_KEY}`;
+const HELIUS_API_KEY = process.env.NEXT_PUBLIC_HELIUS_API_KEY || '06227422-9d57-42de-a7b3-92f1491c58af';
+const HELIUS_RPC_URL = process.env.NEXT_PUBLIC_SOLANA_RPC_URL || `https://devnet.helius-rpc.com/?api-key=${HELIUS_API_KEY}`;
+const IS_DEVNET = HELIUS_RPC_URL.includes('devnet');
 
 export interface Transaction {
   id: string;
@@ -153,9 +154,10 @@ export function useTransactions(limit: number = 20) {
     setError(null);
 
     try {
-      // Use Helius enhanced transactions API
+      // Use Helius enhanced transactions API (devnet or mainnet based on config)
+      const baseUrl = IS_DEVNET ? 'https://api-devnet.helius.xyz' : 'https://api.helius.xyz';
       const response = await fetch(
-        `https://api.helius.xyz/v0/addresses/${publicKey.toBase58()}/transactions?api-key=${HELIUS_API_KEY}&limit=${limit}`
+        `${baseUrl}/v0/addresses/${publicKey.toBase58()}/transactions?api-key=${HELIUS_API_KEY}&limit=${limit}`
       );
 
       if (!response.ok) {

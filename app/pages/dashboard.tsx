@@ -20,7 +20,7 @@ import {
   Eye,
   EyeSlash,
   Fingerprint,
-  LockKey,
+  LockSimple,
   CheckCircle,
   Circle,
   Funnel,
@@ -139,7 +139,7 @@ const navItems = [
 const privacyFeatures = [
   { icon: Fingerprint, label: 'Zero-Knowledge Proofs', enabled: true },
   { icon: EyeSlash, label: 'Stealth Addresses', enabled: true },
-  { icon: LockKey, label: 'Transaction Mixing', enabled: true },
+  { icon: LockSimple, label: 'Transaction Mixing', enabled: true },
   { icon: Eye, label: 'IP Masking', enabled: true },
 ];
 
@@ -153,20 +153,23 @@ interface PaymentModalProps {
 }
 
 function PaymentModal({ isOpen, onClose, onDeposit, businessEntryIndex, employees }: PaymentModalProps) {
-  const [recipient, setRecipient] = useState('');
   const [amount, setAmount] = useState('');
-  const [currency, setCurrency] = useState('SOL');
-  const [paymentType, setPaymentType] = useState<'one-time' | 'streaming'>('one-time');
-  const [showRecipientDropdown, setShowRecipientDropdown] = useState(false);
-  const [memo, setMemo] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [txid, setTxid] = useState('');
 
-  const currencies = [
-    { symbol: 'SOL', name: 'Solana', icon: '◎' },
-    { symbol: 'USDC', name: 'USD Coin', icon: '$' },
-  ];
+  // Calculate projected earnings (mock 10% APR)
+  const formatEarnings = (value: number) => {
+    if (value >= 1000) return value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    if (value >= 1) return value.toFixed(2);
+    if (value >= 0.01) return value.toFixed(2);
+    return value.toFixed(4);
+  };
+  const projectedEarnings = amount ? {
+    daily: formatEarnings(parseFloat(amount) * 0.10 / 365),
+    monthly: formatEarnings(parseFloat(amount) * 0.10 / 12),
+    yearly: formatEarnings(parseFloat(amount) * 0.10),
+  } : null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -188,10 +191,7 @@ function PaymentModal({ isOpen, onClose, onDeposit, businessEntryIndex, employee
       const amountLamports = solToLamports(parseFloat(amount));
       const signature = await onDeposit(businessEntryIndex, amountLamports);
       setTxid(signature);
-      // Reset form after success
       setAmount('');
-      setRecipient('');
-      setMemo('');
     } catch (err: any) {
       console.error('Deposit error:', err);
       setError(err.message || 'Failed to deposit funds');
@@ -225,18 +225,13 @@ function PaymentModal({ isOpen, onClose, onDeposit, businessEntryIndex, employee
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
             transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-            className="relative w-full max-w-lg mx-4 bg-white rounded-md shadow-2xl max-h-[90vh] overflow-y-auto"
+            className="relative w-full max-w-lg mx-4 bg-white rounded shadow-2xl max-h-[90vh] overflow-y-auto"
           >
             {/* Header */}
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-bagel-orange/10 rounded flex items-center justify-center">
-                  <PaperPlaneTilt className="w-5 h-5 text-bagel-orange" weight="fill" />
-                </div>
-                <div>
-                  <h2 className="text-lg font-semibold text-bagel-dark">New Payment</h2>
-                  <p className="text-sm text-gray-500">Send a private payment</p>
-                </div>
+              <div>
+                <h2 className="text-lg font-semibold text-bagel-dark">Deposit</h2>
+                <p className="text-sm text-gray-500">Deposit your confidential assets</p>
               </div>
               <button
                 onClick={onClose}
@@ -248,169 +243,87 @@ function PaymentModal({ isOpen, onClose, onDeposit, businessEntryIndex, employee
 
             {/* Body */}
             <form onSubmit={handleSubmit} className="p-6 space-y-5">
-              {/* Recipient */}
+              {/* APR Banner */}
+              <div className="flex items-center justify-between p-4 bg-bagel-cream border border-bagel-orange/20 rounded">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-bagel-orange/10 rounded flex items-center justify-center">
+                    <ChartBar className="w-5 h-5 text-bagel-orange" weight="fill" />
+                  </div>
+                  <div>
+                    <div className="text-xs font-medium text-bagel-dark/70 uppercase tracking-wide">Earn While Shielded</div>
+                    <div className="text-lg font-bold text-bagel-dark">10% APR</div>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="text-xs text-gray-500">Paid to employees</div>
+                  <div className="text-sm font-medium text-bagel-dark">Per-second streaming</div>
+                </div>
+              </div>
+
+              {/* Amount Input */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Recipient
+                  Deposit Amount
                 </label>
                 <div className="relative">
-                  <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <CurrencyDollar className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                   <input
-                    type="text"
-                    value={recipient}
-                    onChange={(e) => setRecipient(e.target.value)}
-                    onFocus={() => setShowRecipientDropdown(true)}
-                    onBlur={() => setTimeout(() => setShowRecipientDropdown(false), 200)}
-                    placeholder="Enter wallet address or select employee"
-                    className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded text-sm focus:outline-none focus:border-bagel-orange focus:ring-1 focus:ring-bagel-orange/20"
+                    type="number"
+                    value={amount}
+                    onChange={(e) => setAmount(e.target.value)}
+                    placeholder="0.00"
+                    step="0.01"
+                    min="0"
+                    className="w-full pl-10 pr-24 py-3 bg-gray-50 border border-gray-200 rounded text-lg font-semibold focus:outline-none focus:border-bagel-orange focus:ring-1 focus:ring-bagel-orange/20"
                   />
-
-                  {/* Employee Dropdown */}
-                  <AnimatePresence>
-                    {showRecipientDropdown && (
-                      <motion.div
-                        initial={{ opacity: 0, y: -10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -10 }}
-                        className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded shadow-lg z-10 max-h-48 overflow-auto"
-                      >
-                        {employees.slice(0, 4).map((emp) => (
-                          <button
-                            key={emp.id}
-                            type="button"
-                            onClick={() => {
-                              setRecipient(emp.wallet);
-                              setShowRecipientDropdown(false);
-                            }}
-                            className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors text-left"
-                          >
-                            <div className="w-8 h-8 bg-bagel-cream rounded-full flex items-center justify-center text-xs font-medium text-bagel-dark">
-                              {emp.initials}
-                            </div>
-                            <div className="flex-1">
-                              <div className="text-sm font-medium text-bagel-dark">{emp.name}</div>
-                              <div className="text-xs text-gray-500">{emp.wallet}</div>
-                            </div>
-                          </button>
-                        ))}
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </div>
-              </div>
-
-              {/* Amount & Currency */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Amount
-                </label>
-                <div className="flex gap-2">
-                  <div className="relative flex-1">
-                    <CurrencyDollar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                    <input
-                      type="number"
-                      value={amount}
-                      onChange={(e) => setAmount(e.target.value)}
-                      placeholder="0.00"
-                      step="0.01"
-                      min="0"
-                      className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded text-sm focus:outline-none focus:border-bagel-orange focus:ring-1 focus:ring-bagel-orange/20"
-                    />
-                  </div>
-                  <div className="relative">
-                    <select
-                      value={currency}
-                      onChange={(e) => setCurrency(e.target.value)}
-                      className="appearance-none w-28 px-4 py-3 bg-gray-50 border border-gray-200 rounded text-sm font-medium focus:outline-none focus:border-bagel-orange cursor-pointer"
-                    >
-                      {currencies.map((c) => (
-                        <option key={c.symbol} value={c.symbol}>
-                          {c.icon} {c.symbol}
-                        </option>
-                      ))}
-                    </select>
-                    <CaretDownIcon className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2 px-2 py-1 bg-bagel-cream rounded flex items-center gap-1">
+                    <span className="text-sm">🥯</span>
+                    <span className="text-xs font-semibold text-bagel-orange">USDBagel</span>
                   </div>
                 </div>
               </div>
 
-              {/* Payment Type */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Payment Type
-                </label>
-                <div className="grid grid-cols-2 gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setPaymentType('one-time')}
-                    className={`flex items-center gap-3 p-3 border rounded transition-all ${
-                      paymentType === 'one-time'
-                        ? 'border-bagel-orange bg-bagel-orange/5'
-                        : 'border-gray-200 hover:border-gray-300'
-                    }`}
-                  >
-                    <div className={`w-8 h-8 rounded flex items-center justify-center ${
-                      paymentType === 'one-time' ? 'bg-bagel-orange/10' : 'bg-gray-100'
-                    }`}>
-                      <CurrencyDollar className={`w-4 h-4 ${
-                        paymentType === 'one-time' ? 'text-bagel-orange' : 'text-gray-500'
-                      }`} />
-                    </div>
-                    <div className="text-left">
-                      <div className={`text-sm font-medium ${
-                        paymentType === 'one-time' ? 'text-bagel-dark' : 'text-gray-600'
-                      }`}>One-time</div>
-                      <div className="text-xs text-gray-500">Single payment</div>
-                    </div>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setPaymentType('streaming')}
-                    className={`flex items-center gap-3 p-3 border rounded transition-all ${
-                      paymentType === 'streaming'
-                        ? 'border-bagel-orange bg-bagel-orange/5'
-                        : 'border-gray-200 hover:border-gray-300'
-                    }`}
-                  >
-                    <div className={`w-8 h-8 rounded flex items-center justify-center ${
-                      paymentType === 'streaming' ? 'bg-bagel-orange/10' : 'bg-gray-100'
-                    }`}>
-                      <Lightning className={`w-4 h-4 ${
-                        paymentType === 'streaming' ? 'text-bagel-orange' : 'text-gray-500'
-                      }`} />
-                    </div>
-                    <div className="text-left">
-                      <div className={`text-sm font-medium ${
-                        paymentType === 'streaming' ? 'text-bagel-dark' : 'text-gray-600'
-                      }`}>Streaming</div>
-                      <div className="text-xs text-gray-500">Per-second payroll</div>
-                    </div>
-                  </button>
-                </div>
-              </div>
-
-              {/* Memo (optional) */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Memo <span className="text-gray-400 font-normal">(optional)</span>
-                </label>
-                <textarea
-                  value={memo}
-                  onChange={(e) => setMemo(e.target.value)}
-                  placeholder="Add a note to this payment..."
-                  rows={2}
-                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded text-sm focus:outline-none focus:border-bagel-orange focus:ring-1 focus:ring-bagel-orange/20 resize-none"
-                />
-              </div>
-
-              {/* Privacy Notice */}
-              <div className="flex items-start gap-3 p-3 bg-green-50 border border-green-100 rounded">
-                <ShieldCheck className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" weight="fill" />
-                <div>
-                  <div className="text-sm font-medium text-green-800">Privacy Protected</div>
-                  <div className="text-xs text-green-700">
-                    This transaction will be processed with maximum privacy. Amount and recipient will be hidden on-chain.
+              {/* Projected Earnings */}
+              {projectedEarnings && parseFloat(amount) > 0 && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  className="bg-gray-50 rounded p-4 space-y-3"
+                >
+                  <div className="flex items-center gap-2 text-sm font-medium text-gray-600">
+                    <ChartBar className="w-4 h-4 text-bagel-orange" />
+                    Projected Vault Earnings (10% APR)
                   </div>
+                  <div className="grid grid-cols-3 gap-3">
+                    <div className="text-center p-2 bg-white rounded border border-gray-100">
+                      <div className="text-xs text-gray-500">Daily</div>
+                      <div className="text-sm font-bold text-green-600">+{projectedEarnings.daily}</div>
+                    </div>
+                    <div className="text-center p-2 bg-white rounded border border-gray-100">
+                      <div className="text-xs text-gray-500">Monthly</div>
+                      <div className="text-sm font-bold text-green-600">+{projectedEarnings.monthly}</div>
+                    </div>
+                    <div className="text-center p-2 bg-white rounded border border-gray-100">
+                      <div className="text-xs text-gray-500">Yearly</div>
+                      <div className="text-sm font-bold text-green-600">+{projectedEarnings.yearly}</div>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+
+              {/* Vault Info */}
+              <div className="flex items-center justify-between p-3 bg-gray-50 rounded border border-gray-200">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 bg-bagel-orange/10 rounded flex items-center justify-center">
+                    <LockSimple className="w-4 h-4 text-bagel-orange" />
+                  </div>
+                  <div>
+                    <div className="text-xs font-medium text-bagel-dark">Vault Secured</div>
+                    <div className="text-[10px] text-gray-500">Inco Network</div>
+                  </div>
+                </div>
+                <div className="text-xs text-gray-500 text-right max-w-[180px]">
+                  Tokens are FHE-encrypted on-chain
                 </div>
               </div>
 
@@ -430,8 +343,9 @@ function PaymentModal({ isOpen, onClose, onDeposit, businessEntryIndex, employee
                 <div className="flex items-start gap-3 p-3 bg-green-50 border border-green-100 rounded">
                   <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" weight="fill" />
                   <div className="flex-1">
-                    <div className="text-sm font-medium text-green-800">Deposit Successful!</div>
-                    <div className="text-xs text-green-700 break-all mt-1">{txid}</div>
+                    <div className="text-sm font-medium text-green-800">Deposit Shielded!</div>
+                    <div className="text-xs text-green-700 mt-1">Funds encrypted and deposited to vault</div>
+                    <div className="text-xs text-green-700 break-all mt-1 font-mono">{txid}</div>
                     <a
                       href={`https://explorer.solana.com/tx/${txid}?cluster=devnet`}
                       target="_blank"
@@ -459,23 +373,31 @@ function PaymentModal({ isOpen, onClose, onDeposit, businessEntryIndex, employee
                     type="submit"
                     whileHover={{ scale: loading ? 1 : 1.01 }}
                     whileTap={{ scale: loading ? 1 : 0.99 }}
-                    disabled={loading || businessEntryIndex === null}
+                    disabled={loading || businessEntryIndex === null || !amount}
                     className="flex-1 px-4 py-3 bg-bagel-orange text-white rounded text-sm font-medium flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {loading ? (
                       <>
                         <CircleNotch className="w-4 h-4 animate-spin" />
-                        Processing...
+                        Shielding...
                       </>
                     ) : (
                       <>
-                        <PaperPlaneTilt className="w-4 h-4" weight="fill" />
-                        Deposit Funds
+                        <ShieldCheck className="w-4 h-4" weight="fill" />
+                        Shield & Deposit
                       </>
                     )}
                   </motion.button>
                 )}
               </div>
+
+              {/* Terms */}
+              <p className="text-xs text-gray-400 text-center">
+                By depositing, you agree to our{' '}
+                <Link href="/terms" className="text-bagel-orange hover:underline">
+                  Terms & Conditions
+                </Link>
+              </p>
             </form>
           </motion.div>
         </div>

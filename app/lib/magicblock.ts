@@ -573,7 +573,7 @@ export async function getTeeAuthToken(
 
     // Get auth token using SDK
     // The SDK handles the challenge/response flow internally
-    const token = await getAuthToken(
+    const authResult = await getAuthToken(
       MAGICBLOCK_TEE_URL,
       walletPubkey,
       async (message: Uint8Array) => {
@@ -582,6 +582,7 @@ export async function getTeeAuthToken(
         return signature;
       }
     );
+    const token = typeof authResult === 'string' ? authResult : authResult.token;
     const expiresAt = new Date(Date.now() + 3600000); // 1 hour
 
     console.log('✅ TEE authentication successful');

@@ -66,6 +66,20 @@ export default function EmployeeDashboard() {
 
       const amountLamports = solToLamports(parseFloat(withdrawAmount));
 
+      // Get employee's token account from localStorage (created when minting)
+      const employeeTokenAccountStr = localStorage.getItem(`userTokenAccount_${wallet.publicKey.toBase58()}`);
+      if (!employeeTokenAccountStr) {
+        throw new Error('No token account found. Please mint USDBagel tokens first to create your account.');
+      }
+      const employeeTokenAccount = new PublicKey(employeeTokenAccountStr);
+
+      // Get vault token account from env
+      const vaultTokenAccountStr = process.env.NEXT_PUBLIC_VAULT_TOKEN_ACCOUNT || 'C2nZ8CK2xqRJj7uQuipmi111hqXf3sRK2Zq4aQhmSYJu';
+      const vaultTokenAccount = new PublicKey(vaultTokenAccountStr);
+
+      console.log('   Vault Token Account:', vaultTokenAccount.toBase58());
+      console.log('   Employee Token Account:', employeeTokenAccount.toBase58());
+
       // REAL TRANSACTION - sends request_withdrawal instruction to Solana!
       const txid = await requestWithdrawal(
         connection,
@@ -73,7 +87,9 @@ export default function EmployeeDashboard() {
         parseInt(businessEntryIndex),
         parseInt(employeeIndex),
         amountLamports,
-        false // useShadowwire - set to true for mainnet
+        false, // useShadowwire - set to true for mainnet
+        vaultTokenAccount,
+        employeeTokenAccount
       );
 
       setWithdrawTxid(txid);
