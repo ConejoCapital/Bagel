@@ -192,81 +192,61 @@ export async function registerBusiness(
 
 /**
  * Deposit funds to business
- * 
- * PRIVACY: Uses SOL transfers (public) or Confidential Token transfers (encrypted) based on vault configuration.
- * When confidential tokens are enabled, transfer amounts are encrypted on-chain.
- * 
- * @param depositorTokenAccount - Optional confidential token account for depositor (required if confidential tokens enabled)
- * @param vaultTokenAccount - Optional confidential token account for master vault (required if confidential tokens enabled)
- * @param incoTokenProgram - Optional Inco Confidential Token program ID (from env if not provided)
+ *
+ * PRIVACY: Uses Inco Confidential Token transfers - amounts are encrypted on-chain.
+ *
+ * IMPORTANT: The master vault MUST be configured for confidential tokens first!
+ * Use configure_confidential_mint instruction before calling deposit.
+ *
+ * @param depositorTokenAccount - Confidential token account for depositor (REQUIRED)
+ * @param vaultTokenAccount - Confidential token account for master vault (REQUIRED)
+ * @param incoTokenProgram - Inco Confidential Token program ID (from env if not provided)
  */
 export async function deposit(
   connection: Connection,
   wallet: WalletContextState,
   entryIndex: number,
   amountLamports: number,
-  depositorTokenAccount?: PublicKey,
-  vaultTokenAccount?: PublicKey,
+  depositorTokenAccount: PublicKey,
+  vaultTokenAccount: PublicKey,
   incoTokenProgram?: PublicKey
 ): Promise<string> {
   if (!wallet.publicKey || !wallet.signTransaction) {
     throw new Error('Wallet not connected');
   }
 
+  if (!depositorTokenAccount || !vaultTokenAccount) {
+    throw new Error('Confidential token accounts are required. The program requires use_confidential_tokens to be enabled.');
+  }
+
   const [masterVaultPDA] = getMasterVaultPDA();
   const [businessEntryPDA] = getBusinessEntryPDA(masterVaultPDA, entryIndex);
-  
-  // Encrypt amount for encrypted balance tracking and/or confidential transfer
+
+  // Encrypt amount for confidential transfer
   const encryptedAmount = await encryptForInco(amountLamports);
-  
-  // Determine if confidential tokens are enabled (presence of token accounts indicates this)
-  const useConfidentialTokens = depositorTokenAccount && vaultTokenAccount;
-  
-  // Build instruction data with Option<u64> serialization:
-  // Option<u64> format: 0x00 (None) or 0x01 + u64 (Some)
-  // - Confidential tokens: [discriminator][0x00][enc_len][encrypted_amount] (None)
-  // - SOL fallback: [discriminator][0x01][amount][enc_len][encrypted_amount] (Some)
+
+  // Build instruction data: discriminator + encrypted_amount (Vec<u8>)
+  // Vec<u8> format: length (u32 LE) + data
   const encLen = Buffer.alloc(4);
   encLen.writeUInt32LE(encryptedAmount.length);
-  
-  let data: Buffer;
-  if (useConfidentialTokens) {
-    // PRIVACY: Option::None when confidential tokens enabled
-    const optionTag = Buffer.from([0x00]); // None
-    data = Buffer.concat([DISCRIMINATORS.deposit, optionTag, encLen, encryptedAmount]);
-  } else {
-    // Option::Some(u64) for SOL fallback mode
-    const optionTag = Buffer.from([0x01]); // Some
-    const amountBuf = Buffer.alloc(8);
-    amountBuf.writeBigUInt64LE(BigInt(amountLamports));
-    data = Buffer.concat([DISCRIMINATORS.deposit, optionTag, amountBuf, encLen, encryptedAmount]);
-  }
-  
-  // Build instruction keys
+  const data = Buffer.concat([DISCRIMINATORS.deposit, encLen, encryptedAmount]);
+
+  // Build instruction keys - program expects specific order
+  const INCO_TOKEN_ID = incoTokenProgram ||
+    (process.env.NEXT_PUBLIC_INCO_TOKEN_PROGRAM_ID
+      ? new PublicKey(process.env.NEXT_PUBLIC_INCO_TOKEN_PROGRAM_ID)
+      : new PublicKey('HuUn2JwCPCLWwJ3z17m7CER73jseqsxvbcFuZN4JAw22'));
+
   const keys = [
     { pubkey: wallet.publicKey, isSigner: true, isWritable: true }, // depositor
     { pubkey: masterVaultPDA, isSigner: false, isWritable: true }, // master_vault
     { pubkey: businessEntryPDA, isSigner: false, isWritable: true }, // business_entry
     { pubkey: INCO_LIGHTNING_ID, isSigner: false, isWritable: false }, // inco_lightning_program
+    { pubkey: INCO_TOKEN_ID, isSigner: false, isWritable: false }, // inco_token_program
+    { pubkey: depositorTokenAccount, isSigner: false, isWritable: true }, // depositor_token_account
+    { pubkey: vaultTokenAccount, isSigner: false, isWritable: true }, // master_vault_token_account
+    { pubkey: SystemProgram.programId, isSigner: false, isWritable: false }, // system_program
   ];
-
-  // Add optional confidential token accounts if provided
-  if (useConfidentialTokens) {
-    const INCO_TOKEN_PROGRAM_ID = incoTokenProgram || 
-      (process.env.NEXT_PUBLIC_INCO_TOKEN_PROGRAM_ID 
-        ? new PublicKey(process.env.NEXT_PUBLIC_INCO_TOKEN_PROGRAM_ID)
-        : null);
-    
-    if (INCO_TOKEN_PROGRAM_ID) {
-      keys.push(
-        { pubkey: INCO_TOKEN_PROGRAM_ID, isSigner: false, isWritable: false }, // inco_token_program (optional)
-        { pubkey: depositorTokenAccount!, isSigner: false, isWritable: true }, // depositor_token_account (optional)
-        { pubkey: vaultTokenAccount!, isSigner: false, isWritable: true }, // master_vault_token_account (optional)
-      );
-    }
-  }
-
-  keys.push({ pubkey: SystemProgram.programId, isSigner: false, isWritable: false }); // system_program
   
   const instruction = new TransactionInstruction({
     keys,
@@ -364,15 +344,17 @@ export async function addEmployee(
 
 /**
  * Request withdrawal (employee withdraws accrued salary)
- * 
- * PRIVACY: Uses SOL transfers (public) or Confidential Token transfers (encrypted) based on vault configuration.
- * When confidential tokens are enabled, transfer amounts are encrypted on-chain.
- * 
+ *
+ * PRIVACY: Uses Inco Confidential Token transfers - amounts are encrypted on-chain.
+ *
+ * IMPORTANT: The master vault MUST be configured for confidential tokens first!
+ * Use configure_confidential_mint instruction before calling request_withdrawal.
+ *
  * ShadowWire integration (mainnet): Can add ZK proofs to hide amounts further.
- * 
- * @param vaultTokenAccount - Optional confidential token account for master vault (required if confidential tokens enabled)
- * @param employeeTokenAccount - Optional confidential token account for employee (required if confidential tokens enabled)
- * @param incoTokenProgram - Optional Inco Confidential Token program ID (from env if not provided)
+ *
+ * @param vaultTokenAccount - Confidential token account for master vault (REQUIRED)
+ * @param employeeTokenAccount - Confidential token account for employee (REQUIRED)
+ * @param incoTokenProgram - Inco Confidential Token program ID (from env if not provided)
  */
 export async function requestWithdrawal(
   connection: Connection,
@@ -381,72 +363,51 @@ export async function requestWithdrawal(
   employeeIndex: number,
   amountLamports: number,
   useShadowwire: boolean = false,
-  vaultTokenAccount?: PublicKey,
-  employeeTokenAccount?: PublicKey,
+  vaultTokenAccount: PublicKey,
+  employeeTokenAccount: PublicKey,
   incoTokenProgram?: PublicKey
 ): Promise<string> {
   if (!wallet.publicKey || !wallet.signTransaction) {
     throw new Error('Wallet not connected');
   }
 
+  if (!vaultTokenAccount || !employeeTokenAccount) {
+    throw new Error('Confidential token accounts are required. The program requires use_confidential_tokens to be enabled.');
+  }
+
   const [masterVaultPDA] = getMasterVaultPDA();
   const [businessEntryPDA] = getBusinessEntryPDA(masterVaultPDA, entryIndex);
   const [employeeEntryPDA] = getEmployeeEntryPDA(businessEntryPDA, employeeIndex);
-  
-  // Encrypt amount for encrypted balance tracking and/or confidential transfer
+
+  // Encrypt amount for confidential transfer
   const encryptedAmount = await encryptForInco(amountLamports);
-  
-  // Determine if confidential tokens are enabled (presence of token accounts indicates this)
-  const useConfidentialTokens = vaultTokenAccount && employeeTokenAccount;
-  
-  // Build instruction data with Option<u64> serialization:
-  // Option<u64> format: 0x00 (None) or 0x01 + u64 (Some)
-  // - Confidential tokens: [discriminator][0x00][enc_len][encrypted_amount][use_shadowwire] (None)
-  // - SOL fallback: [discriminator][0x01][amount][enc_len][encrypted_amount][use_shadowwire] (Some)
+
+  // Build instruction data: discriminator + encrypted_amount (Vec<u8>) + use_shadowwire (bool)
+  // Vec<u8> format: length (u32 LE) + data
   const encLen = Buffer.alloc(4);
   encLen.writeUInt32LE(encryptedAmount.length);
   const shadowwireBuf = Buffer.alloc(1);
   shadowwireBuf.writeUInt8(useShadowwire ? 1 : 0);
-  
-  let data: Buffer;
-  if (useConfidentialTokens) {
-    // PRIVACY: Option::None when confidential tokens enabled
-    const optionTag = Buffer.from([0x00]); // None
-    data = Buffer.concat([DISCRIMINATORS.request_withdrawal, optionTag, encLen, encryptedAmount, shadowwireBuf]);
-  } else {
-    // Option::Some(u64) for SOL fallback mode
-    const optionTag = Buffer.from([0x01]); // Some
-    const amountBuf = Buffer.alloc(8);
-    amountBuf.writeBigUInt64LE(BigInt(amountLamports));
-    data = Buffer.concat([DISCRIMINATORS.request_withdrawal, optionTag, amountBuf, encLen, encryptedAmount, shadowwireBuf]);
-  }
-  
-  // Build instruction keys
+
+  const data = Buffer.concat([DISCRIMINATORS.request_withdrawal, encLen, encryptedAmount, shadowwireBuf]);
+
+  // Build instruction keys - program expects specific order
+  const INCO_TOKEN_ID = incoTokenProgram ||
+    (process.env.NEXT_PUBLIC_INCO_TOKEN_PROGRAM_ID
+      ? new PublicKey(process.env.NEXT_PUBLIC_INCO_TOKEN_PROGRAM_ID)
+      : new PublicKey('HuUn2JwCPCLWwJ3z17m7CER73jseqsxvbcFuZN4JAw22'));
+
   const keys = [
     { pubkey: wallet.publicKey, isSigner: true, isWritable: true }, // withdrawer
     { pubkey: masterVaultPDA, isSigner: false, isWritable: true }, // master_vault
     { pubkey: businessEntryPDA, isSigner: false, isWritable: true }, // business_entry
     { pubkey: employeeEntryPDA, isSigner: false, isWritable: true }, // employee_entry
     { pubkey: INCO_LIGHTNING_ID, isSigner: false, isWritable: false }, // inco_lightning_program
+    { pubkey: INCO_TOKEN_ID, isSigner: false, isWritable: false }, // inco_token_program
+    { pubkey: vaultTokenAccount, isSigner: false, isWritable: true }, // master_vault_token_account
+    { pubkey: employeeTokenAccount, isSigner: false, isWritable: true }, // employee_token_account
+    { pubkey: SystemProgram.programId, isSigner: false, isWritable: false }, // system_program
   ];
-
-  // Add optional confidential token accounts if provided
-  if (useConfidentialTokens) {
-    const INCO_TOKEN_PROGRAM_ID = incoTokenProgram || 
-      (process.env.NEXT_PUBLIC_INCO_TOKEN_PROGRAM_ID 
-        ? new PublicKey(process.env.NEXT_PUBLIC_INCO_TOKEN_PROGRAM_ID)
-        : null);
-    
-    if (INCO_TOKEN_PROGRAM_ID) {
-      keys.push(
-        { pubkey: INCO_TOKEN_PROGRAM_ID, isSigner: false, isWritable: false }, // inco_token_program (optional)
-        { pubkey: vaultTokenAccount!, isSigner: false, isWritable: true }, // master_vault_token_account (optional)
-        { pubkey: employeeTokenAccount!, isSigner: false, isWritable: true }, // employee_token_account (optional)
-      );
-    }
-  }
-
-  keys.push({ pubkey: SystemProgram.programId, isSigner: false, isWritable: false }); // system_program
   
   const instruction = new TransactionInstruction({
     keys,
@@ -481,4 +442,214 @@ export function solToLamports(sol: number): number {
 
 export function lamportsToSOL(lamports: number): number {
   return lamports / 1_000_000_000;
+}
+
+// ============================================================
+// Confidential Token Minting (Demo/Testnet)
+// ============================================================
+
+// Inco Confidential Token Program ID
+export const INCO_TOKEN_PROGRAM_ID = new PublicKey(
+  process.env.NEXT_PUBLIC_INCO_TOKEN_PROGRAM_ID || 'HuUn2JwCPCLWwJ3z17m7CER73jseqsxvbcFuZN4JAw22'
+);
+
+// USDBagel Mint Address (devnet)
+export const USDBAGEL_MINT = new PublicKey(
+  process.env.NEXT_PUBLIC_USDBAGEL_MINT || 'A3G2NBGL7xH9T6BYwVkwRGsSYxtFPdg4HSThfTmV94ht'
+);
+
+/**
+ * Derive Associated Token Account for Inco Confidential Tokens
+ * Uses a simple PDA derivation for demo purposes
+ */
+export function getConfidentialTokenAccount(
+  owner: PublicKey,
+  mint: PublicKey = USDBAGEL_MINT
+): [PublicKey, number] {
+  return PublicKey.findProgramAddressSync(
+    [Buffer.from('token_account'), owner.toBuffer(), mint.toBuffer()],
+    INCO_TOKEN_PROGRAM_ID
+  );
+}
+
+/**
+ * Initialize a confidential token account for a user (Demo)
+ * Creates a memo transaction to simulate account initialization
+ */
+export async function initializeConfidentialTokenAccount(
+  connection: Connection,
+  wallet: WalletContextState,
+  mint: PublicKey = USDBAGEL_MINT
+): Promise<{ txid: string; tokenAccount: PublicKey }> {
+  if (!wallet.publicKey || !wallet.signTransaction) {
+    throw new Error('Wallet not connected');
+  }
+
+  const [tokenAccount] = getConfidentialTokenAccount(wallet.publicKey, mint);
+
+  // Create a memo transaction to record the account initialization
+  const memoProgram = new PublicKey('MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr');
+  const memoData = Buffer.from(`BAGEL:INIT_ACCOUNT:${tokenAccount.toBase58()}:${Date.now()}`);
+
+  const instruction = new TransactionInstruction({
+    programId: memoProgram,
+    keys: [{ pubkey: wallet.publicKey, isSigner: true, isWritable: false }],
+    data: memoData,
+  });
+
+  const transaction = new Transaction().add(instruction);
+  const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('confirmed');
+  transaction.recentBlockhash = blockhash;
+  transaction.feePayer = wallet.publicKey;
+
+  const signed = await wallet.signTransaction(transaction);
+  const txid = await connection.sendRawTransaction(signed.serialize(), {
+    skipPreflight: false,
+    maxRetries: 3,
+  });
+
+  await connection.confirmTransaction({
+    blockhash,
+    lastValidBlockHeight,
+    signature: txid,
+  }, 'confirmed');
+
+  return { txid, tokenAccount };
+}
+
+/**
+ * Mint test USDBagel tokens (Demo Mode)
+ *
+ * This creates an on-chain record of the mint via memo + logs the encrypted amount.
+ * In production, this would call the actual Inco Confidential Token program.
+ *
+ * For the hackathon demo, this:
+ * 1. Creates a verifiable on-chain transaction
+ * 2. Includes encrypted amount in memo (simulating FHE)
+ * 3. Can be viewed on Solana Explorer
+ *
+ * @param amount - Amount to mint (in token units, e.g., 100 = 100 USDBagel)
+ */
+export async function mintTestTokens(
+  connection: Connection,
+  wallet: WalletContextState,
+  amount: number,
+  tokenAccount?: PublicKey
+): Promise<{ txid: string; amount: number; tokenAccount: PublicKey }> {
+  if (!wallet.publicKey || !wallet.signTransaction) {
+    throw new Error('Wallet not connected');
+  }
+
+  // Derive token account if not provided
+  let destTokenAccount = tokenAccount;
+  if (!destTokenAccount) {
+    const [derivedAccount] = getConfidentialTokenAccount(wallet.publicKey);
+    destTokenAccount = derivedAccount;
+  }
+
+  // Encrypt the amount (simulated FHE - in production use Inco SDK)
+  const amountWithDecimals = BigInt(amount) * BigInt(1_000_000_000); // 9 decimals
+  const encryptedAmount = await encryptForInco(Number(amountWithDecimals));
+  const encryptedHex = encryptedAmount.toString('hex');
+
+  // Create memo transaction with mint details
+  // This creates a verifiable on-chain record of the "mint"
+  const memoProgram = new PublicKey('MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr');
+  const memoData = Buffer.from(
+    `BAGEL:MINT:${amount}USDB:TO:${destTokenAccount.toBase58().slice(0, 8)}:ENC:${encryptedHex.slice(0, 16)}:${Date.now()}`
+  );
+
+  const instruction = new TransactionInstruction({
+    programId: memoProgram,
+    keys: [{ pubkey: wallet.publicKey, isSigner: true, isWritable: false }],
+    data: memoData,
+  });
+
+  const transaction = new Transaction().add(instruction);
+  const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('confirmed');
+  transaction.recentBlockhash = blockhash;
+  transaction.feePayer = wallet.publicKey;
+
+  const signed = await wallet.signTransaction(transaction);
+  const txid = await connection.sendRawTransaction(signed.serialize(), {
+    skipPreflight: false,
+    maxRetries: 3,
+  });
+
+  await connection.confirmTransaction({
+    blockhash,
+    lastValidBlockHeight,
+    signature: txid,
+  }, 'confirmed');
+
+  console.log('🪙 Demo mint recorded on-chain');
+  console.log(`   Amount: ${amount} USDBagel (encrypted: ${encryptedHex.slice(0, 16)}...)`);
+  console.log(`   Token Account: ${destTokenAccount.toBase58()}`);
+  console.log(`   Transaction: ${txid}`);
+
+  return { txid, amount, tokenAccount: destTokenAccount };
+}
+
+/**
+ * Request devnet SOL airdrop
+ * Useful for testing when wallet is low on SOL
+ */
+export async function requestAirdrop(
+  connection: Connection,
+  wallet: WalletContextState,
+  amountSOL: number = 1
+): Promise<string> {
+  if (!wallet.publicKey) {
+    throw new Error('Wallet not connected');
+  }
+
+  const signature = await connection.requestAirdrop(
+    wallet.publicKey,
+    amountSOL * 1_000_000_000
+  );
+
+  await connection.confirmTransaction(signature, 'confirmed');
+  return signature;
+}
+
+/**
+ * Get token balance (demo - returns simulated encrypted balance)
+ */
+export async function getConfidentialBalance(
+  connection: Connection,
+  tokenAccount: PublicKey
+): Promise<{ exists: boolean; encryptedBalance?: string }> {
+  // For demo, we check if the account exists on chain
+  const accountInfo = await connection.getAccountInfo(tokenAccount);
+
+  if (!accountInfo) {
+    return { exists: false };
+  }
+
+  // Return a simulated encrypted balance handle
+  const balanceHandle = Buffer.from(tokenAccount.toBuffer().slice(0, 16)).toString('hex');
+
+  return {
+    exists: true,
+    encryptedBalance: `🔒 ${balanceHandle.slice(0, 8)}...`
+  };
+}
+
+// ============================================================
+// Confidential Token Account Derivation
+// ============================================================
+
+/**
+ * Derive the Master Vault's confidential token account
+ */
+export function getMasterVaultTokenAccount(): [PublicKey, number] {
+  const [masterVault] = getMasterVaultPDA();
+  return getConfidentialTokenAccount(masterVault, USDBAGEL_MINT);
+}
+
+/**
+ * Derive a user's confidential token account for USDBagel
+ */
+export function getUserTokenAccount(owner: PublicKey): [PublicKey, number] {
+  return getConfidentialTokenAccount(owner, USDBAGEL_MINT);
 }

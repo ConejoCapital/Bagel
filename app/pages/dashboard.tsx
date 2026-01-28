@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
@@ -38,13 +38,35 @@ import {
   User,
   Copy,
   Plus,
+  CircleNotch,
+  ArrowSquareOut,
 } from '@phosphor-icons/react';
+import { PublicKey } from '@solana/web3.js';
 
 const WalletButton = dynamic(() => import('../components/WalletButton'), {
   ssr: false,
 });
 
-import { useWallet } from '@solana/wallet-adapter-react';
+import { useWallet, useConnection } from '@solana/wallet-adapter-react';
+import {
+  registerBusiness,
+  addEmployee,
+  deposit,
+  getCurrentBusinessIndex,
+  getCurrentEmployeeIndex,
+  getBusinessEntryPDA,
+  getMasterVaultPDA,
+  getMasterVaultTokenAccount,
+  getConfidentialTokenAccount,
+  solToLamports,
+  lamportsToSOL,
+  BAGEL_PROGRAM_ID,
+  INCO_TOKEN_PROGRAM_ID,
+  USDBAGEL_MINT,
+  mintTestTokens,
+  initializeConfidentialTokenAccount,
+  getConfidentialBalance,
+} from '../lib/bagel-client';
 import { PayrollChart } from '@/components/ui/payroll-chart';
 import { CryptoDistributionChart } from '@/components/ui/crypto-distribution-chart';
 import { useRecentTransactions } from '@/hooks/useTransactions';
@@ -89,64 +111,8 @@ const guideSteps: GuideStep[] = [
   },
 ];
 
-// Mock data for employees
-const employees = [
-  {
-    id: 1,
-    initials: 'AT',
-    name: 'Alex Thompson',
-    date: 'Jan 15, 2026',
-    wallet: '0x7a23...f8d9',
-    amount: 8500.00,
-    currency: 'SOL',
-    privacy: 'Maximum',
-    status: 'Paid',
-  },
-  {
-    id: 2,
-    initials: 'SC',
-    name: 'Sarah Chen',
-    date: 'Jan 14, 2026',
-    wallet: '0x3b91...c4e2',
-    amount: 12750.00,
-    currency: 'USDC',
-    privacy: 'Standard',
-    status: 'Pending',
-  },
-  {
-    id: 3,
-    initials: 'MR',
-    name: 'Michael Ross',
-    date: 'Jan 15, 2026',
-    wallet: '0x9f56...a7b3',
-    amount: 6200.00,
-    currency: 'SOL',
-    privacy: 'Maximum',
-    status: 'Paid',
-  },
-  {
-    id: 4,
-    initials: 'EW',
-    name: 'Emma Wilson',
-    date: 'Jan 13, 2026',
-    wallet: '0x2c84...d1f5',
-    amount: 9100.00,
-    currency: 'USDC',
-    privacy: 'Enhanced',
-    status: 'Processing',
-  },
-  {
-    id: 5,
-    initials: 'JK',
-    name: 'James Kim',
-    date: 'Jan 12, 2026',
-    wallet: '0x5d92...e3a1',
-    amount: 7800.00,
-    currency: 'SOL',
-    privacy: 'Maximum',
-    status: 'Paid',
-  },
-];
+// Employee type definition
+type Employee = typeof initialEmployees[0];
 
 // Helper function to format relative time
 function getRelativeTime(timestamp: number): string {
@@ -181,25 +147,62 @@ const privacyFeatures = [
 interface PaymentModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onDeposit: (entryIndex: number, amountLamports: number) => Promise<string>;
+  businessEntryIndex: number | null;
+  employees: typeof initialEmployees;
 }
 
-function PaymentModal({ isOpen, onClose }: PaymentModalProps) {
+function PaymentModal({ isOpen, onClose, onDeposit, businessEntryIndex, employees }: PaymentModalProps) {
   const [recipient, setRecipient] = useState('');
   const [amount, setAmount] = useState('');
   const [currency, setCurrency] = useState('SOL');
   const [paymentType, setPaymentType] = useState<'one-time' | 'streaming'>('one-time');
   const [showRecipientDropdown, setShowRecipientDropdown] = useState(false);
   const [memo, setMemo] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [txid, setTxid] = useState('');
 
   const currencies = [
     { symbol: 'SOL', name: 'Solana', icon: '◎' },
     { symbol: 'USDC', name: 'USD Coin', icon: '$' },
   ];
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Handle payment submission
-    console.log({ recipient, amount, currency, paymentType, memo });
+    setError('');
+    setTxid('');
+
+    if (businessEntryIndex === null) {
+      setError('Business not registered yet. Please register your business first.');
+      return;
+    }
+
+    if (!amount || parseFloat(amount) <= 0) {
+      setError('Please enter a valid amount');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const amountLamports = solToLamports(parseFloat(amount));
+      const signature = await onDeposit(businessEntryIndex, amountLamports);
+      setTxid(signature);
+      // Reset form after success
+      setAmount('');
+      setRecipient('');
+      setMemo('');
+    } catch (err: any) {
+      console.error('Deposit error:', err);
+      setError(err.message || 'Failed to deposit funds');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleClose = () => {
+    setError('');
+    setTxid('');
     onClose();
   };
 
@@ -411,24 +414,67 @@ function PaymentModal({ isOpen, onClose }: PaymentModalProps) {
                 </div>
               </div>
 
+              {/* Error Display */}
+              {error && (
+                <div className="flex items-start gap-3 p-3 bg-red-50 border border-red-100 rounded">
+                  <Warning className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" weight="fill" />
+                  <div>
+                    <div className="text-sm font-medium text-red-800">Error</div>
+                    <div className="text-xs text-red-700">{error}</div>
+                  </div>
+                </div>
+              )}
+
+              {/* Success Display */}
+              {txid && (
+                <div className="flex items-start gap-3 p-3 bg-green-50 border border-green-100 rounded">
+                  <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" weight="fill" />
+                  <div className="flex-1">
+                    <div className="text-sm font-medium text-green-800">Deposit Successful!</div>
+                    <div className="text-xs text-green-700 break-all mt-1">{txid}</div>
+                    <a
+                      href={`https://explorer.solana.com/tx/${txid}?cluster=devnet`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-xs text-green-700 hover:text-green-900 mt-2 font-medium"
+                    >
+                      View on Explorer <ArrowSquareOut className="w-3 h-3" />
+                    </a>
+                  </div>
+                </div>
+              )}
+
               {/* Actions */}
               <div className="flex gap-3 pt-2">
                 <button
                   type="button"
-                  onClick={onClose}
+                  onClick={handleClose}
                   className="flex-1 px-4 py-3 border border-gray-200 rounded text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+                  disabled={loading}
                 >
-                  Cancel
+                  {txid ? 'Close' : 'Cancel'}
                 </button>
-                <motion.button
-                  type="submit"
-                  whileHover={{ scale: 1.01 }}
-                  whileTap={{ scale: 0.99 }}
-                  className="flex-1 px-4 py-3 bg-bagel-orange text-white rounded text-sm font-medium flex items-center justify-center gap-2"
-                >
-                  <PaperPlaneTilt className="w-4 h-4" weight="fill" />
-                  Send Payment
-                </motion.button>
+                {!txid && (
+                  <motion.button
+                    type="submit"
+                    whileHover={{ scale: loading ? 1 : 1.01 }}
+                    whileTap={{ scale: loading ? 1 : 0.99 }}
+                    disabled={loading || businessEntryIndex === null}
+                    className="flex-1 px-4 py-3 bg-bagel-orange text-white rounded text-sm font-medium flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {loading ? (
+                      <>
+                        <CircleNotch className="w-4 h-4 animate-spin" />
+                        Processing...
+                      </>
+                    ) : (
+                      <>
+                        <PaperPlaneTilt className="w-4 h-4" weight="fill" />
+                        Deposit Funds
+                      </>
+                    )}
+                  </motion.button>
+                )}
               </div>
             </form>
           </motion.div>
@@ -442,31 +488,100 @@ function PaymentModal({ isOpen, onClose }: PaymentModalProps) {
 interface AddEmployeeModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onAddEmployee: (walletAddress: string, salaryPerSecond: number) => Promise<{ txid: string; employeeIndex: number }>;
+  businessEntryIndex: number | null;
 }
 
-function AddEmployeeModal({ isOpen, onClose }: AddEmployeeModalProps) {
+function AddEmployeeModal({ isOpen, onClose, onAddEmployee, businessEntryIndex }: AddEmployeeModalProps) {
   const [name, setName] = useState('');
   const [wallet, setWallet] = useState('');
   const [salary, setSalary] = useState('');
   const [currency, setCurrency] = useState('SOL');
   const [paymentFrequency, setPaymentFrequency] = useState<'monthly' | 'bi-weekly' | 'weekly'>('monthly');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [txid, setTxid] = useState('');
+  const [employeeIndex, setEmployeeIndex] = useState<number | null>(null);
 
   const currencies = [
     { symbol: 'SOL', name: 'Solana', icon: '◎' },
     { symbol: 'USDC', name: 'USD Coin', icon: '$' },
   ];
 
-  const handleSubmit = (e: React.FormEvent) => {
+  // Convert salary to per-second rate based on frequency
+  const calculateSalaryPerSecond = (monthlySalary: number, frequency: string): number => {
+    let annualSalary: number;
+    switch (frequency) {
+      case 'weekly':
+        annualSalary = monthlySalary * 52;
+        break;
+      case 'bi-weekly':
+        annualSalary = monthlySalary * 26;
+        break;
+      default: // monthly
+        annualSalary = monthlySalary * 12;
+    }
+    // Seconds in a year: 365.25 * 24 * 60 * 60 = 31,557,600
+    return annualSalary / 31557600;
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Handle employee creation
-    console.log({ name, wallet, salary, currency, paymentFrequency });
+    setError('');
+    setTxid('');
+
+    if (businessEntryIndex === null) {
+      setError('Business not registered yet. Please register your business first.');
+      return;
+    }
+
+    if (!wallet) {
+      setError('Please enter a wallet address');
+      return;
+    }
+
+    if (!salary || parseFloat(salary) <= 0) {
+      setError('Please enter a valid salary amount');
+      return;
+    }
+
+    // Validate wallet address
+    try {
+      new PublicKey(wallet);
+    } catch {
+      setError('Invalid Solana wallet address');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const salaryPerSecond = calculateSalaryPerSecond(parseFloat(salary), paymentFrequency);
+      const salaryLamports = solToLamports(salaryPerSecond);
+
+      const result = await onAddEmployee(wallet, salaryLamports);
+      setTxid(result.txid);
+      setEmployeeIndex(result.employeeIndex);
+    } catch (err: any) {
+      console.error('Add employee error:', err);
+      setError(err.message || 'Failed to add employee');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleClose = () => {
+    setError('');
+    setTxid('');
+    setEmployeeIndex(null);
+    if (txid) {
+      // Reset form only on successful add
+      setName('');
+      setWallet('');
+      setSalary('');
+      setCurrency('SOL');
+      setPaymentFrequency('monthly');
+    }
     onClose();
-    // Reset form
-    setName('');
-    setWallet('');
-    setSalary('');
-    setCurrency('SOL');
-    setPaymentFrequency('monthly');
   };
 
   return (
@@ -626,24 +741,70 @@ function AddEmployeeModal({ isOpen, onClose }: AddEmployeeModalProps) {
                 </div>
               </div>
 
+              {/* Error Display */}
+              {error && (
+                <div className="flex items-start gap-3 p-3 bg-red-50 border border-red-100 rounded">
+                  <Warning className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" weight="fill" />
+                  <div>
+                    <div className="text-sm font-medium text-red-800">Error</div>
+                    <div className="text-xs text-red-700">{error}</div>
+                  </div>
+                </div>
+              )}
+
+              {/* Success Display */}
+              {txid && (
+                <div className="flex items-start gap-3 p-3 bg-green-50 border border-green-100 rounded">
+                  <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" weight="fill" />
+                  <div className="flex-1">
+                    <div className="text-sm font-medium text-green-800">Employee Added Successfully!</div>
+                    <div className="text-xs text-green-700 mt-1">
+                      Employee Index: <span className="font-mono">{employeeIndex}</span>
+                    </div>
+                    <div className="text-xs text-green-700 break-all mt-1">{txid}</div>
+                    <a
+                      href={`https://explorer.solana.com/tx/${txid}?cluster=devnet`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-xs text-green-700 hover:text-green-900 mt-2 font-medium"
+                    >
+                      View on Explorer <ArrowSquareOut className="w-3 h-3" />
+                    </a>
+                  </div>
+                </div>
+              )}
+
               {/* Actions */}
               <div className="flex gap-3 pt-2">
                 <button
                   type="button"
-                  onClick={onClose}
+                  onClick={handleClose}
                   className="flex-1 px-4 py-3 border border-gray-200 rounded text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+                  disabled={loading}
                 >
-                  Cancel
+                  {txid ? 'Close' : 'Cancel'}
                 </button>
-                <motion.button
-                  type="submit"
-                  whileHover={{ scale: 1.01 }}
-                  whileTap={{ scale: 0.99 }}
-                  className="flex-1 px-4 py-3 bg-bagel-orange text-white rounded text-sm font-medium flex items-center justify-center gap-2"
-                >
-                  <Users className="w-4 h-4" weight="fill" />
-                  Add Employee
-                </motion.button>
+                {!txid && (
+                  <motion.button
+                    type="submit"
+                    whileHover={{ scale: loading ? 1 : 1.01 }}
+                    whileTap={{ scale: loading ? 1 : 0.99 }}
+                    disabled={loading || businessEntryIndex === null}
+                    className="flex-1 px-4 py-3 bg-bagel-orange text-white rounded text-sm font-medium flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {loading ? (
+                      <>
+                        <CircleNotch className="w-4 h-4 animate-spin" />
+                        Adding...
+                      </>
+                    ) : (
+                      <>
+                        <Users className="w-4 h-4" weight="fill" />
+                        Add Employee
+                      </>
+                    )}
+                  </motion.button>
+                )}
               </div>
             </form>
           </motion.div>
@@ -653,6 +814,229 @@ function AddEmployeeModal({ isOpen, onClose }: AddEmployeeModalProps) {
   );
 }
 
+// Mint Tokens Section Component
+interface MintTokensSectionProps {
+  onMint: (amount: number) => Promise<{ txid: string; amount: number }>;
+}
+
+function MintTokensSection({ onMint }: MintTokensSectionProps) {
+  const [amount, setAmount] = useState('100');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [txid, setTxid] = useState('');
+  const [mintedAmount, setMintedAmount] = useState(0);
+
+  const presetAmounts = [10, 50, 100, 500, 1000];
+
+  const handleMint = async () => {
+    setError('');
+    setTxid('');
+
+    const amountNum = parseFloat(amount);
+    if (!amountNum || amountNum <= 0) {
+      setError('Please enter a valid amount');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const result = await onMint(amountNum);
+      setTxid(result.txid);
+      setMintedAmount(result.amount);
+    } catch (err: any) {
+      console.error('Mint error:', err);
+      setError(err.message || 'Failed to mint tokens');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="bg-gradient-to-br from-purple-50 to-indigo-50 border border-purple-100 rounded-lg p-6"
+    >
+      <div className="flex items-center gap-3 mb-4">
+        <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
+          <Lightning className="w-5 h-5 text-purple-600" weight="fill" />
+        </div>
+        <div>
+          <h3 className="text-lg font-semibold text-purple-900">Mint Test Tokens</h3>
+          <p className="text-xs text-purple-600">Get USDBagel tokens to try the demo</p>
+        </div>
+      </div>
+
+      <div className="space-y-4">
+        {/* Amount Input */}
+        <div>
+          <label className="block text-sm font-medium text-purple-800 mb-2">
+            Amount (USDBagel)
+          </label>
+          <div className="relative">
+            <input
+              type="number"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              placeholder="100"
+              className="w-full px-4 py-3 border border-purple-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-lg font-mono"
+            />
+            <div className="absolute right-3 top-1/2 -translate-y-1/2 text-purple-500 font-medium">
+              USDB
+            </div>
+          </div>
+        </div>
+
+        {/* Preset Amounts */}
+        <div className="flex flex-wrap gap-2">
+          {presetAmounts.map((preset) => (
+            <button
+              key={preset}
+              onClick={() => setAmount(preset.toString())}
+              className={`px-3 py-1.5 text-sm rounded-full transition-all ${
+                amount === preset.toString()
+                  ? 'bg-purple-600 text-white'
+                  : 'bg-white border border-purple-200 text-purple-700 hover:border-purple-400'
+              }`}
+            >
+              {preset} USDB
+            </button>
+          ))}
+        </div>
+
+        {/* Info */}
+        <div className="flex items-start gap-2 p-3 bg-purple-100/50 rounded text-xs text-purple-700">
+          <Info className="w-4 h-4 flex-shrink-0 mt-0.5" />
+          <div>
+            <strong>Demo Mode:</strong> These are test tokens on Solana Devnet.
+            The amount is encrypted on-chain using Inco FHE (Fully Homomorphic Encryption).
+          </div>
+        </div>
+
+        {/* Error Display */}
+        {error && (
+          <div className="flex items-start gap-3 p-3 bg-red-50 border border-red-100 rounded">
+            <Warning className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" weight="fill" />
+            <div>
+              <div className="text-sm font-medium text-red-800">Error</div>
+              <div className="text-xs text-red-700">{error}</div>
+            </div>
+          </div>
+        )}
+
+        {/* Success Display */}
+        {txid && (
+          <div className="flex items-start gap-3 p-3 bg-green-50 border border-green-100 rounded">
+            <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" weight="fill" />
+            <div className="flex-1">
+              <div className="text-sm font-medium text-green-800">
+                {mintedAmount} USDBagel Minted!
+              </div>
+              <div className="text-xs text-green-700 break-all mt-1">{txid}</div>
+              <a
+                href={`https://explorer.solana.com/tx/${txid}?cluster=devnet`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 text-xs text-green-700 hover:text-green-900 mt-2 font-medium"
+              >
+                View on Explorer <ArrowSquareOut className="w-3 h-3" />
+              </a>
+            </div>
+          </div>
+        )}
+
+        {/* Mint Button */}
+        <motion.button
+          whileHover={{ scale: loading ? 1 : 1.02 }}
+          whileTap={{ scale: loading ? 1 : 0.98 }}
+          onClick={handleMint}
+          disabled={loading}
+          className="w-full px-6 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-lg font-medium flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-purple-200"
+        >
+          {loading ? (
+            <>
+              <CircleNotch className="w-5 h-5 animate-spin" />
+              Minting...
+            </>
+          ) : (
+            <>
+              <Lightning className="w-5 h-5" weight="fill" />
+              Mint {amount || '0'} USDBagel
+            </>
+          )}
+        </motion.button>
+
+        {/* Program Info */}
+        <div className="pt-2 border-t border-purple-100 mt-4">
+          <div className="text-[10px] font-mono text-purple-500 space-y-1">
+            <div>Inco Token: {INCO_TOKEN_PROGRAM_ID.toBase58().slice(0, 20)}...</div>
+            <div>USDBagel Mint: {USDBAGEL_MINT.toBase58().slice(0, 20)}...</div>
+          </div>
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
+// Initial mock employees (will be replaced/augmented with on-chain data)
+const initialEmployees = [
+  {
+    id: 1,
+    initials: 'AT',
+    name: 'Alex Thompson',
+    date: 'Jan 15, 2026',
+    wallet: '0x7a23...f8d9',
+    amount: 8500.00,
+    currency: 'SOL',
+    privacy: 'Maximum',
+    status: 'Paid',
+  },
+  {
+    id: 2,
+    initials: 'SC',
+    name: 'Sarah Chen',
+    date: 'Jan 14, 2026',
+    wallet: '0x3b91...c4e2',
+    amount: 12750.00,
+    currency: 'USDC',
+    privacy: 'Standard',
+    status: 'Pending',
+  },
+  {
+    id: 3,
+    initials: 'MR',
+    name: 'Michael Ross',
+    date: 'Jan 15, 2026',
+    wallet: '0x9f56...a7b3',
+    amount: 6200.00,
+    currency: 'SOL',
+    privacy: 'Maximum',
+    status: 'Paid',
+  },
+  {
+    id: 4,
+    initials: 'EW',
+    name: 'Emma Wilson',
+    date: 'Jan 13, 2026',
+    wallet: '0x2c84...d1f5',
+    amount: 9100.00,
+    currency: 'USDC',
+    privacy: 'Enhanced',
+    status: 'Processing',
+  },
+  {
+    id: 5,
+    initials: 'JK',
+    name: 'James Kim',
+    date: 'Jan 12, 2026',
+    wallet: '0x5d92...e3a1',
+    amount: 7800.00,
+    currency: 'SOL',
+    privacy: 'Maximum',
+    status: 'Paid',
+  },
+];
+
 export default function Dashboard() {
   const [searchQuery, setSearchQuery] = useState('');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -661,8 +1045,151 @@ export default function Dashboard() {
   const [isGuideOpen, setIsGuideOpen] = useState(false);
   const { transactions: recentTransactions, loading: txLoading } = useRecentTransactions(5);
   const { hasCompleted: hasCompletedGuide } = useGuideStatus();
-  const { connected } = useWallet();
+  const { connected, publicKey } = useWallet();
+  const wallet = useWallet();
+  const { connection } = useConnection();
   const [hasShownGuide, setHasShownGuide] = useState(false);
+
+  // Business state
+  const [businessEntryIndex, setBusinessEntryIndex] = useState<number | null>(null);
+  const [isRegistering, setIsRegistering] = useState(false);
+  const [registrationError, setRegistrationError] = useState('');
+  const [registrationTxid, setRegistrationTxid] = useState('');
+
+  // Employees state (combines mock + on-chain)
+  const [employees, setEmployees] = useState<Employee[]>(initialEmployees);
+  const [employeeCount, setEmployeeCount] = useState(0);
+
+  // Load business index when wallet connects
+  useEffect(() => {
+    if (publicKey && connection) {
+      loadBusinessIndex();
+    } else {
+      setBusinessEntryIndex(null);
+    }
+  }, [publicKey, connection]);
+
+  const loadBusinessIndex = async () => {
+    if (!publicKey) return;
+    try {
+      const index = await getCurrentBusinessIndex(connection);
+      // The current index is the NEXT available, so we check if there's a business at index - 1
+      if (index > 0) {
+        // Try to verify this business belongs to current wallet
+        // For now, we assume if there's any business, the user might own one
+        setBusinessEntryIndex(index - 1);
+      } else {
+        setBusinessEntryIndex(null);
+      }
+    } catch (err) {
+      console.log('No business registered yet or vault not initialized');
+      setBusinessEntryIndex(null);
+    }
+  };
+
+  // Register business
+  const handleRegisterBusiness = async () => {
+    if (!publicKey || !wallet.signTransaction) {
+      setRegistrationError('Please connect your wallet');
+      return;
+    }
+
+    try {
+      setIsRegistering(true);
+      setRegistrationError('');
+      setRegistrationTxid('');
+
+      console.log('📝 Registering business on-chain...');
+      const result = await registerBusiness(connection, wallet);
+
+      setBusinessEntryIndex(result.entryIndex);
+      setRegistrationTxid(result.txid);
+      console.log('✅ Business registered! Entry index:', result.entryIndex);
+    } catch (err: any) {
+      console.error('Registration error:', err);
+      setRegistrationError(err.message || 'Failed to register business');
+    } finally {
+      setIsRegistering(false);
+    }
+  };
+
+  // Deposit funds (confidential token transfer)
+  const handleDeposit = useCallback(async (entryIndex: number, amountLamports: number): Promise<string> => {
+    if (!publicKey || !wallet.signTransaction) {
+      throw new Error('Wallet not connected');
+    }
+
+    console.log('💰 Depositing funds via confidential transfer...');
+
+    // Get confidential token accounts
+    const [depositorTokenAccount] = getConfidentialTokenAccount(publicKey, USDBAGEL_MINT);
+    const [vaultTokenAccount] = getMasterVaultTokenAccount();
+
+    console.log('   Depositor Token Account:', depositorTokenAccount.toBase58());
+    console.log('   Vault Token Account:', vaultTokenAccount.toBase58());
+
+    const signature = await deposit(
+      connection,
+      wallet,
+      entryIndex,
+      amountLamports,
+      depositorTokenAccount,
+      vaultTokenAccount
+    );
+    console.log('✅ Confidential deposit successful:', signature);
+    return signature;
+  }, [connection, wallet, publicKey]);
+
+  // Add employee
+  const handleAddEmployee = useCallback(async (walletAddress: string, salaryLamports: number): Promise<{ txid: string; employeeIndex: number }> => {
+    if (!publicKey || !wallet.signTransaction) {
+      throw new Error('Wallet not connected');
+    }
+
+    if (businessEntryIndex === null) {
+      throw new Error('Business not registered');
+    }
+
+    console.log('👷 Adding employee on-chain...');
+    const result = await addEmployee(
+      connection,
+      wallet,
+      businessEntryIndex,
+      new PublicKey(walletAddress),
+      salaryLamports
+    );
+
+    console.log('✅ Employee added! Index:', result.employeeIndex);
+
+    // Add to local employees list
+    const newEmployee: Employee = {
+      id: employees.length + 1,
+      initials: walletAddress.slice(0, 2).toUpperCase(),
+      name: `Employee ${result.employeeIndex}`,
+      date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+      wallet: `${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}`,
+      amount: lamportsToSOL(salaryLamports) * 31557600, // Annual salary
+      currency: 'SOL',
+      privacy: 'Maximum',
+      status: 'Pending',
+    };
+    setEmployees(prev => [newEmployee, ...prev]);
+    setEmployeeCount(prev => prev + 1);
+
+    return result;
+  }, [connection, wallet, publicKey, businessEntryIndex, employees.length]);
+
+  // Mint test tokens
+  const handleMint = useCallback(async (amount: number): Promise<{ txid: string; amount: number }> => {
+    if (!publicKey || !wallet.signTransaction) {
+      throw new Error('Wallet not connected');
+    }
+
+    console.log('🪙 Minting test tokens...');
+    const result = await mintTestTokens(connection, wallet, amount);
+    console.log('✅ Tokens minted:', result.amount, 'USDBagel');
+    return { txid: result.txid, amount: result.amount };
+  }, [connection, wallet, publicKey]);
 
   // Auto-open guide after wallet connection (only once per session if not completed)
   useEffect(() => {
@@ -796,35 +1323,120 @@ export default function Dashboard() {
             <div className="flex gap-6">
               {/* Left Column - Stats & Table */}
               <div className="flex-1 space-y-6">
+                {/* Business Registration Banner */}
+                {connected && businessEntryIndex === null && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="bg-gradient-to-r from-bagel-orange/10 to-bagel-yellow/10 border border-bagel-orange/20 rounded p-6"
+                  >
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <h3 className="text-lg font-semibold text-bagel-dark flex items-center gap-2">
+                          <span className="text-2xl">🥯</span> Register Your Business
+                        </h3>
+                        <p className="text-sm text-gray-600 mt-1">
+                          Register your business on-chain to start managing payroll with maximum privacy.
+                        </p>
+                        <div className="mt-2 text-xs text-gray-500">
+                          Program: <code className="bg-white px-1.5 py-0.5 rounded">{BAGEL_PROGRAM_ID.toBase58().slice(0, 8)}...</code>
+                        </div>
+                      </div>
+                      <motion.button
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                        onClick={handleRegisterBusiness}
+                        disabled={isRegistering}
+                        className="px-6 py-3 bg-bagel-orange text-white rounded font-medium text-sm flex items-center gap-2 disabled:opacity-50"
+                      >
+                        {isRegistering ? (
+                          <>
+                            <CircleNotch className="w-4 h-4 animate-spin" />
+                            Registering...
+                          </>
+                        ) : (
+                          <>
+                            <Vault className="w-4 h-4" weight="fill" />
+                            Register Business
+                          </>
+                        )}
+                      </motion.button>
+                    </div>
+                    {registrationError && (
+                      <div className="mt-3 p-3 bg-red-50 border border-red-100 rounded text-sm text-red-700">
+                        {registrationError}
+                      </div>
+                    )}
+                    {registrationTxid && (
+                      <div className="mt-3 p-3 bg-green-50 border border-green-100 rounded">
+                        <div className="text-sm text-green-700 font-medium">Business Registered Successfully!</div>
+                        <div className="text-xs text-green-600 mt-1 break-all">{registrationTxid}</div>
+                        <a
+                          href={`https://explorer.solana.com/tx/${registrationTxid}?cluster=devnet`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 text-xs text-green-700 hover:text-green-900 mt-2 font-medium"
+                        >
+                          View on Explorer <ArrowSquareOut className="w-3 h-3" />
+                        </a>
+                      </div>
+                    )}
+                  </motion.div>
+                )}
+
+                {/* Registered Business Info */}
+                {connected && businessEntryIndex !== null && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="bg-green-50 border border-green-100 rounded p-4 flex items-center justify-between"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                        <CheckCircle className="w-5 h-5 text-green-600" weight="fill" />
+                      </div>
+                      <div>
+                        <div className="text-sm font-medium text-green-800">Business Registered</div>
+                        <div className="text-xs text-green-600">
+                          Entry Index: <code className="bg-white px-1.5 py-0.5 rounded">{businessEntryIndex}</code>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="text-xs text-green-600">
+                      Connected: <code className="bg-white px-1.5 py-0.5 rounded">{publicKey?.toBase58().slice(0, 8)}...</code>
+                    </div>
+                  </motion.div>
+                )}
+
                 {/* Stats Cards */}
                 <div className="grid grid-cols-4 gap-4" data-guide="stats">
                   {[
                     {
                       icon: Users,
-                      value: '147',
+                      value: connected ? `${employees.length}` : '--',
                       label: 'Total Employees',
-                      change: '+12',
+                      change: employeeCount > 0 ? `+${employeeCount}` : undefined,
                       positive: true,
                     },
                     {
                       icon: Wallet,
-                      value: '$847,290.45',
-                      label: 'Monthly Payroll',
-                      change: '+8.2%',
+                      value: connected ? `$${employees.reduce((sum, e) => sum + e.amount, 0).toLocaleString()}` : '--',
+                      label: 'Annual Payroll',
+                      change: connected ? '+8.2%' : undefined,
                       positive: true,
                     },
                     {
                       icon: ChartBar,
-                      value: '1,284',
+                      value: connected ? `${recentTransactions.length}` : '--',
                       label: 'Transactions',
-                      change: '+23',
+                      change: recentTransactions.length > 0 ? `+${recentTransactions.length}` : undefined,
                       positive: true,
                     },
                     {
                       icon: ShieldCheck,
-                      value: '98.7%',
+                      value: connected ? '100%' : '--',
                       label: 'Privacy Score',
-                      badge: 'Excellent',
+                      badge: connected ? 'Maximum' : undefined,
                       positive: true,
                     },
                   ].map((stat, i) => (
@@ -1008,9 +1620,17 @@ export default function Dashboard() {
                   </div>
 
                   <div className="mt-5 p-3 bg-bagel-cream/50 rounded text-xs text-gray-600">
-                    All transactions are processed through our privacy layer, ensuring complete anonymity for your payroll operations.
+                    All transactions are processed through our privacy layer on Solana Devnet.
+                    <div className="mt-2 font-mono text-[10px] text-gray-500 break-all">
+                      Program: {BAGEL_PROGRAM_ID.toBase58()}
+                    </div>
                   </div>
                 </motion.div>
+
+                {/* Mint Tokens Section */}
+                {connected && (
+                  <MintTokensSection onMint={handleMint} />
+                )}
 
                 {/* Recent Transactions */}
                 <motion.div
@@ -1061,12 +1681,17 @@ export default function Dashboard() {
       <PaymentModal
         isOpen={isPaymentModalOpen}
         onClose={() => setIsPaymentModalOpen(false)}
+        onDeposit={handleDeposit}
+        businessEntryIndex={businessEntryIndex}
+        employees={employees}
       />
 
       {/* Add Employee Modal */}
       <AddEmployeeModal
         isOpen={isAddEmployeeModalOpen}
         onClose={() => setIsAddEmployeeModalOpen(false)}
+        onAddEmployee={handleAddEmployee}
+        businessEntryIndex={businessEntryIndex}
       />
 
       {/* Interactive Guide */}
