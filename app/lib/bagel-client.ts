@@ -637,6 +637,93 @@ export async function getConfidentialBalance(
 }
 
 // ============================================================
+// Confidential Token Transfer (P2P)
+// ============================================================
+
+/**
+ * Transfer confidential tokens to another user
+ * Uses Inco Confidential Token program for FHE-encrypted transfers
+ *
+ * @param connection - Solana connection
+ * @param wallet - Wallet context
+ * @param recipientAddress - Recipient's wallet address (not token account)
+ * @param amount - Amount to transfer (in token units)
+ * @param senderTokenAccount - Sender's confidential token account
+ */
+export async function confidentialTransfer(
+  connection: Connection,
+  wallet: WalletContextState,
+  recipientAddress: string,
+  amount: number,
+  senderTokenAccount: PublicKey
+): Promise<string> {
+  if (!wallet.publicKey || !wallet.signTransaction) {
+    throw new Error('Wallet not connected');
+  }
+
+  const recipient = new PublicKey(recipientAddress);
+
+  // For demo: we need the recipient to have a token account
+  // In production, this would be looked up or the recipient would provide it
+  const recipientTokenAccountStr = typeof window !== 'undefined'
+    ? localStorage.getItem(`userTokenAccount_${recipientAddress}`)
+    : null;
+
+  if (!recipientTokenAccountStr) {
+    throw new Error('Recipient has no USDBagel token account. They must mint tokens first to create an account.');
+  }
+  const recipientTokenAccount = new PublicKey(recipientTokenAccountStr);
+
+  // Encrypt amount for confidential transfer
+  const encryptedAmount = await encryptForInco(solToLamports(amount));
+
+  // Get Inco Token program ID
+  const INCO_TOKEN_ID = process.env.NEXT_PUBLIC_INCO_TOKEN_PROGRAM_ID
+    ? new PublicKey(process.env.NEXT_PUBLIC_INCO_TOKEN_PROGRAM_ID)
+    : new PublicKey('HuUn2JwCPCLWwJ3z17m7CER73jseqsxvbcFuZN4JAw22');
+
+  // Build transfer instruction
+  // transfer discriminator from Inco Token program
+  const transferDiscriminator = Buffer.from([163, 52, 200, 231, 140, 3, 69, 186]); // "global:transfer" hash
+  const encLen = Buffer.alloc(4);
+  encLen.writeUInt32LE(encryptedAmount.length);
+  const data = Buffer.concat([transferDiscriminator, encLen, encryptedAmount]);
+
+  const keys = [
+    { pubkey: senderTokenAccount, isSigner: false, isWritable: true }, // from
+    { pubkey: recipientTokenAccount, isSigner: false, isWritable: true }, // to
+    { pubkey: wallet.publicKey, isSigner: true, isWritable: false }, // authority (owner of from account)
+    { pubkey: INCO_LIGHTNING_ID, isSigner: false, isWritable: false }, // inco_lightning_program
+  ];
+
+  const instruction = new TransactionInstruction({
+    keys,
+    programId: INCO_TOKEN_ID,
+    data,
+  });
+
+  const transaction = new Transaction().add(instruction);
+  const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('confirmed');
+  transaction.recentBlockhash = blockhash;
+  transaction.feePayer = wallet.publicKey;
+
+  const signed = await wallet.signTransaction(transaction);
+  const txid = await connection.sendRawTransaction(signed.serialize(), {
+    skipPreflight: true,
+    maxRetries: 3,
+  });
+
+  await connection.confirmTransaction({
+    blockhash,
+    lastValidBlockHeight,
+    signature: txid,
+  }, 'confirmed');
+
+  console.log('✅ Confidential transfer successful:', txid);
+  return txid;
+}
+
+// ============================================================
 // Confidential Token Account Derivation
 // ============================================================
 
