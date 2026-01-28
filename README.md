@@ -1,4 +1,4 @@
-# Bagel - Privacy-First Payroll on Solana
+# Bagel - The Private Global Payroll on Solana
 
 **Bringing the $80 billion global payroll market on-chain with end-to-end privacy.**
 
@@ -380,6 +380,6 @@ MIT License - See [LICENSE](LICENSE)
 
 ---
 
-**Simple payroll. Private paydays.**
+**Personal payroll. Private paydays.**
 
 *Built for Solana Privacy Hackathon 2026*
