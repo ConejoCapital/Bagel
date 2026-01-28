@@ -19,9 +19,9 @@
 | Requirement | Status | Evidence |
 |-------------|--------|----------|
 | All code is open source | COMPLETE | MIT License, public GitHub repo |
-| Integrates with Solana | COMPLETE | Anchor 0.32.1 program deployed |
+| Integrates with Solana | COMPLETE | Anchor 0.31.1 program deployed |
 | Uses privacy-preserving technologies | COMPLETE | 5-layer privacy stack |
-| Program deployed to devnet/mainnet | COMPLETE | Devnet: `J45uxvT26szuQcmxvs5NRgtAMornKM9Ga9WaQ58bKUNE` |
+| Program deployed to devnet/mainnet | COMPLETE | Devnet: `AEd52vEEAdXWUjKut1aQyLLJQnwMWqYMb4hSaHpxd8Hj` |
 | Demo video (max 3 minutes) | PENDING | See demo script below |
 | Documentation on how to run | COMPLETE | README.md, this file |
 
@@ -29,12 +29,12 @@
 
 ## Deployed Program
 
-**Program ID:** `J45uxvT26szuQcmxvs5NRgtAMornKM9Ga9WaQ58bKUNE`
+**Program ID:** `AEd52vEEAdXWUjKut1aQyLLJQnwMWqYMb4hSaHpxd8Hj`
 
 **Network:** Solana Devnet
 
-**Explorer:** https://orbmarkets.io/address/J45uxvT26szuQcmxvs5NRgtAMornKM9Ga9WaQ58bKUNE?cluster=devnet  
-**Program IDL:** https://orbmarkets.io/address/J45uxvT26szuQcmxvs5NRgtAMornKM9Ga9WaQ58bKUNE/anchor-idl?cluster=devnet
+**Explorer:** https://orbmarkets.io/address/AEd52vEEAdXWUjKut1aQyLLJQnwMWqYMb4hSaHpxd8Hj?cluster=devnet  
+**Program IDL:** https://orbmarkets.io/address/AEd52vEEAdXWUjKut1aQyLLJQnwMWqYMb4hSaHpxd8Hj/anchor-idl?cluster=devnet
 
 ---
 
@@ -237,8 +237,8 @@ Bagel/
 | Resource | URL |
 |----------|-----|
 | GitHub | https://github.com/ConejoCapital/Bagel |
-| Program Explorer | https://orbmarkets.io/address/J45uxvT26szuQcmxvs5NRgtAMornKM9Ga9WaQ58bKUNE?cluster=devnet |
-| Program IDL | https://orbmarkets.io/address/J45uxvT26szuQcmxvs5NRgtAMornKM9Ga9WaQ58bKUNE/anchor-idl?cluster=devnet |
+| Program Explorer | https://orbmarkets.io/address/AEd52vEEAdXWUjKut1aQyLLJQnwMWqYMb4hSaHpxd8Hj?cluster=devnet |
+| Program IDL | https://orbmarkets.io/address/AEd52vEEAdXWUjKut1aQyLLJQnwMWqYMb4hSaHpxd8Hj/anchor-idl?cluster=devnet |
 | Hackathon | https://solana.com/privacyhack |
 | MagicBlock PER Docs | https://docs.magicblock.gg/pages/private-ephemeral-rollups-pers/how-to-guide/quickstart |
 

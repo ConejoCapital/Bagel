@@ -2,7 +2,7 @@
  * Bagel Program Client
  * 
  * REAL interaction with the deployed Solana program on devnet!
- * Program ID: J45uxvT26szuQcmxvs5NRgtAMornKM9Ga9WaQ58bKUNE
+ * Program ID: AEd52vEEAdXWUjKut1aQyLLJQnwMWqYMb4hSaHpxd8Hj
  * 
  * NEW ARCHITECTURE: Uses index-based PDAs for maximum privacy
  * - Master Vault: ["master_vault"]
@@ -13,8 +13,8 @@
 import { Connection, PublicKey, SystemProgram, Transaction, TransactionInstruction } from '@solana/web3.js';
 import { WalletContextState } from '@solana/wallet-adapter-react';
 
-// Deployed program ID on devnet
-export const BAGEL_PROGRAM_ID = new PublicKey('J45uxvT26szuQcmxvs5NRgtAMornKM9Ga9WaQ58bKUNE');
+// Deployed program ID on devnet (with confidential tokens enabled by default)
+export const BAGEL_PROGRAM_ID = new PublicKey('AEd52vEEAdXWUjKut1aQyLLJQnwMWqYMb4hSaHpxd8Hj');
 export const INCO_LIGHTNING_ID = new PublicKey('5sjEbPiqgZrYwR31ahR6Uk9wf5awoX61YGg7jExQSwaj');
 
 // PDA seeds
@@ -455,7 +455,7 @@ export const INCO_TOKEN_PROGRAM_ID = new PublicKey(
 
 // USDBagel Mint Address (devnet)
 export const USDBAGEL_MINT = new PublicKey(
-  process.env.NEXT_PUBLIC_USDBAGEL_MINT || 'A3G2NBGL7xH9T6BYwVkwRGsSYxtFPdg4HSThfTmV94ht'
+  process.env.NEXT_PUBLIC_USDBAGEL_MINT || '8rQ7zU5iJ8o6prw4UGUq7fVNhQaw489rdtkaK5Gh8qsV'
 );
 
 /**
@@ -529,24 +529,21 @@ export async function mintTestTokens(
   connection: Connection,
   wallet: WalletContextState,
   amount: number,
-  tokenAccount?: PublicKey
+  _tokenAccount?: PublicKey // Deprecated: API creates new accounts
 ): Promise<{ txid: string; amount: number; tokenAccount: PublicKey }> {
   if (!wallet.publicKey) {
     throw new Error('Wallet not connected');
   }
 
-  // Derive token account if not provided
-  let destTokenAccount = tokenAccount;
-  if (!destTokenAccount) {
-    const [derivedAccount] = getConfidentialTokenAccount(wallet.publicKey, USDBAGEL_MINT);
-    destTokenAccount = derivedAccount;
-  }
+  // The owner of the token account should be the wallet (for transfer authority)
+  // NOT a PDA-derived address
+  const ownerAddress = wallet.publicKey;
 
   console.log('🪙 Minting USDBagel tokens via Inco Token Program...');
   console.log(`   Amount: ${amount} USDBagel`);
-  console.log(`   Destination: ${destTokenAccount.toBase58()}`);
+  console.log(`   Owner: ${ownerAddress.toBase58()}`);
 
-  // Call the mint API endpoint
+  // Call the mint API endpoint - pass wallet as owner so transfers work
   const response = await fetch('/api/mint', {
     method: 'POST',
     headers: {
@@ -554,24 +551,43 @@ export async function mintTestTokens(
     },
     body: JSON.stringify({
       amount,
-      destinationAccount: destTokenAccount.toBase58(),
+      destinationAccount: ownerAddress.toBase58(), // Wallet as owner, not PDA
     }),
   });
 
-  const result = await response.json();
+  const result = await response.json() as {
+    success: boolean;
+    txid?: string;
+    amount?: number;
+    tokenAccount?: string;
+    error?: string;
+  };
 
   if (!response.ok || !result.success) {
     throw new Error(result.error || 'Failed to mint tokens');
   }
 
+  // The API creates a new keypair-based token account and returns it
+  if (!result.tokenAccount) {
+    throw new Error('Mint API did not return token account address');
+  }
+  const actualTokenAccount = new PublicKey(result.tokenAccount);
+
   console.log('✅ Tokens minted successfully!');
   console.log(`   Transaction: ${result.txid}`);
   console.log(`   Amount: ${result.amount} USDBagel (encrypted on-chain)`);
+  console.log(`   Token Account: ${actualTokenAccount.toBase58()}`);
+
+  // Save the token account to localStorage for future deposits
+  if (typeof window !== 'undefined') {
+    localStorage.setItem(`userTokenAccount_${wallet.publicKey!.toBase58()}`, actualTokenAccount.toBase58());
+    console.log('   Token account saved for deposits');
+  }
 
   return {
-    txid: result.txid,
-    amount: result.amount,
-    tokenAccount: destTokenAccount,
+    txid: result.txid!,
+    amount: result.amount!,
+    tokenAccount: actualTokenAccount,
   };
 }
 

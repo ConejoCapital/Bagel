@@ -219,12 +219,28 @@ export default function EmployerDashboard() {
       }
       
       const depositLamports = solToLamports(parseFloat(depositAmount));
-      
+
+      // Get user's token account from localStorage (created when minting)
+      const userTokenAccountStr = localStorage.getItem(`userTokenAccount_${wallet.publicKey.toBase58()}`);
+      if (!userTokenAccountStr) {
+        throw new Error('No token account found. Please mint USDBagel tokens first using the Mint section.');
+      }
+      const depositorTokenAccount = new PublicKey(userTokenAccountStr);
+
+      // Get vault token account from env
+      const vaultTokenAccountStr = process.env.NEXT_PUBLIC_VAULT_TOKEN_ACCOUNT || 'C2nZ8CK2xqRJj7uQuipmi111hqXf3sRK2Zq4aQhmSYJu';
+      const vaultTokenAccount = new PublicKey(vaultTokenAccountStr);
+
+      console.log('Depositor token account:', depositorTokenAccount.toBase58());
+      console.log('Vault token account:', vaultTokenAccount.toBase58());
+
       const signature = await deposit(
         connection,
         wallet,
         entryIndex,
-        depositLamports
+        depositLamports,
+        depositorTokenAccount,
+        vaultTokenAccount
       );
 
       setDepositTxid(signature);

@@ -26,8 +26,8 @@ import { web3 } from '@coral-xyz/anchor';
 import * as bagelClient from './bagel-client';
 import { ShadowWireClient } from './shadowwire';
 
-// Program ID (correct deployed version)
-const BAGEL_PROGRAM_ID = new PublicKey('J45uxvT26szuQcmxvs5NRgtAMornKM9Ga9WaQ58bKUNE');
+// Program ID (with confidential tokens enabled by default)
+const BAGEL_PROGRAM_ID = new PublicKey('AEd52vEEAdXWUjKut1aQyLLJQnwMWqYMb4hSaHpxd8Hj');
 
 /**
  * BagelClient: High-level API for Bagel operations

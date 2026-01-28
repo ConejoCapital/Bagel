@@ -43,7 +43,7 @@ use ephemeral_rollups_sdk::anchor::{delegate, ephemeral};
 use ephemeral_rollups_sdk::cpi::DelegateConfig;
 use ephemeral_rollups_sdk::ephem::commit_and_undelegate_accounts;
 
-declare_id!("J45uxvT26szuQcmxvs5NRgtAMornKM9Ga9WaQ58bKUNE");
+declare_id!("AEd52vEEAdXWUjKut1aQyLLJQnwMWqYMb4hSaHpxd8Hj");
 
 // ============================================================
 // Seeds for PDA derivation (PRIVACY-PRESERVING)
@@ -86,7 +86,7 @@ pub mod bagel {
         vault.is_active = true;
         vault.bump = ctx.bumps.master_vault;
         vault.confidential_mint = Pubkey::default(); // Will be set when confidential mint is deployed
-        vault.use_confidential_tokens = false; // Start with SOL, upgrade to confidential tokens when ready
+        vault.use_confidential_tokens = true; // Enable confidential tokens by default
 
         // Initialize encrypted counts to zero
         let zero_ciphertext = vec![0u8; 16];

@@ -1127,9 +1127,16 @@ export default function Dashboard() {
 
     console.log('💰 Depositing funds via confidential transfer...');
 
-    // Get confidential token accounts
-    const [depositorTokenAccount] = getConfidentialTokenAccount(publicKey, USDBAGEL_MINT);
-    const [vaultTokenAccount] = getMasterVaultTokenAccount();
+    // Get user's token account from localStorage (created when minting)
+    const userTokenAccountStr = localStorage.getItem(`userTokenAccount_${publicKey.toBase58()}`);
+    if (!userTokenAccountStr) {
+      throw new Error('No token account found. Please mint USDBagel tokens first using the Mint section.');
+    }
+    const depositorTokenAccount = new PublicKey(userTokenAccountStr);
+
+    // Get vault token account from env
+    const vaultTokenAccountStr = process.env.NEXT_PUBLIC_VAULT_TOKEN_ACCOUNT || 'C2nZ8CK2xqRJj7uQuipmi111hqXf3sRK2Zq4aQhmSYJu';
+    const vaultTokenAccount = new PublicKey(vaultTokenAccountStr);
 
     console.log('   Depositor Token Account:', depositorTokenAccount.toBase58());
     console.log('   Vault Token Account:', vaultTokenAccount.toBase58());
