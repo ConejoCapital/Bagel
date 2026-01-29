@@ -67,6 +67,11 @@ import {
   mintTestTokens,
   initializeConfidentialTokenAccount,
   getConfidentialBalance,
+  // PDA-based token account functions
+  getUserTokenAccountPDA,
+  checkUserTokenAccountExists,
+  initializeUserTokenAccountPDA,
+  resolveUserTokenAccount,
 } from '../lib/bagel-client';
 import { PayrollChart } from '@/components/ui/payroll-chart';
 import { CryptoDistributionChart } from '@/components/ui/crypto-distribution-chart';
@@ -1242,12 +1247,11 @@ export default function Dashboard() {
 
     console.log('💰 Depositing funds via confidential transfer...');
 
-    // Get user's token account from localStorage (created when minting)
-    const userTokenAccountStr = localStorage.getItem(`userTokenAccount_${publicKey.toBase58()}`);
-    if (!userTokenAccountStr) {
+    // Try to resolve user's token account (PDA first, then localStorage fallback)
+    const depositorTokenAccount = await resolveUserTokenAccount(connection, publicKey, USDBAGEL_MINT);
+    if (!depositorTokenAccount) {
       throw new Error('No token account found. Please mint USDBagel tokens first using the Mint section.');
     }
-    const depositorTokenAccount = new PublicKey(userTokenAccountStr);
 
     // Get vault token account from env
     const vaultTokenAccountStr = process.env.NEXT_PUBLIC_VAULT_TOKEN_ACCOUNT || 'C2nZ8CK2xqRJj7uQuipmi111hqXf3sRK2Zq4aQhmSYJu';
@@ -1276,17 +1280,17 @@ export default function Dashboard() {
 
     console.log('💸 Initiating confidential transfer...');
 
-    // Get user's token account from localStorage
-    const userTokenAccountStr = localStorage.getItem(`userTokenAccount_${publicKey.toBase58()}`);
-    if (!userTokenAccountStr) {
+    // Try to resolve user's token account (PDA first, then localStorage fallback)
+    const senderTokenAccount = await resolveUserTokenAccount(connection, publicKey, USDBAGEL_MINT);
+    if (!senderTokenAccount) {
       throw new Error('No token account found. Please mint USDBagel tokens first using the Mint section.');
     }
-    const senderTokenAccount = new PublicKey(userTokenAccountStr);
 
     console.log('   From:', senderTokenAccount.toBase58());
     console.log('   To:', recipientAddress);
     console.log('   Amount:', amount, 'USDBagel');
 
+    // confidentialTransfer now handles PDA derivation internally for recipient
     const signature = await confidentialTransfer(
       connection,
       wallet,
@@ -1599,7 +1603,7 @@ export default function Dashboard() {
                     },
                     {
                       icon: Wallet,
-                      value: connected ? `$${employees.reduce((sum, e) => sum + e.amount, 0).toLocaleString()}` : '--',
+                      value: connected ? `$${employees.reduce((sum, e) => sum + (e.amount || (e as any).salary || 0), 0).toLocaleString()}` : '--',
                       label: 'Annual Payroll',
                       change: connected ? '+8.2%' : undefined,
                       positive: true,
@@ -1718,7 +1722,7 @@ export default function Dashboard() {
                             <code className="text-sm text-gray-600 bg-gray-100 px-2 py-1 rounded">{employee.wallet}</code>
                           </td>
                           <td className="px-4 py-4">
-                            <div className="text-sm font-medium text-bagel-dark">${employee.amount.toLocaleString()}</div>
+                            <div className="text-sm font-medium text-bagel-dark">${(employee.amount || (employee as any).salary || 0).toLocaleString()}</div>
                             <div className="text-xs text-gray-500">{employee.currency}</div>
                           </td>
                           <td className="px-4 py-4">

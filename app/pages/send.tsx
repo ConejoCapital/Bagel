@@ -20,7 +20,11 @@ import {
 } from '@phosphor-icons/react';
 import { useWallet, useConnection } from '@solana/wallet-adapter-react';
 import { PublicKey } from '@solana/web3.js';
-import { confidentialTransfer } from '../lib/bagel-client';
+import {
+  confidentialTransfer,
+  resolveUserTokenAccount,
+  USDBAGEL_MINT,
+} from '../lib/bagel-client';
 
 const WalletButton = dynamic(() => import('../components/WalletButton'), {
   ssr: false,
@@ -59,14 +63,14 @@ export default function SendPage() {
       setError('');
       setTxid('');
 
-      // Get sender's token account from localStorage
-      const senderTokenAccountStr = localStorage.getItem(`userTokenAccount_${publicKey.toBase58()}`);
-      if (!senderTokenAccountStr) {
+      // Resolve sender's token account (PDA first, then localStorage fallback)
+      const senderTokenAccount = await resolveUserTokenAccount(connection, publicKey, USDBAGEL_MINT);
+      if (!senderTokenAccount) {
         throw new Error('No token account found. Please mint USDBagel tokens first from the Dashboard.');
       }
-      const senderTokenAccount = new PublicKey(senderTokenAccountStr);
 
       console.log('💸 Initiating confidential transfer...');
+      // confidentialTransfer now handles PDA derivation for recipient internally
       const signature = await confidentialTransfer(
         connection,
         wallet,

@@ -21,6 +21,7 @@ export const INCO_LIGHTNING_ID = new PublicKey('5sjEbPiqgZrYwR31ahR6Uk9wf5awoX61
 const MASTER_VAULT_SEED = Buffer.from('master_vault');
 const BUSINESS_ENTRY_SEED = Buffer.from('entry');
 const EMPLOYEE_ENTRY_SEED = Buffer.from('employee');
+const USER_TOKEN_SEED = Buffer.from('user_token');
 
 // Instruction discriminators (from test file)
 const DISCRIMINATORS = {
@@ -29,6 +30,8 @@ const DISCRIMINATORS = {
   deposit: Buffer.from([242, 35, 198, 137, 82, 225, 242, 182]),
   add_employee: Buffer.from([14, 82, 239, 156, 50, 90, 189, 61]),
   request_withdrawal: Buffer.from([251, 85, 121, 205, 56, 201, 12, 177]),
+  // SHA256("global:initialize_user_token_account")[0..8]
+  initialize_user_token_account: Buffer.from([37, 151, 88, 251, 81, 101, 122, 214]),
 };
 
 /**
@@ -63,6 +66,101 @@ export function getEmployeeEntryPDA(businessEntry: PublicKey, employeeIndex: num
     [EMPLOYEE_ENTRY_SEED, businessEntry.toBuffer(), indexBuffer],
     BAGEL_PROGRAM_ID
   );
+}
+
+/**
+ * Derive User Token Account PDA (deterministic - no storage needed!)
+ *
+ * Seeds: ["user_token", owner_pubkey, mint_pubkey]
+ *
+ * This allows anyone to calculate a user's token account address
+ * just from their wallet address and the mint. No localStorage needed!
+ */
+export function getUserTokenAccountPDA(
+  owner: PublicKey,
+  mint: PublicKey = USDBAGEL_MINT
+): [PublicKey, number] {
+  return PublicKey.findProgramAddressSync(
+    [USER_TOKEN_SEED, owner.toBuffer(), mint.toBuffer()],
+    BAGEL_PROGRAM_ID
+  );
+}
+
+/**
+ * Check if a user's token account PDA exists on-chain
+ */
+export async function checkUserTokenAccountExists(
+  connection: Connection,
+  owner: PublicKey,
+  mint: PublicKey = USDBAGEL_MINT
+): Promise<boolean> {
+  const [tokenAccountPDA] = getUserTokenAccountPDA(owner, mint);
+  const accountInfo = await connection.getAccountInfo(tokenAccountPDA);
+  return accountInfo !== null;
+}
+
+/**
+ * Initialize a user's token account PDA via the Bagel program
+ *
+ * This creates a deterministic token account that anyone can derive.
+ * The account is owned by the Bagel program and stores the encrypted balance.
+ */
+export async function initializeUserTokenAccountPDA(
+  connection: Connection,
+  wallet: WalletContextState,
+  mint: PublicKey = USDBAGEL_MINT
+): Promise<{ txid: string; tokenAccount: PublicKey }> {
+  if (!wallet.publicKey || !wallet.signTransaction) {
+    throw new Error('Wallet not connected');
+  }
+
+  const [tokenAccountPDA] = getUserTokenAccountPDA(wallet.publicKey, mint);
+
+  // Check if already initialized
+  const exists = await checkUserTokenAccountExists(connection, wallet.publicKey, mint);
+  if (exists) {
+    console.log('✅ User token account already exists:', tokenAccountPDA.toBase58());
+    return { txid: 'already_initialized', tokenAccount: tokenAccountPDA };
+  }
+
+  console.log('🔐 Initializing user token account PDA...');
+  console.log(`   Owner: ${wallet.publicKey.toBase58()}`);
+  console.log(`   Mint: ${mint.toBase58()}`);
+  console.log(`   PDA: ${tokenAccountPDA.toBase58()}`);
+
+  const instruction = new TransactionInstruction({
+    keys: [
+      { pubkey: wallet.publicKey, isSigner: true, isWritable: true }, // owner (payer)
+      { pubkey: mint, isSigner: false, isWritable: false }, // mint
+      { pubkey: tokenAccountPDA, isSigner: false, isWritable: true }, // user_token_account (init)
+      { pubkey: INCO_LIGHTNING_ID, isSigner: false, isWritable: false }, // inco_lightning_program
+      { pubkey: SystemProgram.programId, isSigner: false, isWritable: false }, // system_program
+    ],
+    programId: BAGEL_PROGRAM_ID,
+    data: DISCRIMINATORS.initialize_user_token_account,
+  });
+
+  const transaction = new Transaction().add(instruction);
+  const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('confirmed');
+  transaction.recentBlockhash = blockhash;
+  transaction.feePayer = wallet.publicKey;
+
+  const signed = await wallet.signTransaction(transaction);
+  const txid = await connection.sendRawTransaction(signed.serialize(), {
+    skipPreflight: true,
+    maxRetries: 3,
+  });
+
+  await connection.confirmTransaction({
+    blockhash,
+    lastValidBlockHeight,
+    signature: txid,
+  }, 'confirmed');
+
+  console.log('✅ User token account initialized!');
+  console.log(`   Transaction: ${txid}`);
+
+  return { txid, tokenAccount: tokenAccountPDA };
 }
 
 /**
@@ -523,27 +621,76 @@ export async function initializeConfidentialTokenAccount(
  * Calls the server-side API which has mint authority to create real
  * confidential tokens with FHE-encrypted amounts.
  *
+ * Two modes:
+ * 1. PDA-based (recommended): Initialize a deterministic token account PDA first
+ * 2. Legacy: API creates a keypair-based token account (stored in localStorage)
+ *
  * @param amount - Amount to mint (in token units, e.g., 100 = 100 USDBagel)
+ * @param usePDA - If true, uses PDA-based token account (recommended)
  */
 export async function mintTestTokens(
   connection: Connection,
   wallet: WalletContextState,
   amount: number,
-  _tokenAccount?: PublicKey // Deprecated: API creates new accounts
+  usePDA: boolean = false
 ): Promise<{ txid: string; amount: number; tokenAccount: PublicKey }> {
   if (!wallet.publicKey) {
     throw new Error('Wallet not connected');
   }
 
-  // The owner of the token account should be the wallet (for transfer authority)
-  // NOT a PDA-derived address
   const ownerAddress = wallet.publicKey;
 
   console.log('🪙 Minting USDBagel tokens via Inco Token Program...');
   console.log(`   Amount: ${amount} USDBagel`);
   console.log(`   Owner: ${ownerAddress.toBase58()}`);
+  console.log(`   Mode: ${usePDA ? 'PDA-based (deterministic)' : 'Legacy (keypair-based)'}`);
 
-  // Call the mint API endpoint - pass wallet as owner so transfers work
+  if (usePDA) {
+    // PDA-based mode: Initialize the user's token account PDA first
+    const { tokenAccount: tokenAccountPDA } = await initializeUserTokenAccountPDA(
+      connection,
+      wallet,
+      USDBAGEL_MINT
+    );
+
+    // Then mint to the PDA
+    const response = await fetch('/api/mint', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        amount,
+        destinationAccount: ownerAddress.toBase58(),
+        tokenAccountPDA: tokenAccountPDA.toBase58(), // Tell API to mint to PDA
+      }),
+    });
+
+    const result = await response.json() as {
+      success: boolean;
+      txid?: string;
+      amount?: number;
+      tokenAccount?: string;
+      error?: string;
+    };
+
+    if (!response.ok || !result.success) {
+      throw new Error(result.error || 'Failed to mint tokens');
+    }
+
+    console.log('✅ Tokens minted successfully (PDA-based)!');
+    console.log(`   Transaction: ${result.txid}`);
+    console.log(`   Amount: ${result.amount} USDBagel (encrypted on-chain)`);
+    console.log(`   Token Account PDA: ${tokenAccountPDA.toBase58()}`);
+
+    return {
+      txid: result.txid!,
+      amount: result.amount!,
+      tokenAccount: tokenAccountPDA,
+    };
+  }
+
+  // Legacy mode: API creates a new keypair-based token account
   const response = await fetch('/api/mint', {
     method: 'POST',
     headers: {
@@ -551,7 +698,7 @@ export async function mintTestTokens(
     },
     body: JSON.stringify({
       amount,
-      destinationAccount: ownerAddress.toBase58(), // Wallet as owner, not PDA
+      destinationAccount: ownerAddress.toBase58(),
     }),
   });
 
@@ -567,21 +714,20 @@ export async function mintTestTokens(
     throw new Error(result.error || 'Failed to mint tokens');
   }
 
-  // The API creates a new keypair-based token account and returns it
   if (!result.tokenAccount) {
     throw new Error('Mint API did not return token account address');
   }
   const actualTokenAccount = new PublicKey(result.tokenAccount);
 
-  console.log('✅ Tokens minted successfully!');
+  console.log('✅ Tokens minted successfully (legacy mode)!');
   console.log(`   Transaction: ${result.txid}`);
   console.log(`   Amount: ${result.amount} USDBagel (encrypted on-chain)`);
   console.log(`   Token Account: ${actualTokenAccount.toBase58()}`);
 
-  // Save the token account to localStorage for future deposits
+  // Save the token account to localStorage for future deposits (legacy mode)
   if (typeof window !== 'undefined') {
     localStorage.setItem(`userTokenAccount_${wallet.publicKey!.toBase58()}`, actualTokenAccount.toBase58());
-    console.log('   Token account saved for deposits');
+    console.log('   Token account saved for deposits (localStorage)');
   }
 
   return {
@@ -642,85 +788,96 @@ export async function getConfidentialBalance(
 
 /**
  * Transfer confidential tokens to another user
- * Uses Inco Confidential Token program for FHE-encrypted transfers
+ * Uses the /api/transfer endpoint which calls the Inco Token program
+ *
+ * Token accounts are derived deterministically using PDAs:
+ * - Sender: getUserTokenAccountPDA(senderWallet, mint)
+ * - Recipient: getUserTokenAccountPDA(recipientWallet, mint)
+ *
+ * No localStorage needed - addresses are calculated from wallet pubkeys!
  *
  * @param connection - Solana connection
  * @param wallet - Wallet context
- * @param recipientAddress - Recipient's wallet address (not token account)
+ * @param recipientAddress - Recipient's wallet address
  * @param amount - Amount to transfer (in token units)
- * @param senderTokenAccount - Sender's confidential token account
+ * @param senderTokenAccount - Optional: Sender's token account (defaults to PDA)
  */
 export async function confidentialTransfer(
   connection: Connection,
   wallet: WalletContextState,
   recipientAddress: string,
   amount: number,
-  senderTokenAccount: PublicKey
+  senderTokenAccount?: PublicKey
 ): Promise<string> {
-  if (!wallet.publicKey || !wallet.signTransaction) {
+  if (!wallet.publicKey) {
     throw new Error('Wallet not connected');
   }
 
-  const recipient = new PublicKey(recipientAddress);
+  // Validate recipient address
+  let recipientPubkey: PublicKey;
+  try {
+    recipientPubkey = new PublicKey(recipientAddress);
+  } catch {
+    throw new Error('Invalid recipient address');
+  }
 
-  // For demo: we need the recipient to have a token account
-  // In production, this would be looked up or the recipient would provide it
-  const recipientTokenAccountStr = typeof window !== 'undefined'
+  // Derive sender's token account PDA if not provided
+  const senderTokenPDA = senderTokenAccount || getUserTokenAccountPDA(wallet.publicKey, USDBAGEL_MINT)[0];
+
+  // Derive recipient's token account PDA (deterministic!)
+  const [recipientTokenPDA] = getUserTokenAccountPDA(recipientPubkey, USDBAGEL_MINT);
+
+  // Check if recipient has initialized their token account
+  const recipientExists = await checkUserTokenAccountExists(connection, recipientPubkey, USDBAGEL_MINT);
+
+  // Also check localStorage as fallback for legacy accounts
+  const legacyRecipientAccount = typeof window !== 'undefined'
     ? localStorage.getItem(`userTokenAccount_${recipientAddress}`)
     : null;
 
-  if (!recipientTokenAccountStr) {
-    throw new Error('Recipient has no USDBagel token account. They must mint tokens first to create an account.');
+  // Determine which recipient token account to use
+  let finalRecipientAccount: string;
+  if (recipientExists) {
+    finalRecipientAccount = recipientTokenPDA.toBase58();
+  } else if (legacyRecipientAccount) {
+    // Fallback to localStorage for legacy accounts
+    finalRecipientAccount = legacyRecipientAccount;
+  } else {
+    throw new Error('Recipient has no USDBagel token account. They must initialize one first.');
   }
-  const recipientTokenAccount = new PublicKey(recipientTokenAccountStr);
 
-  // Encrypt amount for confidential transfer
-  const encryptedAmount = await encryptForInco(solToLamports(amount));
+  console.log('💸 Initiating confidential transfer...');
+  console.log(`   Amount: ${amount} USDBagel`);
+  console.log(`   From: ${senderTokenPDA.toBase58()}`);
+  console.log(`   To: ${finalRecipientAccount}`);
 
-  // Get Inco Token program ID
-  const INCO_TOKEN_ID = process.env.NEXT_PUBLIC_INCO_TOKEN_PROGRAM_ID
-    ? new PublicKey(process.env.NEXT_PUBLIC_INCO_TOKEN_PROGRAM_ID)
-    : new PublicKey('HuUn2JwCPCLWwJ3z17m7CER73jseqsxvbcFuZN4JAw22');
-
-  // Build transfer instruction
-  // transfer discriminator from Inco Token program
-  const transferDiscriminator = Buffer.from([163, 52, 200, 231, 140, 3, 69, 186]); // "global:transfer" hash
-  const encLen = Buffer.alloc(4);
-  encLen.writeUInt32LE(encryptedAmount.length);
-  const data = Buffer.concat([transferDiscriminator, encLen, encryptedAmount]);
-
-  const keys = [
-    { pubkey: senderTokenAccount, isSigner: false, isWritable: true }, // from
-    { pubkey: recipientTokenAccount, isSigner: false, isWritable: true }, // to
-    { pubkey: wallet.publicKey, isSigner: true, isWritable: false }, // authority (owner of from account)
-    { pubkey: INCO_LIGHTNING_ID, isSigner: false, isWritable: false }, // inco_lightning_program
-  ];
-
-  const instruction = new TransactionInstruction({
-    keys,
-    programId: INCO_TOKEN_ID,
-    data,
+  // Call the transfer API endpoint
+  const response = await fetch('/api/transfer', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      amount,
+      fromTokenAccount: senderTokenPDA.toBase58(),
+      toTokenAccount: finalRecipientAccount,
+      senderPubkey: wallet.publicKey.toBase58(),
+    }),
   });
 
-  const transaction = new Transaction().add(instruction);
-  const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('confirmed');
-  transaction.recentBlockhash = blockhash;
-  transaction.feePayer = wallet.publicKey;
+  const result = await response.json() as {
+    success: boolean;
+    txid?: string;
+    amount?: number;
+    error?: string;
+  };
 
-  const signed = await wallet.signTransaction(transaction);
-  const txid = await connection.sendRawTransaction(signed.serialize(), {
-    skipPreflight: true,
-    maxRetries: 3,
-  });
+  if (!response.ok || !result.success) {
+    throw new Error(result.error || 'Failed to transfer tokens');
+  }
 
-  await connection.confirmTransaction({
-    blockhash,
-    lastValidBlockHeight,
-    signature: txid,
-  }, 'confirmed');
-
-  console.log('✅ Confidential transfer successful:', txid);
-  return txid;
+  console.log('✅ Confidential transfer successful:', result.txid);
+  return result.txid!;
 }
 
 // ============================================================
@@ -737,7 +894,43 @@ export function getMasterVaultTokenAccount(): [PublicKey, number] {
 
 /**
  * Derive a user's confidential token account for USDBagel
+ *
+ * @deprecated Use getUserTokenAccountPDA() for deterministic PDA-based accounts
  */
 export function getUserTokenAccount(owner: PublicKey): [PublicKey, number] {
   return getConfidentialTokenAccount(owner, USDBAGEL_MINT);
+}
+
+/**
+ * Get a user's token account - tries PDA first, then localStorage fallback
+ *
+ * This is the recommended function to get a user's token account address.
+ * It checks:
+ * 1. PDA-based token account (deterministic)
+ * 2. Legacy localStorage-stored account (fallback)
+ *
+ * @returns The token account address, or null if not found
+ */
+export async function resolveUserTokenAccount(
+  connection: Connection,
+  owner: PublicKey,
+  mint: PublicKey = USDBAGEL_MINT
+): Promise<PublicKey | null> {
+  // Try PDA first
+  const [tokenAccountPDA] = getUserTokenAccountPDA(owner, mint);
+  const pdaExists = await checkUserTokenAccountExists(connection, owner, mint);
+
+  if (pdaExists) {
+    return tokenAccountPDA;
+  }
+
+  // Fallback to localStorage
+  if (typeof window !== 'undefined') {
+    const legacyAccount = localStorage.getItem(`userTokenAccount_${owner.toBase58()}`);
+    if (legacyAccount) {
+      return new PublicKey(legacyAccount);
+    }
+  }
+
+  return null;
 }

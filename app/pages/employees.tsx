@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
+import { useWallet } from '@solana/wallet-adapter-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   House,
@@ -46,134 +47,33 @@ const navItems = [
   { icon: ChartBar, label: 'Reports', href: '/reports' },
 ];
 
-// Mock data for employees
-const initialEmployees = [
-  {
-    id: 1,
-    initials: 'AT',
-    name: 'Alex Thompson',
-    email: 'alex.thompson@company.com',
-    role: 'Senior Developer',
-    department: 'Engineering',
-    startDate: 'Mar 15, 2024',
-    wallet: '0x7a23...f8d9',
-    fullWallet: '7a23d8c4e9f1b2a3c4d5e6f7g8h9i0j1k2l3m4n5o6p7q8r9s0t1u2v3w4x5y6z7f8d9',
-    salary: 8500.00,
-    currency: 'SOL',
-    paymentFrequency: 'Monthly',
-    privacy: 'Maximum',
-    status: 'Active',
-    lastPayment: 'Jan 15, 2026',
-  },
-  {
-    id: 2,
-    initials: 'SC',
-    name: 'Sarah Chen',
-    email: 'sarah.chen@company.com',
-    role: 'Product Manager',
-    department: 'Product',
-    startDate: 'Jan 10, 2024',
-    wallet: '0x3b91...c4e2',
-    fullWallet: '3b91a2b3c4d5e6f7g8h9i0j1k2l3m4n5o6p7q8r9s0t1u2v3w4x5y6z7a8b9c4e2',
-    salary: 12750.00,
-    currency: 'USDC',
-    paymentFrequency: 'Bi-weekly',
-    privacy: 'Standard',
-    status: 'Active',
-    lastPayment: 'Jan 14, 2026',
-  },
-  {
-    id: 3,
-    initials: 'MR',
-    name: 'Michael Ross',
-    email: 'michael.ross@company.com',
-    role: 'DevOps Engineer',
-    department: 'Engineering',
-    startDate: 'Jun 20, 2024',
-    wallet: '0x9f56...a7b3',
-    fullWallet: '9f56a7b3c4d5e6f7g8h9i0j1k2l3m4n5o6p7q8r9s0t1u2v3w4x5y6z7a8b9a7b3',
-    salary: 6200.00,
-    currency: 'SOL',
-    paymentFrequency: 'Monthly',
-    privacy: 'Maximum',
-    status: 'Active',
-    lastPayment: 'Jan 15, 2026',
-  },
-  {
-    id: 4,
-    initials: 'EW',
-    name: 'Emma Wilson',
-    email: 'emma.wilson@company.com',
-    role: 'UX Designer',
-    department: 'Design',
-    startDate: 'Sep 5, 2024',
-    wallet: '0x2c84...d1f5',
-    fullWallet: '2c84d1f5a6b7c8d9e0f1g2h3i4j5k6l7m8n9o0p1q2r3s4t5u6v7w8x9y0z1d1f5',
-    salary: 9100.00,
-    currency: 'USDC',
-    paymentFrequency: 'Monthly',
-    privacy: 'Enhanced',
-    status: 'Active',
-    lastPayment: 'Jan 13, 2026',
-  },
-  {
-    id: 5,
-    initials: 'JK',
-    name: 'James Kim',
-    email: 'james.kim@company.com',
-    role: 'Backend Developer',
-    department: 'Engineering',
-    startDate: 'Nov 12, 2024',
-    wallet: '0x5d92...e3a1',
-    fullWallet: '5d92e3a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0u1v2w3x4y5z6a7e3a1',
-    salary: 7800.00,
-    currency: 'SOL',
-    paymentFrequency: 'Weekly',
-    privacy: 'Maximum',
-    status: 'Active',
-    lastPayment: 'Jan 12, 2026',
-  },
-  {
-    id: 6,
-    initials: 'LM',
-    name: 'Lisa Martinez',
-    email: 'lisa.martinez@company.com',
-    role: 'Marketing Lead',
-    department: 'Marketing',
-    startDate: 'Feb 1, 2024',
-    wallet: '0x8e47...b2c9',
-    fullWallet: '8e47b2c9a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0u1v2w3x4y5z6b2c9',
-    salary: 10500.00,
-    currency: 'USDC',
-    paymentFrequency: 'Monthly',
-    privacy: 'Enhanced',
-    status: 'Active',
-    lastPayment: 'Jan 15, 2026',
-  },
-  {
-    id: 7,
-    initials: 'DT',
-    name: 'David Turner',
-    email: 'david.turner@company.com',
-    role: 'QA Engineer',
-    department: 'Engineering',
-    startDate: 'Aug 22, 2024',
-    wallet: '0x1a73...f4d8',
-    fullWallet: '1a73f4d8a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0u1v2w3x4y5z6f4d8',
-    salary: 5800.00,
-    currency: 'SOL',
-    paymentFrequency: 'Bi-weekly',
-    privacy: 'Standard',
-    status: 'Inactive',
-    lastPayment: 'Dec 28, 2025',
-  },
-];
+// Employee interface
+interface Employee {
+  id: number;
+  initials: string;
+  name: string;
+  email: string;
+  role: string;
+  department: string;
+  startDate: string;
+  wallet: string;
+  fullWallet: string;
+  salary: number;
+  currency: string;
+  paymentFrequency: 'Monthly' | 'Bi-weekly' | 'Weekly';
+  privacy: 'Standard' | 'Enhanced' | 'Maximum';
+  status: 'Active' | 'Inactive';
+  lastPayment: string;
+}
+
+// Storage key for employees
+const EMPLOYEES_STORAGE_KEY = 'bagel_employees';
 
 // Add Employee Modal Component
 interface AddEmployeeModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onAdd: (employee: typeof initialEmployees[0]) => void;
+  onAdd: (employee: Employee) => void;
 }
 
 function AddEmployeeModal({ isOpen, onClose, onAdd }: AddEmployeeModalProps) {
@@ -463,17 +363,43 @@ function AddEmployeeModal({ isOpen, onClose, onAdd }: AddEmployeeModalProps) {
 }
 
 export default function Employees() {
+  const { publicKey } = useWallet();
   const [searchQuery, setSearchQuery] = useState('');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [employees, setEmployees] = useState(initialEmployees);
+  const [employees, setEmployees] = useState<Employee[]>([]);
   const [filterDepartment, setFilterDepartment] = useState<string>('all');
   const [filterStatus, setFilterStatus] = useState<'all' | 'Active' | 'Inactive'>('all');
   const [selectedEmployee, setSelectedEmployee] = useState<number | null>(null);
 
-  const departments = ['all', ...new Set(employees.map(e => e.department))];
+  // Load employees from localStorage
+  useEffect(() => {
+    if (publicKey) {
+      const storageKey = `${EMPLOYEES_STORAGE_KEY}_${publicKey.toBase58()}`;
+      const saved = localStorage.getItem(storageKey);
+      if (saved) {
+        try {
+          setEmployees(JSON.parse(saved));
+        } catch (e) {
+          console.error('Failed to parse employees from localStorage:', e);
+        }
+      }
+    } else {
+      setEmployees([]);
+    }
+  }, [publicKey]);
 
-  const filteredEmployees = employees.filter(emp => {
+  // Save employees to localStorage when they change
+  useEffect(() => {
+    if (publicKey && employees.length > 0) {
+      const storageKey = `${EMPLOYEES_STORAGE_KEY}_${publicKey.toBase58()}`;
+      localStorage.setItem(storageKey, JSON.stringify(employees));
+    }
+  }, [employees, publicKey]);
+
+  const departments: string[] = ['all', ...Array.from(new Set(employees.map((e: Employee) => e.department)))];
+
+  const filteredEmployees = employees.filter((emp: Employee) => {
     const matchesSearch = emp.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       emp.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
       emp.role.toLowerCase().includes(searchQuery.toLowerCase());
@@ -482,16 +408,16 @@ export default function Employees() {
     return matchesSearch && matchesDepartment && matchesStatus;
   });
 
-  const totalPayroll = employees.reduce((sum, emp) => sum + emp.salary, 0);
-  const activeEmployees = employees.filter(e => e.status === 'Active').length;
-  const departmentCount = new Set(employees.map(e => e.department)).size;
+  const totalPayroll = employees.reduce((sum: number, emp: Employee) => sum + emp.salary, 0);
+  const activeEmployees = employees.filter((e: Employee) => e.status === 'Active').length;
+  const departmentCount = new Set(employees.map((e: Employee) => e.department)).size;
 
-  const handleAddEmployee = (employee: typeof initialEmployees[0]) => {
-    setEmployees(prev => [...prev, employee]);
+  const handleAddEmployee = (employee: Employee) => {
+    setEmployees((prev: Employee[]) => [...prev, employee]);
   };
 
   const handleDeleteEmployee = (id: number) => {
-    setEmployees(prev => prev.filter(e => e.id !== id));
+    setEmployees((prev: Employee[]) => prev.filter((e: Employee) => e.id !== id));
     setSelectedEmployee(null);
   };
 
@@ -614,7 +540,9 @@ export default function Employees() {
                   },
                   {
                     icon: ShieldCheck,
-                    value: `${Math.round((employees.filter(e => e.privacy === 'Maximum').length / employees.length) * 100)}%`,
+                    value: employees.length > 0
+                      ? `${Math.round((employees.filter((e: Employee) => e.privacy === 'Maximum').length / employees.length) * 100)}%`
+                      : '0%',
                     label: 'Maximum Privacy',
                     subtitle: 'Protected payments',
                   },
@@ -663,7 +591,7 @@ export default function Employees() {
                         className="appearance-none px-4 py-2 pr-8 bg-gray-50 border border-gray-200 rounded text-sm focus:outline-none focus:border-bagel-orange cursor-pointer"
                       >
                         <option value="all">All Departments</option>
-                        {departments.filter(d => d !== 'all').map(dept => (
+                        {departments.filter((d: string) => d !== 'all').map((dept: string) => (
                           <option key={dept} value={dept}>{dept}</option>
                         ))}
                       </select>
@@ -703,7 +631,7 @@ export default function Employees() {
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredEmployees.map((employee, i) => (
+                    {filteredEmployees.map((employee: Employee, i: number) => (
                       <motion.tr
                         key={employee.id}
                         initial={{ opacity: 0 }}
