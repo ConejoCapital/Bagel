@@ -16,6 +16,7 @@ import {
   Eye,
   EyeSlash,
   LockSimple,
+  LockSimpleOpen,
   ShieldCheck,
   ArrowSquareOut,
   Copy,
@@ -28,6 +29,18 @@ import {
 } from '@phosphor-icons/react';
 import { useWallet, useConnection } from '@solana/wallet-adapter-react';
 import { PublicKey } from '@solana/web3.js';
+import { decrypt } from '@inco/solana-sdk/attested-decrypt';
+import { resolveUserTokenAccount, USDBAGEL_MINT as USDBAGEL_MINT_KEY } from '../lib/bagel-client';
+
+// Extract handle from IncoAccount data (u128 little-endian at offset 72)
+function extractHandle(data: Buffer): bigint {
+  const bytes = data.slice(72, 88);
+  let result = BigInt(0);
+  for (let i = 15; i >= 0; i--) {
+    result = result * BigInt(256) + BigInt(bytes[i]);
+  }
+  return result;
+}
 
 const WalletButton = dynamic(() => import('../components/WalletButton'), {
   ssr: false,
@@ -44,24 +57,27 @@ const navItems = [
   { icon: ChartBar, label: 'Reports', href: '/reports' },
 ];
 
-// Inco Token Program ID
-const INCO_TOKEN_PROGRAM_ID = process.env.NEXT_PUBLIC_INCO_TOKEN_PROGRAM_ID || 'HuUn2JwCPCLWwJ3z17m7CER73jseqsxvbcFuZN4JAw22';
-const USDBAGEL_MINT = process.env.NEXT_PUBLIC_USDBAGEL_MINT || '8rQ7zU5iJ8o6prw4UGUq7fVNhQaw489rdtkaK5Gh8qsV';
+// Inco Token Program ID (from IDL)
+const INCO_TOKEN_PROGRAM_ID = process.env.NEXT_PUBLIC_INCO_TOKEN_PROGRAM_ID || '4cyJHzecVWuU2xux6bCAPAhALKQT8woBh4Vx3AGEGe5N';
+const USDBAGEL_MINT = process.env.NEXT_PUBLIC_USDBAGEL_MINT || 'GhCZ59UK4Afg4WGpQ11HyRc8ya4swgWFXMh2BxuWQXHt';
 
 interface VaultBalance {
   encrypted: string;
   decrypted: number | null;
   isDecrypting: boolean;
+  handle: bigint | null;
 }
 
 export default function PrivacyVault() {
   const { publicKey, connected } = useWallet();
+  const wallet = useWallet();
   const { connection } = useConnection();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [balance, setBalance] = useState<VaultBalance>({
     encrypted: '****',
     decrypted: null,
     isDecrypting: false,
+    handle: null,
   });
   const [showBalance, setShowBalance] = useState(false);
   const [tokenAccount, setTokenAccount] = useState<string | null>(null);
@@ -69,15 +85,18 @@ export default function PrivacyVault() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Load token account from localStorage
+  // Load token account from on-chain Bagel PDA
   useEffect(() => {
-    if (publicKey) {
-      const savedAccount = localStorage.getItem(`userTokenAccount_${publicKey.toBase58()}`);
-      setTokenAccount(savedAccount);
-    } else {
-      setTokenAccount(null);
+    async function loadTokenAccount() {
+      if (publicKey) {
+        const account = await resolveUserTokenAccount(connection, publicKey, USDBAGEL_MINT_KEY);
+        setTokenAccount(account ? account.toBase58() : null);
+      } else {
+        setTokenAccount(null);
+      }
     }
-  }, [publicKey]);
+    loadTokenAccount();
+  }, [publicKey, connection]);
 
   // Fetch balance from token account
   const fetchBalance = useCallback(async () => {
@@ -91,12 +110,15 @@ export default function PrivacyVault() {
       const accountInfo = await connection.getAccountInfo(tokenAccountPubkey);
 
       if (accountInfo) {
-        // For demo purposes, we'll show a simulated encrypted balance
-        // In production, this would be the actual FHE encrypted amount
+        // Extract the FHE handle from account data
+        const handle = extractHandle(accountInfo.data as Buffer);
+        const encryptedHex = 'FHE:0x' + Buffer.from(accountInfo.data.slice(72, 88)).toString('hex');
+
         setBalance({
-          encrypted: 'FHE:0x' + Buffer.from(accountInfo.data.slice(64, 80)).toString('hex'),
+          encrypted: encryptedHex,
           decrypted: null,
           isDecrypting: false,
+          handle: handle !== BigInt(0) ? handle : null,
         });
       }
     } catch (err) {
@@ -113,23 +135,44 @@ export default function PrivacyVault() {
     }
   }, [connected, tokenAccount, fetchBalance]);
 
-  // Simulate decryption (in production, this would use FHE decryption)
-  const handleDecrypt = async () => {
+  // Decrypt using Inco SDK
+  const handleDecrypt = useCallback(async () => {
+    if (!publicKey || !wallet.signMessage || !balance.handle) {
+      setError('Missing required data for decryption');
+      return;
+    }
+
     setBalance(prev => ({ ...prev, isDecrypting: true }));
+    setError(null);
 
-    // Simulate decryption delay
-    await new Promise(resolve => setTimeout(resolve, 1500));
+    try {
+      console.log('Decrypting vault balance...');
+      console.log('Handle:', balance.handle.toString());
 
-    // For demo, show a simulated balance
-    // In production, this would decrypt the actual FHE ciphertext
-    const simulatedBalance = Math.random() * 1000 + 100;
-    setBalance(prev => ({
-      ...prev,
-      decrypted: parseFloat(simulatedBalance.toFixed(2)),
-      isDecrypting: false,
-    }));
-    setShowBalance(true);
-  };
+      const result = await decrypt([balance.handle.toString()], {
+        address: publicKey,
+        signMessage: wallet.signMessage,
+      });
+
+      if (result.plaintexts && result.plaintexts.length > 0) {
+        const rawValue = BigInt(result.plaintexts[0]);
+        // USDBagel uses 9 decimals
+        const decryptedValue = Number(rawValue) / 1_000_000_000;
+
+        setBalance(prev => ({
+          ...prev,
+          decrypted: decryptedValue,
+          isDecrypting: false,
+        }));
+        setShowBalance(true);
+        console.log('Decrypted balance:', decryptedValue);
+      }
+    } catch (err: any) {
+      console.error('Decryption failed:', err);
+      setError(err.message || 'Failed to decrypt balance');
+      setBalance(prev => ({ ...prev, isDecrypting: false }));
+    }
+  }, [publicKey, wallet.signMessage, balance.handle]);
 
   const copyToClipboard = (text: string, key: string) => {
     navigator.clipboard.writeText(text);
@@ -285,15 +328,26 @@ export default function PrivacyVault() {
                             <span className="text-2xl font-semibold text-gray-400">Decrypting...</span>
                           </div>
                         ) : showBalance && balance.decrypted !== null ? (
-                          <span className="text-4xl font-bold text-bagel-dark">
-                            {balance.decrypted.toLocaleString()} <span className="text-xl text-gray-500">USDBagel</span>
-                          </span>
+                          <div className="flex items-center gap-2">
+                            <LockSimpleOpen className="w-6 h-6 text-green-600" />
+                            <span className="text-4xl font-bold text-green-700">
+                              {balance.decrypted.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} <span className="text-xl text-gray-500">USDBagel</span>
+                            </span>
+                          </div>
+                        ) : balance.handle ? (
+                          <div className="flex items-center gap-2">
+                            <LockSimple className="w-6 h-6 text-gray-400" />
+                            <span className="text-4xl font-bold text-gray-400">****.**</span>
+                          </div>
                         ) : (
-                          <span className="text-4xl font-bold text-gray-400">****.**</span>
+                          <span className="text-2xl font-semibold text-gray-400">No balance</span>
                         )}
                       </div>
-                      {!showBalance && (
+                      {!showBalance && balance.handle && (
                         <p className="text-xs text-gray-500 mt-2">Balance is encrypted - click below to decrypt</p>
+                      )}
+                      {!balance.handle && (
+                        <p className="text-xs text-gray-500 mt-2">Mint tokens from the Dashboard to see your balance</p>
                       )}
                     </div>
                   </div>
@@ -310,10 +364,15 @@ export default function PrivacyVault() {
                           handleDecrypt();
                         }
                       }}
-                      disabled={balance.isDecrypting}
-                      className="flex-1 px-4 py-3 bg-bagel-orange text-white rounded text-sm font-medium flex items-center justify-center gap-2 disabled:opacity-50"
+                      disabled={balance.isDecrypting || !balance.handle}
+                      className="flex-1 px-4 py-3 bg-bagel-orange text-white rounded text-sm font-medium flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      {showBalance ? (
+                      {balance.isDecrypting ? (
+                        <>
+                          <CircleNotch className="w-4 h-4 animate-spin" />
+                          Decrypting...
+                        </>
+                      ) : showBalance ? (
                         <>
                           <EyeSlash className="w-4 h-4" />
                           Hide Balance

@@ -18,28 +18,14 @@
 import { Connection, PublicKey, Transaction, TransactionInstruction } from '@solana/web3.js';
 
 // Import from Inco SDK
-// Note: These imports may need adjustment based on actual SDK structure
-// TODO: Install @inco/solana-sdk when available
-// import { encryptValue } from '@inco/solana-sdk/encryption';
-// import { decrypt } from '@inco/solana-sdk/attested-decrypt';
-// import { hexToBuffer } from '@inco/solana-sdk/utils';
+import { encryptValue as incoEncryptValue } from '@inco/solana-sdk/encryption';
+import { decrypt as incoDecrypt } from '@inco/solana-sdk/attested-decrypt';
+import { hexToBuffer as incoHexToBuffer } from '@inco/solana-sdk/utils';
 
-// Mock implementations for now (will be replaced with real SDK)
-function encryptValue(value: bigint): Promise<string> {
-  // Mock encryption - returns hex string
-  const buffer = Buffer.alloc(16);
-  buffer.writeBigUInt64LE(value, 0);
-  return Promise.resolve(buffer.toString('hex'));
-}
-
-function decrypt(handles: string[], wallet: any): Promise<{ plaintexts: bigint[]; ed25519Instructions?: TransactionInstruction[] }> {
-  // Mock decryption - returns zeros
-  return Promise.resolve({ plaintexts: handles.map(() => BigInt(0)) });
-}
-
-function hexToBuffer(hex: string): Buffer {
-  return Buffer.from(hex, 'hex');
-}
+// Re-export the real SDK functions
+const encryptValue = incoEncryptValue;
+const decrypt = incoDecrypt;
+const hexToBuffer = incoHexToBuffer;
 
 const INCO_PROGRAM_ID = process.env.NEXT_PUBLIC_INCO_PROGRAM_ID || '5sjEbPiqgZrYwR31ahR6Uk9wf5awoX61YGg7jExQSwaj';
 
@@ -177,12 +163,17 @@ export class IncoClient {
         address: wallet.publicKey,
         signMessage: wallet.signMessage,
       });
-      
+
       console.log('✅ Values decrypted via Inco SDK');
       console.log(`   Plaintexts: ${result.plaintexts.length}`);
 
+      // SDK returns strings, convert to bigints
+      const plaintextsBigInt = result.plaintexts.map((pt: string | bigint) =>
+        typeof pt === 'string' ? BigInt(pt) : pt
+      );
+
       return {
-        plaintexts: result.plaintexts,
+        plaintexts: plaintextsBigInt,
         ed25519Instructions: result.ed25519Instructions || [],
       };
     } catch (error) {
@@ -547,8 +538,11 @@ export async function decryptConfidentialBalance(
     address: wallet.publicKey,
     signMessage: wallet.signMessage,
   });
-  
-  return result.plaintexts[0] || BigInt(0);
+
+  // SDK returns strings, convert to bigint
+  const pt = result.plaintexts[0];
+  if (!pt) return BigInt(0);
+  return typeof pt === 'string' ? BigInt(pt) : pt;
 }
 
 /**

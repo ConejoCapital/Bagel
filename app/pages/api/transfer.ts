@@ -8,19 +8,16 @@ import {
 } from '@solana/web3.js';
 import { createHash } from 'crypto';
 
-// Inco Token Program ID (devnet)
+// Inco Token Program ID (from IDL)
 const INCO_TOKEN_PROGRAM_ID = new PublicKey(
-  process.env.NEXT_PUBLIC_INCO_TOKEN_PROGRAM_ID || 'HuUn2JwCPCLWwJ3z17m7CER73jseqsxvbcFuZN4JAw22'
+  process.env.NEXT_PUBLIC_INCO_TOKEN_PROGRAM_ID || '4cyJHzecVWuU2xux6bCAPAhALKQT8woBh4Vx3AGEGe5N'
 );
 
 // Inco Lightning Program ID
 const INCO_LIGHTNING_ID = new PublicKey('5sjEbPiqgZrYwR31ahR6Uk9wf5awoX61YGg7jExQSwaj');
 
-// Transfer discriminator from SHA256("global:transfer")
-const TRANSFER_DISCRIMINATOR = (() => {
-  const hash = createHash('sha256').update('global:transfer').digest();
-  return hash.slice(0, 8);
-})();
+// Transfer discriminator from IDL
+const TRANSFER_DISCRIMINATOR = Buffer.from([163, 52, 200, 231, 140, 3, 69, 186]);
 
 // Encrypt value for Inco (simulated FHE)
 function encryptForInco(value: bigint): Buffer {

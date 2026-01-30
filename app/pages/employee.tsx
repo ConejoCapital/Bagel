@@ -4,10 +4,12 @@ import Head from 'next/head';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import { useState, useEffect } from 'react';
-import { 
+import {
   requestWithdrawal,
   lamportsToSOL,
-  solToLamports
+  solToLamports,
+  resolveUserTokenAccount,
+  USDBAGEL_MINT
 } from '../lib/bagel-client';
 
 const WalletButton = dynamic(() => import('../components/WalletButton'), {
@@ -66,12 +68,11 @@ export default function EmployeeDashboard() {
 
       const amountLamports = solToLamports(parseFloat(withdrawAmount));
 
-      // Get employee's token account from localStorage (created when minting)
-      const employeeTokenAccountStr = localStorage.getItem(`userTokenAccount_${wallet.publicKey.toBase58()}`);
-      if (!employeeTokenAccountStr) {
+      // Get employee's Inco Token account from on-chain Bagel PDA
+      const employeeTokenAccount = await resolveUserTokenAccount(connection, wallet.publicKey, USDBAGEL_MINT);
+      if (!employeeTokenAccount) {
         throw new Error('No token account found. Please mint USDBagel tokens first to create your account.');
       }
-      const employeeTokenAccount = new PublicKey(employeeTokenAccountStr);
 
       // Get vault token account from env
       const vaultTokenAccountStr = process.env.NEXT_PUBLIC_VAULT_TOKEN_ACCOUNT || 'C2nZ8CK2xqRJj7uQuipmi111hqXf3sRK2Zq4aQhmSYJu';

@@ -1,9 +1,15 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
-import { useWallet } from '@solana/wallet-adapter-react';
+import { useWallet, useConnection } from '@solana/wallet-adapter-react';
+import { PublicKey } from '@solana/web3.js';
 import { motion, AnimatePresence } from 'framer-motion';
+import {
+  addEmployee,
+  getCurrentBusinessIndex,
+  solToLamports,
+} from '../lib/bagel-client';
 import {
   House,
   Users,
@@ -30,6 +36,7 @@ import {
   DotsThreeVertical,
   EnvelopeSimple,
   Clock,
+  CircleNotch,
 } from '@phosphor-icons/react';
 
 const WalletButton = dynamic(() => import('../components/WalletButton'), {
@@ -73,10 +80,12 @@ const EMPLOYEES_STORAGE_KEY = 'bagel_employees';
 interface AddEmployeeModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onAdd: (employee: Employee) => void;
+  onAdd: (employee: Employee, employeeIndex: number) => void;
+  onChainAdd: (walletAddress: string, salaryPerSecond: number) => Promise<{ txid: string; employeeIndex: number }>;
+  businessEntryIndex: number | null;
 }
 
-function AddEmployeeModal({ isOpen, onClose, onAdd }: AddEmployeeModalProps) {
+function AddEmployeeModal({ isOpen, onClose, onAdd, onChainAdd, businessEntryIndex }: AddEmployeeModalProps) {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [role, setRole] = useState('');
@@ -85,6 +94,8 @@ function AddEmployeeModal({ isOpen, onClose, onAdd }: AddEmployeeModalProps) {
   const [salary, setSalary] = useState('');
   const [currency, setCurrency] = useState('SOL');
   const [paymentFrequency, setPaymentFrequency] = useState<'Monthly' | 'Bi-weekly' | 'Weekly'>('Monthly');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const currencies = [
     { symbol: 'SOL', name: 'Solana', icon: '◎' },
@@ -93,37 +104,97 @@ function AddEmployeeModal({ isOpen, onClose, onAdd }: AddEmployeeModalProps) {
 
   const departments = ['Engineering', 'Product', 'Design', 'Marketing', 'Sales', 'Operations'];
 
-  const handleSubmit = (e: React.FormEvent) => {
+  // Convert monthly salary to per-second rate (for streaming)
+  const calculateSalaryPerSecond = (monthlySalary: number): number => {
+    // Seconds in a month (30 days avg)
+    const secondsPerMonth = 30 * 24 * 60 * 60;
+    return monthlySalary / secondsPerMonth;
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const initials = name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
-    const newEmployee = {
-      id: Date.now(),
-      initials,
-      name,
-      email,
-      role,
-      department,
-      startDate: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-      wallet: `${wallet.slice(0, 6)}...${wallet.slice(-4)}`,
-      fullWallet: wallet,
-      salary: parseFloat(salary),
-      currency,
-      paymentFrequency,
-      privacy: 'Maximum' as const,
-      status: 'Active' as const,
-      lastPayment: 'Not yet',
-    };
-    onAdd(newEmployee);
-    onClose();
-    // Reset form
-    setName('');
-    setEmail('');
-    setRole('');
-    setDepartment('Engineering');
-    setWallet('');
-    setSalary('');
-    setCurrency('SOL');
-    setPaymentFrequency('Monthly');
+    setError(null);
+
+    if (businessEntryIndex === null) {
+      setError('No business registered. Please register a business first on the Employer page.');
+      return;
+    }
+
+    // Validate wallet address
+    try {
+      new PublicKey(wallet);
+    } catch {
+      setError('Invalid wallet address');
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      // Calculate salary per second based on frequency
+      let salaryPerSecond: number;
+      const salaryAmount = parseFloat(salary);
+
+      switch (paymentFrequency) {
+        case 'Monthly':
+          salaryPerSecond = calculateSalaryPerSecond(salaryAmount);
+          break;
+        case 'Bi-weekly':
+          // Bi-weekly = 2x per month, so multiply by 2 then calculate
+          salaryPerSecond = calculateSalaryPerSecond(salaryAmount * 2);
+          break;
+        case 'Weekly':
+          // Weekly = ~4.33x per month
+          salaryPerSecond = calculateSalaryPerSecond(salaryAmount * 4.33);
+          break;
+      }
+
+      // Call on-chain add_employee instruction
+      console.log('📝 Adding employee on-chain...');
+      console.log('   Wallet:', wallet);
+      console.log('   Salary per second:', salaryPerSecond);
+
+      const { txid, employeeIndex } = await onChainAdd(wallet, salaryPerSecond);
+      console.log('✅ Employee added on-chain! Tx:', txid, 'Index:', employeeIndex);
+
+      // Create local employee record
+      const initials = name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+      const newEmployee = {
+        id: Date.now(),
+        initials,
+        name,
+        email,
+        role,
+        department,
+        startDate: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+        wallet: `${wallet.slice(0, 6)}...${wallet.slice(-4)}`,
+        fullWallet: wallet,
+        salary: parseFloat(salary),
+        currency,
+        paymentFrequency,
+        privacy: 'Maximum' as const,
+        status: 'Active' as const,
+        lastPayment: 'Not yet',
+      };
+
+      onAdd(newEmployee, employeeIndex);
+      onClose();
+
+      // Reset form
+      setName('');
+      setEmail('');
+      setRole('');
+      setDepartment('Engineering');
+      setWallet('');
+      setSalary('');
+      setCurrency('SOL');
+      setPaymentFrequency('Monthly');
+    } catch (err: any) {
+      console.error('Failed to add employee:', err);
+      setError(err.message || 'Failed to add employee on-chain');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -346,14 +417,42 @@ function AddEmployeeModal({ isOpen, onClose, onAdd }: AddEmployeeModalProps) {
                 </button>
                 <motion.button
                   type="submit"
-                  whileHover={{ scale: 1.01 }}
-                  whileTap={{ scale: 0.99 }}
-                  className="flex-1 px-4 py-2.5 bg-bagel-orange text-white rounded text-sm font-medium flex items-center justify-center gap-2"
+                  disabled={isSubmitting || businessEntryIndex === null}
+                  whileHover={{ scale: isSubmitting ? 1 : 1.01 }}
+                  whileTap={{ scale: isSubmitting ? 1 : 0.99 }}
+                  className={`flex-1 px-4 py-2.5 text-white rounded text-sm font-medium flex items-center justify-center gap-2 ${
+                    isSubmitting || businessEntryIndex === null
+                      ? 'bg-gray-400 cursor-not-allowed'
+                      : 'bg-bagel-orange hover:bg-bagel-orange/90'
+                  }`}
                 >
-                  <Plus className="w-4 h-4" weight="bold" />
-                  Add Employee
+                  {isSubmitting ? (
+                    <>
+                      <CircleNotch className="w-4 h-4 animate-spin" />
+                      Adding on-chain...
+                    </>
+                  ) : (
+                    <>
+                      <Plus className="w-4 h-4" weight="bold" />
+                      Add Employee
+                    </>
+                  )}
                 </motion.button>
               </div>
+
+              {/* Error message */}
+              {error && (
+                <div className="p-3 bg-red-50 border border-red-200 rounded text-sm text-red-600">
+                  {error}
+                </div>
+              )}
+
+              {/* No business warning */}
+              {businessEntryIndex === null && (
+                <div className="p-3 bg-yellow-50 border border-yellow-200 rounded text-sm text-yellow-700">
+                  No business registered. Please register a business first on the Employer page before adding employees.
+                </div>
+              )}
             </form>
           </motion.div>
         </div>
@@ -364,6 +463,8 @@ function AddEmployeeModal({ isOpen, onClose, onAdd }: AddEmployeeModalProps) {
 
 export default function Employees() {
   const { publicKey } = useWallet();
+  const wallet = useWallet();
+  const { connection } = useConnection();
   const [searchQuery, setSearchQuery] = useState('');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -371,6 +472,41 @@ export default function Employees() {
   const [filterDepartment, setFilterDepartment] = useState<string>('all');
   const [filterStatus, setFilterStatus] = useState<'all' | 'Active' | 'Inactive'>('all');
   const [selectedEmployee, setSelectedEmployee] = useState<number | null>(null);
+  const [businessEntryIndex, setBusinessEntryIndex] = useState<number | null>(null);
+
+  // Fetch business entry index on mount
+  useEffect(() => {
+    async function fetchBusinessIndex() {
+      if (!publicKey) {
+        setBusinessEntryIndex(null);
+        return;
+      }
+
+      try {
+        // Get the current business index from master vault
+        const currentIndex = await getCurrentBusinessIndex(connection);
+        // User's business is at currentIndex - 1 (if they've registered one)
+        // For now, we assume the user is at index 0 if any business exists
+        if (currentIndex > 0) {
+          // Check if user has a registered business by looking at local storage
+          const storageKey = `bagel_business_index_${publicKey.toBase58()}`;
+          const savedIndex = localStorage.getItem(storageKey);
+          if (savedIndex) {
+            setBusinessEntryIndex(parseInt(savedIndex));
+          } else {
+            // Default to index 0 for demo (first registered business)
+            setBusinessEntryIndex(0);
+          }
+        } else {
+          setBusinessEntryIndex(null);
+        }
+      } catch (err) {
+        console.error('Failed to fetch business index:', err);
+        setBusinessEntryIndex(null);
+      }
+    }
+    fetchBusinessIndex();
+  }, [publicKey, connection]);
 
   // Load employees from localStorage
   useEffect(() => {
@@ -397,6 +533,31 @@ export default function Employees() {
     }
   }, [employees, publicKey]);
 
+  // On-chain add employee function
+  const handleOnChainAddEmployee = useCallback(async (
+    walletAddress: string,
+    salaryPerSecond: number
+  ): Promise<{ txid: string; employeeIndex: number }> => {
+    if (businessEntryIndex === null) {
+      throw new Error('No business registered');
+    }
+
+    const employeePubkey = new PublicKey(walletAddress);
+
+    // Convert salary per second to lamports (assuming SOL with 9 decimals)
+    const salaryLamportsPerSecond = solToLamports(salaryPerSecond);
+
+    const result = await addEmployee(
+      connection,
+      wallet,
+      businessEntryIndex,
+      employeePubkey,
+      salaryLamportsPerSecond
+    );
+
+    return result;
+  }, [connection, wallet, businessEntryIndex]);
+
   const departments: string[] = ['all', ...Array.from(new Set(employees.map((e: Employee) => e.department)))];
 
   const filteredEmployees = employees.filter((emp: Employee) => {
@@ -412,8 +573,10 @@ export default function Employees() {
   const activeEmployees = employees.filter((e: Employee) => e.status === 'Active').length;
   const departmentCount = new Set(employees.map((e: Employee) => e.department)).size;
 
-  const handleAddEmployee = (employee: Employee) => {
-    setEmployees((prev: Employee[]) => [...prev, employee]);
+  const handleAddEmployee = (employee: Employee, employeeIndex: number) => {
+    // Store the employee with their on-chain index
+    const employeeWithIndex = { ...employee, onChainIndex: employeeIndex };
+    setEmployees((prev: Employee[]) => [...prev, employeeWithIndex]);
   };
 
   const handleDeleteEmployee = (id: number) => {
@@ -760,6 +923,8 @@ export default function Employees() {
         isOpen={isAddModalOpen}
         onClose={() => setIsAddModalOpen(false)}
         onAdd={handleAddEmployee}
+        onChainAdd={handleOnChainAddEmployee}
+        businessEntryIndex={businessEntryIndex}
       />
     </>
   );

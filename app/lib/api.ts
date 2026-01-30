@@ -140,16 +140,16 @@ export class BagelClient {
       );
     }
 
-    // Get token accounts for confidential transfer
-    const userTokenAccountStr = typeof window !== 'undefined'
-      ? localStorage.getItem(`userTokenAccount_${this.wallet.publicKey.toBase58()}`)
-      : null;
+    // Get token accounts for confidential transfer (from on-chain Bagel PDA)
+    const depositorTokenAccount = await bagelClient.resolveUserTokenAccount(
+      this.connection,
+      this.wallet.publicKey,
+      bagelClient.USDBAGEL_MINT
+    );
 
-    if (!userTokenAccountStr) {
+    if (!depositorTokenAccount) {
       throw new Error('No token account found. Please mint USDBagel tokens first.');
     }
-
-    const depositorTokenAccount = new PublicKey(userTokenAccountStr);
     const vaultTokenAccountStr = process.env.NEXT_PUBLIC_VAULT_TOKEN_ACCOUNT || 'C2nZ8CK2xqRJj7uQuipmi111hqXf3sRK2Zq4aQhmSYJu';
     const vaultTokenAccount = new PublicKey(vaultTokenAccountStr);
 

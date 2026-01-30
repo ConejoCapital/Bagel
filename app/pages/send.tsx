@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
@@ -14,17 +14,31 @@ import {
   ArrowSquareOut,
   CurrencyDollar,
   LockSimple,
+  LockSimpleOpen,
   User,
   Copy,
   Info,
+  Eye,
 } from '@phosphor-icons/react';
 import { useWallet, useConnection } from '@solana/wallet-adapter-react';
 import { PublicKey } from '@solana/web3.js';
+import { decrypt } from '@inco/solana-sdk/attested-decrypt';
 import {
   confidentialTransfer,
   resolveUserTokenAccount,
+  getConfidentialBalance,
   USDBAGEL_MINT,
 } from '../lib/bagel-client';
+
+// Extract handle from IncoAccount data (u128 little-endian at offset 72)
+function extractHandle(data: Buffer): bigint {
+  const bytes = data.slice(72, 88);
+  let result = BigInt(0);
+  for (let i = 15; i >= 0; i--) {
+    result = result * BigInt(256) + BigInt(bytes[i]);
+  }
+  return result;
+}
 
 const WalletButton = dynamic(() => import('../components/WalletButton'), {
   ssr: false,
@@ -41,6 +55,65 @@ export default function SendPage() {
   const [error, setError] = useState('');
   const [txid, setTxid] = useState('');
   const [copied, setCopied] = useState(false);
+
+  // Balance state
+  const [encryptedHandle, setEncryptedHandle] = useState<bigint | null>(null);
+  const [decryptedBalance, setDecryptedBalance] = useState<number | null>(null);
+  const [decrypting, setDecrypting] = useState(false);
+  const [balanceLoading, setBalanceLoading] = useState(false);
+
+  // Load balance on mount
+  useEffect(() => {
+    async function loadBalance() {
+      if (!publicKey || !connected) {
+        setEncryptedHandle(null);
+        setDecryptedBalance(null);
+        return;
+      }
+
+      setBalanceLoading(true);
+      try {
+        const tokenAccount = await resolveUserTokenAccount(connection, publicKey, USDBAGEL_MINT);
+        if (tokenAccount) {
+          const accountInfo = await connection.getAccountInfo(tokenAccount);
+          if (accountInfo?.data) {
+            const handle = extractHandle(accountInfo.data as Buffer);
+            if (handle !== BigInt(0)) {
+              setEncryptedHandle(handle);
+            }
+          }
+        }
+      } catch (err) {
+        console.error('Failed to load balance:', err);
+      } finally {
+        setBalanceLoading(false);
+      }
+    }
+    loadBalance();
+  }, [publicKey, connected, connection, txid]); // Reload after transfer
+
+  // Decrypt balance
+  const handleDecrypt = useCallback(async () => {
+    if (!publicKey || !wallet.signMessage || !encryptedHandle) return;
+
+    setDecrypting(true);
+    try {
+      const result = await decrypt([encryptedHandle.toString()], {
+        address: publicKey,
+        signMessage: wallet.signMessage,
+      });
+
+      if (result.plaintexts && result.plaintexts.length > 0) {
+        const decryptedValue = Number(BigInt(result.plaintexts[0])) / 1_000_000_000;
+        setDecryptedBalance(decryptedValue);
+      }
+    } catch (err: any) {
+      console.error('Decrypt failed:', err);
+      setError(err.message || 'Failed to decrypt balance');
+    } finally {
+      setDecrypting(false);
+    }
+  }, [publicKey, wallet.signMessage, encryptedHandle]);
 
   const handleSend = useCallback(async () => {
     if (!publicKey || !wallet.signTransaction) {
@@ -176,6 +249,41 @@ export default function SendPage() {
                           <Copy className="w-4 h-4 text-gray-500" />
                         )}
                       </button>
+                    </div>
+                    {/* Balance Display */}
+                    <div className="mt-2 flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-gray-500">Available:</span>
+                        {balanceLoading ? (
+                          <CircleNotch className="w-3 h-3 animate-spin text-gray-400" />
+                        ) : decryptedBalance !== null ? (
+                          <span className="text-xs font-semibold text-green-600 flex items-center gap-1">
+                            <LockSimpleOpen className="w-3 h-3" />
+                            {decryptedBalance.toFixed(2)} USDBagel
+                          </span>
+                        ) : encryptedHandle ? (
+                          <span className="text-xs text-gray-500 flex items-center gap-1">
+                            <LockSimple className="w-3 h-3" />
+                            ****
+                          </span>
+                        ) : (
+                          <span className="text-xs text-gray-400">No balance</span>
+                        )}
+                      </div>
+                      {encryptedHandle && decryptedBalance === null && (
+                        <button
+                          onClick={handleDecrypt}
+                          disabled={decrypting}
+                          className="flex items-center gap-1 px-2 py-1 text-[10px] font-medium text-bagel-orange bg-bagel-cream rounded hover:bg-bagel-orange/20 transition-colors disabled:opacity-50"
+                        >
+                          {decrypting ? (
+                            <CircleNotch className="w-3 h-3 animate-spin" />
+                          ) : (
+                            <Eye className="w-3 h-3" />
+                          )}
+                          {decrypting ? 'Decrypting...' : 'Show Balance'}
+                        </button>
+                      )}
                     </div>
                   </div>
 

@@ -21,6 +21,7 @@ import {
   EyeSlash,
   Fingerprint,
   LockSimple,
+  LockSimpleOpen,
   CheckCircle,
   Circle,
   Funnel,
@@ -42,6 +43,7 @@ import {
   ArrowSquareOut,
 } from '@phosphor-icons/react';
 import { PublicKey } from '@solana/web3.js';
+import { decrypt } from '@inco/solana-sdk/attested-decrypt';
 
 const WalletButton = dynamic(() => import('../components/WalletButton'), {
   ssr: false,
@@ -156,10 +158,72 @@ interface PaymentModalProps {
 }
 
 function PaymentModal({ isOpen, onClose, onDeposit, businessEntryIndex, employees }: PaymentModalProps) {
+  const { publicKey } = useWallet();
+  const wallet = useWallet();
+  const { connection } = useConnection();
   const [amount, setAmount] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [txid, setTxid] = useState('');
+
+  // Balance state
+  const [encryptedHandle, setEncryptedHandle] = useState<bigint | null>(null);
+  const [decryptedBalance, setDecryptedBalance] = useState<number | null>(null);
+  const [decrypting, setDecrypting] = useState(false);
+  const [balanceLoading, setBalanceLoading] = useState(false);
+
+  // Load balance when modal opens
+  useEffect(() => {
+    async function loadBalance() {
+      if (!isOpen || !publicKey) {
+        setEncryptedHandle(null);
+        setDecryptedBalance(null);
+        return;
+      }
+
+      setBalanceLoading(true);
+      try {
+        const tokenAccount = await resolveUserTokenAccount(connection, publicKey, USDBAGEL_MINT);
+        if (tokenAccount) {
+          const accountInfo = await connection.getAccountInfo(tokenAccount);
+          if (accountInfo?.data) {
+            const handle = extractHandle(accountInfo.data as Buffer);
+            if (handle !== BigInt(0)) {
+              setEncryptedHandle(handle);
+            }
+          }
+        }
+      } catch (err) {
+        console.error('Failed to load balance:', err);
+      } finally {
+        setBalanceLoading(false);
+      }
+    }
+    loadBalance();
+  }, [isOpen, publicKey, connection]);
+
+  // Decrypt balance
+  const handleDecrypt = useCallback(async () => {
+    if (!publicKey || !wallet.signMessage || !encryptedHandle) return;
+
+    setDecrypting(true);
+    try {
+      const result = await decrypt([encryptedHandle.toString()], {
+        address: publicKey,
+        signMessage: wallet.signMessage,
+      });
+
+      if (result.plaintexts && result.plaintexts.length > 0) {
+        const decryptedValue = Number(BigInt(result.plaintexts[0])) / 1_000_000_000;
+        setDecryptedBalance(decryptedValue);
+      }
+    } catch (err: any) {
+      console.error('Decrypt failed:', err);
+      setError(err.message || 'Failed to decrypt balance');
+    } finally {
+      setDecrypting(false);
+    }
+  }, [publicKey, wallet.signMessage, encryptedHandle]);
 
   // Calculate projected earnings (mock 10% APR)
   const formatEarnings = (value: number) => {
@@ -260,6 +324,45 @@ function PaymentModal({ isOpen, onClose, onDeposit, businessEntryIndex, employee
                 <div className="text-right">
                   <div className="text-xs text-gray-500">Paid to employees</div>
                   <div className="text-sm font-medium text-bagel-dark">Per-second streaming</div>
+                </div>
+              </div>
+
+              {/* Available Balance */}
+              <div className="p-3 bg-gray-50 rounded border border-gray-200">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-gray-500">Your Balance:</span>
+                    {balanceLoading ? (
+                      <CircleNotch className="w-3 h-3 animate-spin text-gray-400" />
+                    ) : decryptedBalance !== null ? (
+                      <span className="text-sm font-semibold text-green-600 flex items-center gap-1">
+                        <LockSimpleOpen className="w-3 h-3" />
+                        {decryptedBalance.toFixed(2)} USDBagel
+                      </span>
+                    ) : encryptedHandle ? (
+                      <span className="text-xs text-gray-500 flex items-center gap-1">
+                        <LockSimple className="w-3 h-3" />
+                        ****
+                      </span>
+                    ) : (
+                      <span className="text-xs text-gray-400">No balance</span>
+                    )}
+                  </div>
+                  {encryptedHandle && decryptedBalance === null && (
+                    <button
+                      type="button"
+                      onClick={handleDecrypt}
+                      disabled={decrypting}
+                      className="flex items-center gap-1 px-2 py-1 text-[10px] font-medium text-bagel-orange bg-white border border-bagel-orange/30 rounded hover:bg-bagel-orange/10 transition-colors disabled:opacity-50"
+                    >
+                      {decrypting ? (
+                        <CircleNotch className="w-3 h-3 animate-spin" />
+                      ) : (
+                        <Eye className="w-3 h-3" />
+                      )}
+                      {decrypting ? 'Decrypting...' : 'Show Balance'}
+                    </button>
+                  )}
                 </div>
               </div>
 
@@ -409,6 +512,16 @@ function PaymentModal({ isOpen, onClose, onDeposit, businessEntryIndex, employee
   );
 }
 
+// Extract handle from IncoAccount data (u128 little-endian at offset 72)
+function extractHandle(data: Buffer): bigint {
+  const bytes = data.slice(72, 88);
+  let result = BigInt(0);
+  for (let i = 15; i >= 0; i--) {
+    result = result * BigInt(256) + BigInt(bytes[i]);
+  }
+  return result;
+}
+
 // Transfer Modal Component
 interface TransferModalProps {
   isOpen: boolean;
@@ -417,11 +530,73 @@ interface TransferModalProps {
 }
 
 function TransferModal({ isOpen, onClose, onTransfer }: TransferModalProps) {
+  const { publicKey } = useWallet();
+  const wallet = useWallet();
+  const { connection } = useConnection();
   const [recipient, setRecipient] = useState('');
   const [amount, setAmount] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [txid, setTxid] = useState('');
+
+  // Balance state
+  const [encryptedHandle, setEncryptedHandle] = useState<bigint | null>(null);
+  const [decryptedBalance, setDecryptedBalance] = useState<number | null>(null);
+  const [decrypting, setDecrypting] = useState(false);
+  const [balanceLoading, setBalanceLoading] = useState(false);
+
+  // Load balance when modal opens
+  useEffect(() => {
+    async function loadBalance() {
+      if (!isOpen || !publicKey) {
+        setEncryptedHandle(null);
+        setDecryptedBalance(null);
+        return;
+      }
+
+      setBalanceLoading(true);
+      try {
+        const tokenAccount = await resolveUserTokenAccount(connection, publicKey, USDBAGEL_MINT);
+        if (tokenAccount) {
+          const accountInfo = await connection.getAccountInfo(tokenAccount);
+          if (accountInfo?.data) {
+            const handle = extractHandle(accountInfo.data as Buffer);
+            if (handle !== BigInt(0)) {
+              setEncryptedHandle(handle);
+            }
+          }
+        }
+      } catch (err) {
+        console.error('Failed to load balance:', err);
+      } finally {
+        setBalanceLoading(false);
+      }
+    }
+    loadBalance();
+  }, [isOpen, publicKey, connection]);
+
+  // Decrypt balance
+  const handleDecrypt = useCallback(async () => {
+    if (!publicKey || !wallet.signMessage || !encryptedHandle) return;
+
+    setDecrypting(true);
+    try {
+      const result = await decrypt([encryptedHandle.toString()], {
+        address: publicKey,
+        signMessage: wallet.signMessage,
+      });
+
+      if (result.plaintexts && result.plaintexts.length > 0) {
+        const decryptedValue = Number(BigInt(result.plaintexts[0])) / 1_000_000_000;
+        setDecryptedBalance(decryptedValue);
+      }
+    } catch (err: any) {
+      console.error('Decrypt failed:', err);
+      setError(err.message || 'Failed to decrypt balance');
+    } finally {
+      setDecrypting(false);
+    }
+  }, [publicKey, wallet.signMessage, encryptedHandle]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -495,6 +670,45 @@ function TransferModal({ isOpen, onClose, onTransfer }: TransferModalProps) {
 
             {/* Body */}
             <form onSubmit={handleSubmit} className="p-6 space-y-5">
+              {/* Available Balance */}
+              <div className="p-3 bg-gray-50 rounded border border-gray-200">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-gray-500">Available Balance:</span>
+                    {balanceLoading ? (
+                      <CircleNotch className="w-3 h-3 animate-spin text-gray-400" />
+                    ) : decryptedBalance !== null ? (
+                      <span className="text-sm font-semibold text-green-600 flex items-center gap-1">
+                        <LockSimpleOpen className="w-3 h-3" />
+                        {decryptedBalance.toFixed(2)} USDBagel
+                      </span>
+                    ) : encryptedHandle ? (
+                      <span className="text-xs text-gray-500 flex items-center gap-1">
+                        <LockSimple className="w-3 h-3" />
+                        ****
+                      </span>
+                    ) : (
+                      <span className="text-xs text-gray-400">No balance</span>
+                    )}
+                  </div>
+                  {encryptedHandle && decryptedBalance === null && (
+                    <button
+                      type="button"
+                      onClick={handleDecrypt}
+                      disabled={decrypting}
+                      className="flex items-center gap-1 px-2 py-1 text-[10px] font-medium text-bagel-orange bg-white border border-bagel-orange/30 rounded hover:bg-bagel-orange/10 transition-colors disabled:opacity-50"
+                    >
+                      {decrypting ? (
+                        <CircleNotch className="w-3 h-3 animate-spin" />
+                      ) : (
+                        <Eye className="w-3 h-3" />
+                      )}
+                      {decrypting ? 'Decrypting...' : 'Show Balance'}
+                    </button>
+                  )}
+                </div>
+              </div>
+
               {/* Recipient Input */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">

@@ -4,7 +4,7 @@ import Head from 'next/head';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import { useState, useEffect } from 'react';
-import { registerBusiness, addEmployee, deposit, getCurrentBusinessIndex, getCurrentEmployeeIndex, getBusinessEntryPDA, getMasterVaultPDA, solToLamports, lamportsToSOL } from '../lib/bagel-client';
+import { registerBusiness, addEmployee, deposit, getCurrentBusinessIndex, getCurrentEmployeeIndex, getBusinessEntryPDA, getMasterVaultPDA, solToLamports, lamportsToSOL, resolveUserTokenAccount, USDBAGEL_MINT } from '../lib/bagel-client';
 import { rangeClient, ComplianceResult } from '../lib/range';
 
 const WalletButton = dynamic(() => import('../components/WalletButton'), {
@@ -220,12 +220,11 @@ export default function EmployerDashboard() {
       
       const depositLamports = solToLamports(parseFloat(depositAmount));
 
-      // Get user's token account from localStorage (created when minting)
-      const userTokenAccountStr = localStorage.getItem(`userTokenAccount_${wallet.publicKey.toBase58()}`);
-      if (!userTokenAccountStr) {
+      // Get user's Inco Token account from on-chain Bagel PDA
+      const depositorTokenAccount = await resolveUserTokenAccount(connection, wallet.publicKey, USDBAGEL_MINT);
+      if (!depositorTokenAccount) {
         throw new Error('No token account found. Please mint USDBagel tokens first using the Mint section.');
       }
-      const depositorTokenAccount = new PublicKey(userTokenAccountStr);
 
       // Get vault token account from env
       const vaultTokenAccountStr = process.env.NEXT_PUBLIC_VAULT_TOKEN_ACCOUNT || 'C2nZ8CK2xqRJj7uQuipmi111hqXf3sRK2Zq4aQhmSYJu';

@@ -31,7 +31,7 @@ const DISCRIMINATORS = {
   add_employee: Buffer.from([14, 82, 239, 156, 50, 90, 189, 61]),
   request_withdrawal: Buffer.from([251, 85, 121, 205, 56, 201, 12, 177]),
   // SHA256("global:initialize_user_token_account")[0..8]
-  initialize_user_token_account: Buffer.from([37, 151, 88, 251, 81, 101, 122, 214]),
+  initialize_user_token_account: Buffer.from([227, 229, 112, 158, 27, 71, 169, 75]),
 };
 
 /**
@@ -333,7 +333,7 @@ export async function deposit(
   const INCO_TOKEN_ID = incoTokenProgram ||
     (process.env.NEXT_PUBLIC_INCO_TOKEN_PROGRAM_ID
       ? new PublicKey(process.env.NEXT_PUBLIC_INCO_TOKEN_PROGRAM_ID)
-      : new PublicKey('HuUn2JwCPCLWwJ3z17m7CER73jseqsxvbcFuZN4JAw22'));
+      : new PublicKey('4cyJHzecVWuU2xux6bCAPAhALKQT8woBh4Vx3AGEGe5N'));
 
   const keys = [
     { pubkey: wallet.publicKey, isSigner: true, isWritable: true }, // depositor
@@ -493,7 +493,7 @@ export async function requestWithdrawal(
   const INCO_TOKEN_ID = incoTokenProgram ||
     (process.env.NEXT_PUBLIC_INCO_TOKEN_PROGRAM_ID
       ? new PublicKey(process.env.NEXT_PUBLIC_INCO_TOKEN_PROGRAM_ID)
-      : new PublicKey('HuUn2JwCPCLWwJ3z17m7CER73jseqsxvbcFuZN4JAw22'));
+      : new PublicKey('4cyJHzecVWuU2xux6bCAPAhALKQT8woBh4Vx3AGEGe5N'));
 
   const keys = [
     { pubkey: wallet.publicKey, isSigner: true, isWritable: true }, // withdrawer
@@ -546,14 +546,14 @@ export function lamportsToSOL(lamports: number): number {
 // Confidential Token Minting (Demo/Testnet)
 // ============================================================
 
-// Inco Confidential Token Program ID
+// Inco Confidential Token Program ID (from IDL)
 export const INCO_TOKEN_PROGRAM_ID = new PublicKey(
-  process.env.NEXT_PUBLIC_INCO_TOKEN_PROGRAM_ID || 'HuUn2JwCPCLWwJ3z17m7CER73jseqsxvbcFuZN4JAw22'
+  process.env.NEXT_PUBLIC_INCO_TOKEN_PROGRAM_ID || '4cyJHzecVWuU2xux6bCAPAhALKQT8woBh4Vx3AGEGe5N'
 );
 
 // USDBagel Mint Address (devnet)
 export const USDBAGEL_MINT = new PublicKey(
-  process.env.NEXT_PUBLIC_USDBAGEL_MINT || '8rQ7zU5iJ8o6prw4UGUq7fVNhQaw489rdtkaK5Gh8qsV'
+  process.env.NEXT_PUBLIC_USDBAGEL_MINT || 'GhCZ59UK4Afg4WGpQ11HyRc8ya4swgWFXMh2BxuWQXHt'
 );
 
 /**
@@ -621,18 +621,19 @@ export async function initializeConfidentialTokenAccount(
  * Calls the server-side API which has mint authority to create real
  * confidential tokens with FHE-encrypted amounts.
  *
- * Two modes:
- * 1. PDA-based (recommended): Initialize a deterministic token account PDA first
- * 2. Legacy: API creates a keypair-based token account (stored in localStorage)
+ * Flow:
+ * 1. Initialize user's Bagel PDA if not exists (on-chain registry)
+ * 2. API creates Inco Token account and mints tokens
+ * 3. API links the Inco Token account to the Bagel PDA
+ *
+ * No localStorage needed - everything is stored on-chain!
  *
  * @param amount - Amount to mint (in token units, e.g., 100 = 100 USDBagel)
- * @param usePDA - If true, uses PDA-based token account (recommended)
  */
 export async function mintTestTokens(
   connection: Connection,
   wallet: WalletContextState,
-  amount: number,
-  usePDA: boolean = false
+  amount: number
 ): Promise<{ txid: string; amount: number; tokenAccount: PublicKey }> {
   if (!wallet.publicKey) {
     throw new Error('Wallet not connected');
@@ -643,54 +644,20 @@ export async function mintTestTokens(
   console.log('🪙 Minting USDBagel tokens via Inco Token Program...');
   console.log(`   Amount: ${amount} USDBagel`);
   console.log(`   Owner: ${ownerAddress.toBase58()}`);
-  console.log(`   Mode: ${usePDA ? 'PDA-based (deterministic)' : 'Legacy (keypair-based)'}`);
 
-  if (usePDA) {
-    // PDA-based mode: Initialize the user's token account PDA first
-    const { tokenAccount: tokenAccountPDA } = await initializeUserTokenAccountPDA(
-      connection,
-      wallet,
-      USDBAGEL_MINT
-    );
+  // Step 1: Initialize user's Bagel PDA if it doesn't exist
+  // This creates the on-chain registry that will store the Inco Token account reference
+  const { tokenAccount: bagelPDA, txid: initTxid } = await initializeUserTokenAccountPDA(
+    connection,
+    wallet,
+    USDBAGEL_MINT
+  );
 
-    // Then mint to the PDA
-    const response = await fetch('/api/mint', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        amount,
-        destinationAccount: ownerAddress.toBase58(),
-        tokenAccountPDA: tokenAccountPDA.toBase58(), // Tell API to mint to PDA
-      }),
-    });
-
-    const result = await response.json() as {
-      success: boolean;
-      txid?: string;
-      amount?: number;
-      tokenAccount?: string;
-      error?: string;
-    };
-
-    if (!response.ok || !result.success) {
-      throw new Error(result.error || 'Failed to mint tokens');
-    }
-
-    console.log('✅ Tokens minted successfully (PDA-based)!');
-    console.log(`   Transaction: ${result.txid}`);
-    console.log(`   Amount: ${result.amount} USDBagel (encrypted on-chain)`);
-    console.log(`   Token Account PDA: ${tokenAccountPDA.toBase58()}`);
-
-    return {
-      txid: result.txid!,
-      amount: result.amount!,
-      tokenAccount: tokenAccountPDA,
-    };
+  if (initTxid !== 'already_initialized') {
+    console.log(`   Bagel PDA initialized: ${bagelPDA.toBase58()}`);
   }
 
-  // Legacy mode: API creates a new keypair-based token account
+  // Step 2: Call mint API - it creates Inco Token account and links it to Bagel PDA
   const response = await fetch('/api/mint', {
     method: 'POST',
     headers: {
@@ -717,23 +684,19 @@ export async function mintTestTokens(
   if (!result.tokenAccount) {
     throw new Error('Mint API did not return token account address');
   }
-  const actualTokenAccount = new PublicKey(result.tokenAccount);
+  const incoTokenAccount = new PublicKey(result.tokenAccount);
 
-  console.log('✅ Tokens minted successfully (legacy mode)!');
+  console.log('✅ Tokens minted successfully!');
   console.log(`   Transaction: ${result.txid}`);
   console.log(`   Amount: ${result.amount} USDBagel (encrypted on-chain)`);
-  console.log(`   Token Account: ${actualTokenAccount.toBase58()}`);
-
-  // Save the token account to localStorage for future deposits (legacy mode)
-  if (typeof window !== 'undefined') {
-    localStorage.setItem(`userTokenAccount_${wallet.publicKey!.toBase58()}`, actualTokenAccount.toBase58());
-    console.log('   Token account saved for deposits (localStorage)');
-  }
+  console.log(`   Bagel PDA: ${bagelPDA.toBase58()}`);
+  console.log(`   Inco Token Account: ${incoTokenAccount.toBase58()}`);
+  console.log(`   (No localStorage used - everything on-chain!)`);
 
   return {
     txid: result.txid!,
     amount: result.amount!,
-    tokenAccount: actualTokenAccount,
+    tokenAccount: incoTokenAccount,
   };
 }
 
@@ -821,34 +784,27 @@ export async function confidentialTransfer(
     throw new Error('Invalid recipient address');
   }
 
-  // Derive sender's token account PDA if not provided
-  const senderTokenPDA = senderTokenAccount || getUserTokenAccountPDA(wallet.publicKey, USDBAGEL_MINT)[0];
+  // Use provided sender token account or resolve from on-chain PDA
+  const senderIncoAccount = senderTokenAccount || await (async () => {
+    const resolved = await resolveUserTokenAccount(connection, wallet.publicKey!, USDBAGEL_MINT);
+    if (!resolved) {
+      throw new Error('Sender has no token account. Please mint tokens first.');
+    }
+    return resolved;
+  })();
 
-  // Derive recipient's token account PDA (deterministic!)
-  const [recipientTokenPDA] = getUserTokenAccountPDA(recipientPubkey, USDBAGEL_MINT);
+  // Resolve recipient's Inco Token account from on-chain Bagel PDA
+  const recipientIncoAccount = await resolveUserTokenAccount(connection, recipientPubkey, USDBAGEL_MINT);
 
-  // Check if recipient has initialized their token account
-  const recipientExists = await checkUserTokenAccountExists(connection, recipientPubkey, USDBAGEL_MINT);
-
-  // Also check localStorage as fallback for legacy accounts
-  const legacyRecipientAccount = typeof window !== 'undefined'
-    ? localStorage.getItem(`userTokenAccount_${recipientAddress}`)
-    : null;
-
-  // Determine which recipient token account to use
-  let finalRecipientAccount: string;
-  if (recipientExists) {
-    finalRecipientAccount = recipientTokenPDA.toBase58();
-  } else if (legacyRecipientAccount) {
-    // Fallback to localStorage for legacy accounts
-    finalRecipientAccount = legacyRecipientAccount;
-  } else {
-    throw new Error('Recipient has no USDBagel token account. They must initialize one first.');
+  if (!recipientIncoAccount) {
+    throw new Error('Recipient has no USDBagel token account. They must mint tokens first.');
   }
+
+  const finalRecipientAccount = recipientIncoAccount.toBase58();
 
   console.log('💸 Initiating confidential transfer...');
   console.log(`   Amount: ${amount} USDBagel`);
-  console.log(`   From: ${senderTokenPDA.toBase58()}`);
+  console.log(`   From: ${senderIncoAccount.toBase58()}`);
   console.log(`   To: ${finalRecipientAccount}`);
 
   // Call the transfer API endpoint
@@ -859,7 +815,7 @@ export async function confidentialTransfer(
     },
     body: JSON.stringify({
       amount,
-      fromTokenAccount: senderTokenPDA.toBase58(),
+      fromTokenAccount: senderIncoAccount.toBase58(),
       toTokenAccount: finalRecipientAccount,
       senderPubkey: wallet.publicKey.toBase58(),
     }),
@@ -902,35 +858,53 @@ export function getUserTokenAccount(owner: PublicKey): [PublicKey, number] {
 }
 
 /**
- * Get a user's token account - tries PDA first, then localStorage fallback
+ * Get a user's Inco Token account from on-chain Bagel PDA
  *
- * This is the recommended function to get a user's token account address.
- * It checks:
- * 1. PDA-based token account (deterministic)
- * 2. Legacy localStorage-stored account (fallback)
+ * This reads the Bagel PDA to get the linked Inco Token account address.
+ * No localStorage needed - everything is on-chain!
  *
- * @returns The token account address, or null if not found
+ * The Bagel PDA structure:
+ * - discriminator: 8 bytes
+ * - owner: 32 bytes
+ * - mint: 32 bytes
+ * - inco_token_account: 32 bytes  <- This is what we read
+ * - balance: 16 bytes
+ * - initialized_at: 8 bytes
+ * - bump: 1 byte
+ *
+ * @returns The Inco Token account address, or null if not found/not linked
  */
 export async function resolveUserTokenAccount(
   connection: Connection,
   owner: PublicKey,
   mint: PublicKey = USDBAGEL_MINT
 ): Promise<PublicKey | null> {
-  // Try PDA first
-  const [tokenAccountPDA] = getUserTokenAccountPDA(owner, mint);
-  const pdaExists = await checkUserTokenAccountExists(connection, owner, mint);
+  // Get the user's Bagel PDA
+  const [userTokenPDA] = getUserTokenAccountPDA(owner, mint);
 
-  if (pdaExists) {
-    return tokenAccountPDA;
+  // Fetch the PDA account data
+  const accountInfo = await connection.getAccountInfo(userTokenPDA);
+  if (!accountInfo || !accountInfo.data) {
+    console.log(`No Bagel PDA found for ${owner.toBase58()}`);
+    return null;
   }
 
-  // Fallback to localStorage
-  if (typeof window !== 'undefined') {
-    const legacyAccount = localStorage.getItem(`userTokenAccount_${owner.toBase58()}`);
-    if (legacyAccount) {
-      return new PublicKey(legacyAccount);
-    }
+  // Parse the inco_token_account from the account data
+  // Offset: discriminator(8) + owner(32) + mint(32) = 72 bytes
+  const INCO_TOKEN_ACCOUNT_OFFSET = 8 + 32 + 32;
+  const incoTokenAccountBytes = accountInfo.data.slice(
+    INCO_TOKEN_ACCOUNT_OFFSET,
+    INCO_TOKEN_ACCOUNT_OFFSET + 32
+  );
+
+  const incoTokenAccount = new PublicKey(incoTokenAccountBytes);
+
+  // Check if it's the default (unset) pubkey
+  if (incoTokenAccount.equals(PublicKey.default)) {
+    console.log(`Bagel PDA exists but inco_token_account not linked for ${owner.toBase58()}`);
+    return null;
   }
 
-  return null;
+  console.log(`Resolved Inco Token account from on-chain: ${incoTokenAccount.toBase58()}`);
+  return incoTokenAccount;
 }
