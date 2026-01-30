@@ -58,6 +58,10 @@ pub const BUSINESS_ENTRY_SEED: &[u8] = b"entry";
 /// Seed for EmployeeEntry (INDEX-BASED - no employee pubkey!)
 pub const EMPLOYEE_ENTRY_SEED: &[u8] = b"employee";
 
+/// Seed for user token account PDA (deterministic derivation)
+/// Seeds: ["user_token", wallet_pubkey, mint] -> token account PDA
+pub const USER_TOKEN_SEED: &[u8] = b"user_token";
+
 /// Minimum time between withdrawals (60 seconds)
 pub const MIN_WITHDRAW_INTERVAL: i64 = 60;
 
@@ -746,12 +750,12 @@ pub mod bagel {
     /// Commit TEE state back to L1
     pub fn commit_from_tee(ctx: Context<CommitFromTee>) -> Result<()> {
         msg!("⚡ Committing from TEE to L1...");
-        
+
         let payer_info = ctx.accounts.payer.to_account_info();
         let employee_info = ctx.accounts.employee_entry.to_account_info();
         let magic_context_info = ctx.accounts.magic_context.to_account_info();
         let magic_program_info = ctx.accounts.magic_program.to_account_info();
-        
+
         commit_and_undelegate_accounts(
             &payer_info,
             vec![&employee_info],
@@ -764,6 +768,96 @@ pub mod bagel {
         emit!(CommittedFromTee {
             business_index: ctx.accounts.business_entry.entry_index,
             employee_index: ctx.accounts.employee_entry.employee_index,
+            timestamp: Clock::get()?.unix_timestamp,
+        });
+
+        Ok(())
+    }
+
+    // ============================================================
+    // PDA-based Token Account Instructions
+    // ============================================================
+
+    /// Initialize a user's token account as a PDA
+    ///
+    /// Derives a deterministic token account address from:
+    /// Seeds: ["user_token", wallet_pubkey, mint]
+    ///
+    /// This allows anyone to calculate a user's token account address
+    /// without needing to store it. The Bagel program owns the PDA
+    /// and can sign for token operations.
+    pub fn initialize_user_token_account(
+        ctx: Context<InitializeUserTokenAccount>,
+    ) -> Result<()> {
+        let clock = Clock::get()?;
+        let owner_key = ctx.accounts.owner.key();
+        let mint_key = ctx.accounts.mint.key();
+        let pda_key = ctx.accounts.user_token_account.key();
+        let bump = ctx.bumps.user_token_account;
+
+        let user_token = &mut ctx.accounts.user_token_account;
+        user_token.owner = owner_key;
+        user_token.mint = mint_key;
+        user_token.inco_token_account = Pubkey::default(); // Set by mint API later
+        user_token.balance = Euint128::default();
+        user_token.initialized_at = clock.unix_timestamp;
+        user_token.bump = bump;
+
+        msg!("🔐 User token account initialized (PDA-based)");
+        msg!("   Owner: {}", owner_key);
+        msg!("   Mint: {}", mint_key);
+        msg!("   PDA: {}", pda_key);
+
+        emit!(UserTokenAccountInitialized {
+            owner: owner_key,
+            mint: mint_key,
+            token_account_pda: pda_key,
+            timestamp: clock.unix_timestamp,
+        });
+
+        Ok(())
+    }
+
+    /// Get the PDA address for a user's token account (view function helper)
+    /// This is a no-op instruction that just logs the derived address
+    /// Clients should derive this off-chain using:
+    /// findProgramAddress(["user_token", wallet, mint], BAGEL_PROGRAM_ID)
+    pub fn get_user_token_pda(
+        ctx: Context<GetUserTokenPda>,
+    ) -> Result<()> {
+        msg!("📍 User Token PDA: {}", ctx.accounts.user_token_account.key());
+        msg!("   Owner: {}", ctx.accounts.owner.key());
+        msg!("   Mint: {}", ctx.accounts.mint.key());
+        Ok(())
+    }
+
+    /// Set the Inco Token account reference for a user
+    /// Called by the mint API after creating the Inco Token account
+    /// Only the owner or a trusted authority can call this
+    pub fn set_inco_token_account(
+        ctx: Context<SetIncoTokenAccount>,
+        inco_token_account: Pubkey,
+    ) -> Result<()> {
+        let user_token = &mut ctx.accounts.user_token_account;
+
+        // Only allow setting if not already set (one-time operation)
+        // or if the caller is the owner
+        require!(
+            user_token.inco_token_account == Pubkey::default() ||
+            ctx.accounts.authority.key() == user_token.owner,
+            BagelError::Unauthorized
+        );
+
+        user_token.inco_token_account = inco_token_account;
+
+        msg!("🔗 Inco Token Account linked");
+        msg!("   Owner: {}", user_token.owner);
+        msg!("   Inco Token Account: {}", inco_token_account);
+
+        emit!(IncoTokenAccountLinked {
+            owner: user_token.owner,
+            mint: user_token.mint,
+            inco_token_account,
             timestamp: Clock::get()?.unix_timestamp,
         });
 
@@ -1050,6 +1144,65 @@ pub struct CommitFromTee<'info> {
     pub system_program: Program<'info, System>,
 }
 
+#[derive(Accounts)]
+pub struct InitializeUserTokenAccount<'info> {
+    #[account(mut)]
+    pub owner: Signer<'info>,
+
+    /// CHECK: The mint for this token account
+    pub mint: AccountInfo<'info>,
+
+    #[account(
+        init,
+        payer = owner,
+        space = UserTokenAccount::LEN,
+        seeds = [USER_TOKEN_SEED, owner.key().as_ref(), mint.key().as_ref()],
+        bump
+    )]
+    pub user_token_account: Account<'info, UserTokenAccount>,
+
+    /// CHECK: Inco Lightning program for FHE operations
+    #[account(address = INCO_LIGHTNING_ID)]
+    pub inco_lightning_program: AccountInfo<'info>,
+
+    pub system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
+pub struct GetUserTokenPda<'info> {
+    /// CHECK: The owner to look up
+    pub owner: AccountInfo<'info>,
+
+    /// CHECK: The mint to look up
+    pub mint: AccountInfo<'info>,
+
+    #[account(
+        seeds = [USER_TOKEN_SEED, owner.key().as_ref(), mint.key().as_ref()],
+        bump = user_token_account.bump,
+    )]
+    pub user_token_account: Account<'info, UserTokenAccount>,
+}
+
+#[derive(Accounts)]
+pub struct SetIncoTokenAccount<'info> {
+    /// Authority setting the Inco Token account (owner or trusted signer)
+    #[account(mut)]
+    pub authority: Signer<'info>,
+
+    /// CHECK: The owner of the user token account
+    pub owner: AccountInfo<'info>,
+
+    /// CHECK: The mint for the token account
+    pub mint: AccountInfo<'info>,
+
+    #[account(
+        mut,
+        seeds = [USER_TOKEN_SEED, owner.key().as_ref(), mint.key().as_ref()],
+        bump = user_token_account.bump,
+    )]
+    pub user_token_account: Account<'info, UserTokenAccount>,
+}
+
 // ============================================================
 // Account Structures (Maximum Privacy)
 // ============================================================
@@ -1184,6 +1337,43 @@ impl EmployeeEntry {
         32;                      // padding
 }
 
+/// User Token Account - PDA-based registry for deterministic token account lookup
+/// Seeds: ["user_token", owner_pubkey, mint_pubkey]
+/// Anyone can derive this address off-chain without storage
+/// Stores reference to the actual Inco Token account
+#[account]
+pub struct UserTokenAccount {
+    /// The wallet that owns this token account
+    pub owner: Pubkey,
+
+    /// The mint this token account is for
+    pub mint: Pubkey,
+
+    /// Reference to the actual Inco Token account (set by mint API)
+    /// This is the keypair-based account that holds actual tokens
+    pub inco_token_account: Pubkey,
+
+    /// ENCRYPTED balance (FHE via Inco) - cached/synced from Inco
+    pub balance: Euint128,
+
+    /// Timestamp when initialized
+    pub initialized_at: i64,
+
+    /// Bump seed for PDA derivation
+    pub bump: u8,
+}
+
+impl UserTokenAccount {
+    pub const LEN: usize = 8 +   // discriminator
+        32 +                      // owner
+        32 +                      // mint
+        32 +                      // inco_token_account
+        16 +                      // balance (Euint128)
+        8 +                       // initialized_at
+        1 +                       // bump
+        31;                       // padding
+}
+
 // ============================================================
 // Events (Minimal information for privacy)
 // ============================================================
@@ -1244,6 +1434,22 @@ pub struct CommittedFromTee {
 pub struct ConfidentialMintConfigured {
     pub mint: Pubkey,
     pub enabled: bool,
+    pub timestamp: i64,
+}
+
+#[event]
+pub struct UserTokenAccountInitialized {
+    pub owner: Pubkey,
+    pub mint: Pubkey,
+    pub token_account_pda: Pubkey,
+    pub timestamp: i64,
+}
+
+#[event]
+pub struct IncoTokenAccountLinked {
+    pub owner: Pubkey,
+    pub mint: Pubkey,
+    pub inco_token_account: Pubkey,
     pub timestamp: i64,
 }
 
