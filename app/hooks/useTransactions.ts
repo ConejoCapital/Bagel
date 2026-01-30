@@ -7,7 +7,7 @@ const IS_DEVNET = HELIUS_RPC_URL.includes('devnet');
 
 export interface Transaction {
   id: string;
-  type: 'Transfer' | 'Swap' | 'NFT' | 'Unknown' | 'Payroll' | 'Deposit' | 'Withdrawal';
+  type: string;
   direction: 'in' | 'out';
   recipient: string;
   wallet: string;
@@ -49,6 +49,22 @@ interface HeliusTransaction {
   }>;
   description?: string;
   source?: string;
+  instructions?: Array<{
+    programId: string;
+    data?: string;
+    accounts?: string[];
+  }>;
+  accountData?: Array<{
+    account: string;
+    nativeBalanceChange?: number;
+    tokenBalanceChanges?: Array<{
+      mint: string;
+      rawTokenAmount: {
+        tokenAmount: string;
+        decimals: number;
+      };
+    }>;
+  }>;
 }
 
 // Known token mints
@@ -56,6 +72,18 @@ const TOKEN_MINTS: Record<string, string> = {
   'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v': 'USDC',
   'Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB': 'USDT',
   'So11111111111111111111111111111111111111112': 'SOL',
+};
+
+// Known program IDs
+const KNOWN_PROGRAMS: Record<string, string> = {
+  // SPL Token programs
+  'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA': 'Token Program',
+  'TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb': 'Token-2022 Program',
+  // System program
+  '11111111111111111111111111111111': 'System Program',
+  // Confidential Transfer (Inco)
+  '5sjEbPiqgZrYwR31ahR6Uk9wf5awoX61YGg7jExQSwaj': 'Inco Confidential',
+  '5SpaVk72hvLTpxwEgtxDRKNcohJrg2xUavvDnDnE9XV1': 'Inco SDK',
 };
 
 function shortenAddress(address: string): string {
@@ -102,17 +130,48 @@ function parseHeliusTransaction(tx: HeliusTransaction, walletAddress: string): T
     recipientWallet = isIncoming ? transfer.fromUserAccount : transfer.toUserAccount;
   }
 
-  // Determine transaction type
-  let type: Transaction['type'] = 'Transfer';
-  if (tx.type === 'SWAP') type = 'Swap';
-  else if (tx.type === 'NFT_SALE' || tx.type === 'NFT_MINT') type = 'NFT';
-  else if (direction === 'in') type = 'Deposit';
-  else if (tx.description?.toLowerCase().includes('payroll')) type = 'Payroll';
-  else type = direction === 'out' ? 'Withdrawal' : 'Deposit';
+  // Determine transaction type from program interactions and description
+  let type: string = 'Transfer';
 
-  // Assign random privacy for demo (in real app, this would come from your privacy layer)
-  const privacyLevels: Transaction['privacy'][] = ['Standard', 'Enhanced', 'Maximum'];
-  const privacy = privacyLevels[Math.floor(Math.random() * privacyLevels.length)];
+  // Check for specific program interactions
+  const hasIncoProgram = tx.instructions?.some(
+    inst => inst.programId === '5sjEbPiqgZrYwR31ahR6Uk9wf5awoX61YGg7jExQSwaj' ||
+            inst.programId === '5SpaVk72hvLTpxwEgtxDRKNcohJrg2xUavvDnDnE9XV1'
+  );
+
+  // Detect confidential transfers
+  // Pattern 1: Has Inco program + token transfer
+  // Pattern 2: Small SOL amount (just fees) + no visible token transfers (encrypted transfer)
+  const isConfidentialTransfer =
+    (hasIncoProgram && tx.tokenTransfers && tx.tokenTransfers.length > 0) ||
+    (currency === 'SOL' && amount < 0.01 && (!tx.tokenTransfers || tx.tokenTransfers.length === 0));
+
+  if (isConfidentialTransfer) {
+    type = 'Confidential Transfer';
+  }
+  // Use description if available for more specific transaction names
+  else if (tx.description && tx.description.trim() !== '' && tx.description.toUpperCase() !== 'UNKNOWN') {
+    type = tx.description;
+  } else if (tx.type === 'SWAP') {
+    type = 'Swap';
+  } else if (tx.type === 'NFT_SALE') {
+    type = 'NFT Sale';
+  } else if (tx.type === 'NFT_MINT') {
+    type = 'NFT Mint';
+  } else if (tx.source && tx.source.trim() !== '' && tx.source.toUpperCase() !== 'UNKNOWN') {
+    type = tx.source;
+  } else if (tx.type && tx.type !== 'UNKNOWN') {
+    type = tx.type.replace(/_/g, ' ').split(' ').map(w => w.charAt(0) + w.slice(1).toLowerCase()).join(' ');
+  } else {
+    // Default based on direction and amount
+    if (currency === 'SOL') {
+      type = direction === 'in' ? 'SOL Received' : 'SOL Transfer';
+    } else if (currency !== 'SOL' && amount > 0) {
+      type = direction === 'in' ? `${currency} Received` : `${currency} Transfer`;
+    } else {
+      type = direction === 'in' ? 'Deposit' : 'Transaction';
+    }
+  }
 
   return {
     id: tx.signature,
@@ -125,7 +184,7 @@ function parseHeliusTransaction(tx: HeliusTransaction, walletAddress: string): T
     date,
     time,
     status: 'Completed',
-    privacy,
+    privacy: 'Maximum',
     txHash: shortenAddress(tx.signature),
     timestamp: tx.timestamp,
     fee: tx.fee / 1e9,
