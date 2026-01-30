@@ -179,6 +179,11 @@ import {
 import { PayrollChart } from '@/components/ui/payroll-chart';
 import { CryptoDistributionChart } from '@/components/ui/crypto-distribution-chart';
 import { useRecentTransactions } from '@/hooks/useTransactions';
+import {
+  addEmployee as addPayrollEmployee,
+  payEmployee,
+  getBusinessAccount as getPayrollBusinessAccount,
+} from '../lib/payroll-client';
 import { InteractiveGuide, useGuideStatus, GuideStep } from '@/components/InteractiveGuide';
 
 // Define guide steps targeting actual UI elements (shown after wallet connection)
@@ -430,11 +435,6 @@ function PaymentModal({ isOpen, onClose, onDeposit, businessEntryIndex, employee
     setError('');
     setTxid('');
 
-    if (businessEntryIndex === null) {
-      setError('Business not registered yet. Please register your business first.');
-      return;
-    }
-
     if (!amount || parseFloat(amount) <= 0) {
       setError('Please enter a valid amount');
       return;
@@ -442,6 +442,11 @@ function PaymentModal({ isOpen, onClose, onDeposit, businessEntryIndex, employee
 
     try {
       setLoading(true);
+
+      if (businessEntryIndex === null) {
+        setError('Business not registered yet. Please register your business first.');
+        return;
+      }
       const amountLamports = solToLamports(parseFloat(amount));
       const signature = await onDeposit(businessEntryIndex, amountLamports);
       setTxid(signature);
@@ -666,7 +671,7 @@ function PaymentModal({ isOpen, onClose, onDeposit, businessEntryIndex, employee
                     type="submit"
                     whileHover={{ scale: loading ? 1 : 1.01 }}
                     whileTap={{ scale: loading ? 1 : 0.99 }}
-                    disabled={loading || businessEntryIndex === null || !amount}
+                    disabled={loading || !amount || businessEntryIndex === null}
                     className="flex-1 px-4 py-3 bg-bagel-orange text-white rounded text-sm font-medium flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {loading ? (
@@ -1941,26 +1946,32 @@ export default function Dashboard() {
     return signature;
   }, [connection, wallet, publicKey]);
 
-  // Add employee
+  // Add employee - uses payroll program for confidential payroll
   const handleAddEmployee = useCallback(async (walletAddress: string, salaryLamports: number, employeeName: string): Promise<{ txid: string; employeeIndex: number }> => {
     if (!publicKey || !wallet.signTransaction) {
       throw new Error('Wallet not connected');
     }
 
-    if (businessEntryIndex === null) {
-      throw new Error('Business not registered');
+    // Check if payroll business is registered
+    const payrollBusiness = await getPayrollBusinessAccount(connection, publicKey);
+    if (!payrollBusiness) {
+      throw new Error('Please register your business first using the Deposit modal (select Payroll Deposit)');
     }
 
-    console.log('👷 Adding employee on-chain...');
-    const result = await addEmployee(
+    console.log('👷 Adding employee via confidential payroll program...');
+
+    // Convert lamports per second to monthly salary for payroll program
+    // salaryLamports is per second, so multiply by seconds in month
+    const monthlySalary = (salaryLamports / 1_000_000_000) * 2629800; // lamports/sec * sec/month / 10^9
+
+    const result = await addPayrollEmployee(
       connection,
       wallet,
-      businessEntryIndex,
       new PublicKey(walletAddress),
-      salaryLamports
+      monthlySalary
     );
 
-    console.log('✅ Employee added! Index:', result.employeeIndex);
+    console.log('✅ Employee added via payroll program!');
 
     // Generate initials from name
     const initials = employeeName
@@ -1970,12 +1981,15 @@ export default function Dashboard() {
       .toUpperCase()
       .slice(0, 2) || walletAddress.slice(0, 2).toUpperCase();
 
+    // Generate a unique index based on employee count
+    const employeeIndex = payrollBusiness.employeeCount || 0;
+
     // Add to local employees list
     const newEmployee: Employee = {
       id: Date.now(),
-      employeeIndex: result.employeeIndex,
+      employeeIndex: employeeIndex,
       initials,
-      name: employeeName || `Employee #${result.employeeIndex}`,
+      name: employeeName || `Employee #${employeeIndex + 1}`,
       date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
       wallet: `${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}`,
       fullWallet: walletAddress,
@@ -1988,8 +2002,12 @@ export default function Dashboard() {
     setEmployees(prev => [newEmployee, ...prev]);
     setEmployeeCount(prev => prev + 1);
 
-    return result;
-  }, [connection, wallet, publicKey, businessEntryIndex]);
+    toast.success('Employee added!', {
+      description: `${employeeName || 'Employee'} added to confidential payroll`,
+    });
+
+    return { txid: result.txid, employeeIndex };
+  }, [connection, wallet, publicKey]);
 
   // Mint test tokens
   const handleMint = useCallback(async (amount: number): Promise<{ txid: string; amount: number }> => {
@@ -2001,6 +2019,63 @@ export default function Dashboard() {
     const result = await mintTestTokens(connection, wallet, amount);
     console.log('✅ Tokens minted:', result.amount, 'USDBagel');
     return { txid: result.txid, amount: result.amount };
+  }, [connection, wallet, publicKey]);
+
+  // Pay employee - used for confidential payroll payments
+  const [payingEmployee, setPayingEmployee] = useState<number | null>(null);
+  const handlePayEmployeeAction = useCallback(async (employee: Employee) => {
+    if (!publicKey || !wallet.signTransaction) {
+      toast.error('Wallet not connected');
+      return;
+    }
+
+    if (!employee.fullWallet) {
+      toast.error('Employee wallet address not found');
+      return;
+    }
+
+    // Check if payroll business is registered
+    const payrollBusiness = await getPayrollBusinessAccount(connection, publicKey);
+    if (!payrollBusiness) {
+      toast.error('Please register your business first using the Deposit modal (select Payroll Deposit)');
+      return;
+    }
+
+    setPayingEmployee(employee.id);
+
+    try {
+      // Convert annual salary to monthly payment amount
+      const monthlyAmount = (employee.amount || 0) / 12;
+
+      console.log('💸 Paying employee via confidential payroll...');
+      console.log(`   Employee: ${employee.name} (${employee.fullWallet})`);
+      console.log(`   Amount: ${monthlyAmount} USDBagel`);
+
+      const txid = await payEmployee(
+        connection,
+        wallet,
+        new PublicKey(employee.fullWallet),
+        monthlyAmount
+      );
+
+      console.log('✅ Employee paid!', txid);
+
+      // Update employee status in local state
+      setEmployees(prev => prev.map(e =>
+        e.id === employee.id ? { ...e, status: 'Paid' as const } : e
+      ));
+
+      toast.success('Payment sent!', {
+        description: `${monthlyAmount.toFixed(2)} USDBagel sent to ${employee.name} (encrypted)`,
+      });
+    } catch (err: any) {
+      console.error('Failed to pay employee:', err);
+      toast.error('Payment failed', {
+        description: err.message,
+      });
+    } finally {
+      setPayingEmployee(null);
+    }
   }, [connection, wallet, publicKey]);
 
   // Auto-open guide after wallet connection (only once per session if not completed)
@@ -2342,6 +2417,7 @@ export default function Dashboard() {
                         <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider px-4 py-3">Amount</th>
                         <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider px-4 py-3">Privacy</th>
                         <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider px-4 py-3">Status</th>
+                        <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider px-4 py-3">Actions</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -2394,6 +2470,36 @@ export default function Dashboard() {
                               {employee.status === 'Paid' && <CheckCircle className="w-3 h-3" weight="fill" />}
                               {employee.status}
                             </span>
+                          </td>
+                          <td className="px-4 py-4">
+                            <button
+                              onClick={() => handlePayEmployeeAction(employee)}
+                              disabled={payingEmployee === employee.id || employee.status === 'Paid'}
+                              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-medium transition-colors ${
+                                employee.status === 'Paid'
+                                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                                  : payingEmployee === employee.id
+                                  ? 'bg-purple-100 text-purple-600'
+                                  : 'bg-purple-600 text-white hover:bg-purple-700'
+                              }`}
+                            >
+                              {payingEmployee === employee.id ? (
+                                <>
+                                  <CircleNotch className="w-3 h-3 animate-spin" />
+                                  Paying...
+                                </>
+                              ) : employee.status === 'Paid' ? (
+                                <>
+                                  <CheckCircle className="w-3 h-3" />
+                                  Paid
+                                </>
+                              ) : (
+                                <>
+                                  <CurrencyDollar className="w-3 h-3" />
+                                  Pay
+                                </>
+                              )}
+                            </button>
                           </td>
                         </motion.tr>
                       ))}

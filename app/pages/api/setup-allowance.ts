@@ -59,6 +59,7 @@ function getMintAuthority(): Keypair | null {
 type ResponseData = {
   success: boolean;
   txid?: string;
+  sdkTxid?: string;
   allowancePda?: string;
   handle?: string;
   error?: string;
@@ -129,19 +130,7 @@ export default async function handler(
       console.log(`Alternate PDA (using 5sjE...): ${altPda.toBase58()}`);
     }
 
-    // Check if allowance already exists
-    const existingAllowance = await connection.getAccountInfo(allowancePda);
-    if (existingAllowance) {
-      console.log('Allowance already exists!');
-      return res.status(200).json({
-        success: true,
-        allowancePda: allowancePda.toBase58(),
-        handle: handle.toString(),
-        txid: 'already_exists',
-      });
-    }
-
-    // Build Inco Lightning "allow" instruction
+    // Build Inco Lightning "allow" instruction data (needed for both ENV and SDK)
     // Discriminator: first 8 bytes of sha256("global:allow")
     const ALLOW_DISCRIMINATOR = createHash('sha256').update('global:allow').digest().slice(0, 8);
     console.log('Allow discriminator:', ALLOW_DISCRIMINATOR.toString('hex'));
@@ -162,35 +151,44 @@ export default async function handler(
       owner.toBuffer(),
     ]);
 
-    const allowInstruction = new TransactionInstruction({
-      programId: INCO_LIGHTNING_ENV,
-      keys: [
-        { pubkey: allowancePda, isSigner: false, isWritable: true },
-        { pubkey: mintAuthority.publicKey, isSigner: true, isWritable: true },
-        { pubkey: owner, isSigner: false, isWritable: false },
-        { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
-      ],
-      data: allowInstructionData,
-    });
+    // Check if ENV allowance already exists
+    const existingAllowance = await connection.getAccountInfo(allowancePda);
+    let txid: string;
 
-    const transaction = new Transaction().add(allowInstruction);
-    const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('confirmed');
-    transaction.recentBlockhash = blockhash;
-    transaction.feePayer = mintAuthority.publicKey;
-    transaction.sign(mintAuthority);
+    if (existingAllowance) {
+      console.log('ENV Allowance already exists!');
+      txid = 'already_exists';
+    } else {
+      const allowInstruction = new TransactionInstruction({
+        programId: INCO_LIGHTNING_ENV,
+        keys: [
+          { pubkey: allowancePda, isSigner: false, isWritable: true },
+          { pubkey: mintAuthority.publicKey, isSigner: true, isWritable: true },
+          { pubkey: owner, isSigner: false, isWritable: false },
+          { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
+        ],
+        data: allowInstructionData,
+      });
 
-    console.log('Sending allow transaction...');
-    const txid = await connection.sendRawTransaction(transaction.serialize(), {
-      skipPreflight: true, // Skip preflight for Inco instructions
-      maxRetries: 3,
-    });
+      const transaction = new Transaction().add(allowInstruction);
+      const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('confirmed');
+      transaction.recentBlockhash = blockhash;
+      transaction.feePayer = mintAuthority.publicKey;
+      transaction.sign(mintAuthority);
 
-    await connection.confirmTransaction(
-      { blockhash, lastValidBlockHeight, signature: txid },
-      'confirmed'
-    );
+      console.log('Sending allow transaction...');
+      txid = await connection.sendRawTransaction(transaction.serialize(), {
+        skipPreflight: true, // Skip preflight for Inco instructions
+        maxRetries: 3,
+      });
 
-    console.log(`✅ ENV Allowance set up! Transaction: ${txid}`);
+      await connection.confirmTransaction(
+        { blockhash, lastValidBlockHeight, signature: txid },
+        'confirmed'
+      );
+
+      console.log(`✅ ENV Allowance set up! Transaction: ${txid}`);
+    }
 
     // CRITICAL: Also create SDK allowance for covalidator
     let sdkTxid: string | undefined;
