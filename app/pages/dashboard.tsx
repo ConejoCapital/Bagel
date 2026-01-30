@@ -155,9 +155,10 @@ interface PaymentModalProps {
   onDeposit: (entryIndex: number, amountLamports: number) => Promise<string>;
   businessEntryIndex: number | null;
   employees: Employee[];
+  onBalanceUpdate?: () => void;
 }
 
-function PaymentModal({ isOpen, onClose, onDeposit, businessEntryIndex, employees }: PaymentModalProps) {
+function PaymentModal({ isOpen, onClose, onDeposit, businessEntryIndex, employees, onBalanceUpdate }: PaymentModalProps) {
   const { publicKey } = useWallet();
   const wallet = useWallet();
   const { connection } = useConnection();
@@ -190,6 +191,27 @@ function PaymentModal({ isOpen, onClose, onDeposit, businessEntryIndex, employee
             const handle = extractHandle(accountInfo.data as Buffer);
             if (handle !== BigInt(0)) {
               setEncryptedHandle(handle);
+
+              // Check localStorage cache for this handle
+              const cacheKey = `bagel_balance_${publicKey.toBase58()}`;
+              const cached = localStorage.getItem(cacheKey);
+              if (cached) {
+                try {
+                  const { handle: cachedHandle, amount: cachedAmount } = JSON.parse(cached);
+                  if (cachedHandle === handle.toString()) {
+                    console.log(`📦 Using cached balance for handle ${handle.toString()}: ${cachedAmount} USDBagel`);
+                    setDecryptedBalance(cachedAmount);
+                  } else {
+                    console.log(`🔄 Handle changed (${cachedHandle} → ${handle.toString()}), cache invalidated`);
+                    setDecryptedBalance(null);
+                  }
+                } catch (e) {
+                  console.error('Failed to parse balance cache:', e);
+                  setDecryptedBalance(null);
+                }
+              } else {
+                setDecryptedBalance(null);
+              }
             }
           }
         }
@@ -202,12 +224,21 @@ function PaymentModal({ isOpen, onClose, onDeposit, businessEntryIndex, employee
     loadBalance();
   }, [isOpen, publicKey, connection]);
 
-  // Decrypt balance
+  // Decrypt balance - waits for allowance then decrypts once
   const handleDecrypt = useCallback(async () => {
     if (!publicKey || !wallet.signMessage || !encryptedHandle) return;
 
     setDecrypting(true);
+    setError('');
+
     try {
+      // Wait for allowance to propagate
+      console.log('⏳ Waiting for allowance to propagate (5 seconds)...');
+      setError('Waiting for allowance to propagate...');
+      await new Promise(resolve => setTimeout(resolve, 5000));
+
+      console.log(`🔓 Decrypting handle ${encryptedHandle.toString()}...`);
+      setError('Decrypting...');
       const result = await decrypt([encryptedHandle.toString()], {
         address: publicKey,
         signMessage: wallet.signMessage,
@@ -216,10 +247,23 @@ function PaymentModal({ isOpen, onClose, onDeposit, businessEntryIndex, employee
       if (result.plaintexts && result.plaintexts.length > 0) {
         const decryptedValue = Number(BigInt(result.plaintexts[0])) / 1_000_000_000;
         setDecryptedBalance(decryptedValue);
+
+        // Save to localStorage cache
+        const cacheKey = `bagel_balance_${publicKey.toBase58()}`;
+        const cacheData = {
+          handle: encryptedHandle.toString(),
+          amount: decryptedValue,
+        };
+        localStorage.setItem(cacheKey, JSON.stringify(cacheData));
+        console.log(`✅ Decrypt successful - ${decryptedValue} USDBagel`);
+
+        // Trigger navbar refresh
+        onBalanceUpdate?.();
+        setError('');
       }
     } catch (err: any) {
       console.error('Decrypt failed:', err);
-      setError(err.message || 'Failed to decrypt balance');
+      setError(err.message || 'Failed to decrypt balance. Please try again.');
     } finally {
       setDecrypting(false);
     }
@@ -527,9 +571,10 @@ interface TransferModalProps {
   isOpen: boolean;
   onClose: () => void;
   onTransfer: (recipientAddress: string, amount: number) => Promise<string>;
+  onBalanceUpdate?: () => void;
 }
 
-function TransferModal({ isOpen, onClose, onTransfer }: TransferModalProps) {
+function TransferModal({ isOpen, onClose, onTransfer, onBalanceUpdate }: TransferModalProps) {
   const { publicKey } = useWallet();
   const wallet = useWallet();
   const { connection } = useConnection();
@@ -555,7 +600,6 @@ function TransferModal({ isOpen, onClose, onTransfer }: TransferModalProps) {
     }
 
     setBalanceLoading(true);
-    setDecryptedBalance(null); // Clear decrypted balance when refreshing
     try {
       const tokenAccount = await resolveUserTokenAccount(connection, publicKey, USDBAGEL_MINT);
       if (tokenAccount) {
@@ -564,6 +608,27 @@ function TransferModal({ isOpen, onClose, onTransfer }: TransferModalProps) {
           const handle = extractHandle(accountInfo.data as Buffer);
           if (handle !== BigInt(0)) {
             setEncryptedHandle(handle);
+
+            // Check localStorage cache for this handle
+            const cacheKey = `bagel_balance_${publicKey.toBase58()}`;
+            const cached = localStorage.getItem(cacheKey);
+            if (cached) {
+              try {
+                const { handle: cachedHandle, amount: cachedAmount } = JSON.parse(cached);
+                if (cachedHandle === handle.toString()) {
+                  console.log(`📦 Using cached balance for handle ${handle.toString()}: ${cachedAmount} USDBagel`);
+                  setDecryptedBalance(cachedAmount);
+                } else {
+                  console.log(`🔄 Handle changed (${cachedHandle} → ${handle.toString()}), cache invalidated`);
+                  setDecryptedBalance(null);
+                }
+              } catch (e) {
+                console.error('Failed to parse balance cache:', e);
+                setDecryptedBalance(null);
+              }
+            } else {
+              setDecryptedBalance(null);
+            }
           }
         }
       }
@@ -578,12 +643,21 @@ function TransferModal({ isOpen, onClose, onTransfer }: TransferModalProps) {
     loadBalance();
   }, [loadBalance, balanceRefreshTrigger]);
 
-  // Decrypt balance
+  // Decrypt balance - waits for allowance then decrypts once
   const handleDecrypt = useCallback(async () => {
     if (!publicKey || !wallet.signMessage || !encryptedHandle) return;
 
     setDecrypting(true);
+    setError('');
+
     try {
+      // Wait for allowance to propagate
+      console.log('⏳ Waiting for allowance to propagate (5 seconds)...');
+      setError('Waiting for allowance to propagate...');
+      await new Promise(resolve => setTimeout(resolve, 5000));
+
+      console.log(`🔓 Decrypting handle ${encryptedHandle.toString()}...`);
+      setError('Decrypting...');
       const result = await decrypt([encryptedHandle.toString()], {
         address: publicKey,
         signMessage: wallet.signMessage,
@@ -592,10 +666,23 @@ function TransferModal({ isOpen, onClose, onTransfer }: TransferModalProps) {
       if (result.plaintexts && result.plaintexts.length > 0) {
         const decryptedValue = Number(BigInt(result.plaintexts[0])) / 1_000_000_000;
         setDecryptedBalance(decryptedValue);
+
+        // Save to localStorage cache
+        const cacheKey = `bagel_balance_${publicKey.toBase58()}`;
+        const cacheData = {
+          handle: encryptedHandle.toString(),
+          amount: decryptedValue,
+        };
+        localStorage.setItem(cacheKey, JSON.stringify(cacheData));
+        console.log(`✅ Decrypt successful - ${decryptedValue} USDBagel`);
+
+        // Trigger navbar refresh
+        onBalanceUpdate?.();
+        setError('');
       }
     } catch (err: any) {
       console.error('Decrypt failed:', err);
-      setError(err.message || 'Failed to decrypt balance');
+      setError(err.message || 'Failed to decrypt balance. Please try again.');
     } finally {
       setDecrypting(false);
     }
@@ -1380,6 +1467,12 @@ export default function Dashboard() {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [employeeCount, setEmployeeCount] = useState(0);
 
+  // Navbar balance state
+  const [navbarEncryptedHandle, setNavbarEncryptedHandle] = useState<bigint | null>(null);
+  const [navbarDecryptedBalance, setNavbarDecryptedBalance] = useState<number | null>(null);
+  const [navbarDecrypting, setNavbarDecrypting] = useState(false);
+  const [navbarBalanceRefreshTrigger, setNavbarBalanceRefreshTrigger] = useState(0);
+
   // Load employees from localStorage
   useEffect(() => {
     if (typeof window !== 'undefined' && publicKey) {
@@ -1457,6 +1550,90 @@ export default function Dashboard() {
       setRegistrationError(err.message || 'Failed to register business');
     } finally {
       setIsRegistering(false);
+    }
+  };
+
+  // Load navbar balance
+  const loadNavbarBalance = useCallback(async () => {
+    if (!publicKey) {
+      setNavbarEncryptedHandle(null);
+      setNavbarDecryptedBalance(null);
+      return;
+    }
+
+    try {
+      const tokenAccount = await resolveUserTokenAccount(connection, publicKey, USDBAGEL_MINT);
+      if (tokenAccount) {
+        const accountInfo = await connection.getAccountInfo(tokenAccount);
+        if (accountInfo?.data) {
+          const handle = extractHandle(accountInfo.data as Buffer);
+          if (handle !== BigInt(0)) {
+            setNavbarEncryptedHandle(handle);
+
+            // Check localStorage cache
+            const cacheKey = `bagel_balance_${publicKey.toBase58()}`;
+            const cached = localStorage.getItem(cacheKey);
+            if (cached) {
+              try {
+                const { handle: cachedHandle, amount: cachedAmount } = JSON.parse(cached);
+                if (cachedHandle === handle.toString()) {
+                  setNavbarDecryptedBalance(cachedAmount);
+                } else {
+                  setNavbarDecryptedBalance(null);
+                }
+              } catch (e) {
+                setNavbarDecryptedBalance(null);
+              }
+            } else {
+              setNavbarDecryptedBalance(null);
+            }
+          }
+        }
+      }
+    } catch (err) {
+      console.error('Failed to load navbar balance:', err);
+    }
+  }, [publicKey, connection]);
+
+  // Load navbar balance on mount and when trigger changes
+  useEffect(() => {
+    loadNavbarBalance();
+  }, [loadNavbarBalance, navbarBalanceRefreshTrigger]);
+
+  // Decrypt navbar balance - waits for allowance then decrypts once
+  const handleNavbarDecrypt = async () => {
+    if (!publicKey || !wallet.signMessage || !navbarEncryptedHandle) return;
+
+    setNavbarDecrypting(true);
+
+    try {
+      // Wait for allowance to propagate
+      console.log('⏳ Waiting for allowance to propagate (5 seconds)...');
+      await new Promise(resolve => setTimeout(resolve, 5000));
+
+      console.log('🔓 Decrypting...');
+      const result = await decrypt([navbarEncryptedHandle.toString()], {
+        address: publicKey,
+        signMessage: wallet.signMessage,
+      });
+
+      if (result.plaintexts && result.plaintexts.length > 0) {
+        const decryptedValue = Number(BigInt(result.plaintexts[0])) / 1_000_000_000;
+        setNavbarDecryptedBalance(decryptedValue);
+
+        // Save to localStorage cache
+        const cacheKey = `bagel_balance_${publicKey.toBase58()}`;
+        const cacheData = {
+          handle: navbarEncryptedHandle.toString(),
+          amount: decryptedValue,
+        };
+        localStorage.setItem(cacheKey, JSON.stringify(cacheData));
+        console.log('✅ Decrypt successful!');
+      }
+    } catch (err: any) {
+      console.error('Navbar decrypt failed:', err);
+    } finally {
+      setNavbarDecrypting(false);
     }
   };
 
@@ -1677,6 +1854,31 @@ export default function Dashboard() {
               <p className="text-sm text-gray-500">Manage your private payroll operations</p>
             </div>
             <div className="flex items-center gap-3">
+              {/* Navbar Balance Display */}
+              {connected && navbarEncryptedHandle && (
+                <div className="flex items-center gap-2 px-4 py-2 bg-gray-50 rounded border border-gray-200">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium text-gray-700">Balance:</span>
+                    {navbarDecryptedBalance !== null ? (
+                      <span className="text-sm font-semibold text-bagel-orange">
+                        {navbarDecryptedBalance.toFixed(2)} USDBagel
+                      </span>
+                    ) : (
+                      <span className="text-sm text-gray-400">••••••</span>
+                    )}
+                  </div>
+                  <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={handleNavbarDecrypt}
+                    disabled={navbarDecrypting}
+                    className="px-2 py-1 text-xs font-medium text-bagel-orange hover:bg-bagel-orange/10 rounded transition-colors disabled:opacity-50"
+                    title={navbarDecryptedBalance !== null ? 'Refresh balance' : 'Decrypt balance'}
+                  >
+                    {navbarDecrypting ? 'Decrypting...' : navbarDecryptedBalance !== null ? 'Refresh' : 'Decrypt'}
+                  </motion.button>
+                </div>
+              )}
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
@@ -2088,6 +2290,7 @@ export default function Dashboard() {
         onDeposit={handleDeposit}
         businessEntryIndex={businessEntryIndex}
         employees={employees}
+        onBalanceUpdate={() => setNavbarBalanceRefreshTrigger(prev => prev + 1)}
       />
 
       {/* Transfer Modal */}
@@ -2095,6 +2298,7 @@ export default function Dashboard() {
         isOpen={isTransferModalOpen}
         onClose={() => setIsTransferModalOpen(false)}
         onTransfer={handleTransfer}
+        onBalanceUpdate={() => setNavbarBalanceRefreshTrigger(prev => prev + 1)}
       />
 
       {/* Add Employee Modal */}

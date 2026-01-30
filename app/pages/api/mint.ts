@@ -21,8 +21,9 @@ const BAGEL_PROGRAM_ID = new PublicKey(
   process.env.NEXT_PUBLIC_BAGEL_PROGRAM_ID || 'AEd52vEEAdXWUjKut1aQyLLJQnwMWqYMb4hSaHpxd8Hj'
 );
 
-// Inco Lightning Program ID
-const INCO_LIGHTNING_ID = new PublicKey('5sjEbPiqgZrYwR31ahR6Uk9wf5awoX61YGg7jExQSwaj');
+// Inco Lightning Program IDs
+const INCO_LIGHTNING_ENV = new PublicKey('5sjEbPiqgZrYwR31ahR6Uk9wf5awoX61YGg7jExQSwaj'); // For Inco Token Program
+const INCO_LIGHTNING_SDK = new PublicKey('5SpaVk72hvLTpxwEgtxDRKNcohJrg2xUavvDnDnE9XV1'); // For covalidator
 
 // USDBagel Mint (devnet) - Created under correct Inco Token Program
 const USDBAGEL_MINT = new PublicKey(
@@ -47,7 +48,7 @@ function getUserTokenAccountPDA(owner: PublicKey, mint: PublicKey = USDBAGEL_MIN
 }
 
 // Derive allowance PDA for a handle and wallet (grants decryption permission)
-function getAllowancePda(handle: bigint, allowedAddress: PublicKey): [PublicKey, number] {
+function getAllowancePda(handle: bigint, allowedAddress: PublicKey, programId: PublicKey = INCO_LIGHTNING_ENV): [PublicKey, number] {
   const handleBuffer = Buffer.alloc(16);
   let h = handle;
   for (let i = 0; i < 16; i++) {
@@ -56,7 +57,7 @@ function getAllowancePda(handle: bigint, allowedAddress: PublicKey): [PublicKey,
   }
   return PublicKey.findProgramAddressSync(
     [handleBuffer, allowedAddress.toBuffer()],
-    INCO_LIGHTNING_ID
+    programId
   );
 }
 
@@ -154,7 +155,7 @@ export default async function handler(
     // Log program IDs for debugging
     console.log('=== Program IDs ===');
     console.log(`INCO_TOKEN_PROGRAM_ID: ${INCO_TOKEN_PROGRAM_ID.toBase58()}`);
-    console.log(`INCO_LIGHTNING_ID: ${INCO_LIGHTNING_ID.toBase58()}`);
+    console.log(`INCO_LIGHTNING_ENV: ${INCO_LIGHTNING_ENV.toBase58()}`);
     console.log(`BAGEL_PROGRAM_ID: ${BAGEL_PROGRAM_ID.toBase58()}`);
     console.log(`USDBAGEL_MINT: ${USDBAGEL_MINT.toBase58()}`);
     console.log(`Mint Authority: ${mintAuthority.publicKey.toBase58()}`);
@@ -217,7 +218,7 @@ export default async function handler(
           { pubkey: destination, isSigner: false, isWritable: false }, // owner
           { pubkey: mintAuthority.publicKey, isSigner: true, isWritable: true }, // payer
           { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
-          { pubkey: INCO_LIGHTNING_ID, isSigner: false, isWritable: false },
+          { pubkey: INCO_LIGHTNING_ENV, isSigner: false, isWritable: false },
         ],
         data: INIT_ACCOUNT_DISCRIMINATOR,
       });
@@ -267,7 +268,7 @@ export default async function handler(
       { pubkey: USDBAGEL_MINT, isSigner: false, isWritable: true },
       { pubkey: tokenAccount, isSigner: false, isWritable: true },
       { pubkey: mintAuthority.publicKey, isSigner: true, isWritable: true },
-      { pubkey: INCO_LIGHTNING_ID, isSigner: false, isWritable: false },
+      { pubkey: INCO_LIGHTNING_ENV, isSigner: false, isWritable: false },
       { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
     ];
 
@@ -435,10 +436,69 @@ export default async function handler(
           };
 
           if (allowancePda) {
-            console.log('✅ Allowance was set up during mint via remaining_accounts');
+            console.log('✅ Allowance (ENV) was set up during mint via remaining_accounts');
           } else {
-            console.log('⚠️ Allowance was NOT set up during mint');
-            console.log('   User should call setup-allowance API or mint again');
+            console.log('⚠️ Allowance (ENV) was NOT set up during mint');
+          }
+
+          // CRITICAL: Also create allowance with SDK program ID for covalidator
+          try {
+            const [sdkAllowancePda] = getAllowancePda(handle, destination, INCO_LIGHTNING_SDK);
+            const existingSdkAllowance = await connection.getAccountInfo(sdkAllowancePda);
+
+            if (!existingSdkAllowance) {
+              console.log('📝 Creating SDK allowance for covalidator...');
+
+              const ALLOW_DISCRIMINATOR = createHash('sha256').update('global:allow').digest().slice(0, 8);
+              const handleBuf = Buffer.alloc(16);
+              let h2 = handle;
+              for (let i = 0; i < 16; i++) {
+                handleBuf[i] = Number(h2 & BigInt(0xff));
+                h2 = h2 >> BigInt(8);
+              }
+
+              const allowData = Buffer.concat([
+                ALLOW_DISCRIMINATOR,
+                handleBuf,
+                Buffer.from([1]),
+                destination.toBuffer(),
+              ]);
+
+              const sdkAllowInstruction = new TransactionInstruction({
+                programId: INCO_LIGHTNING_SDK,
+                keys: [
+                  { pubkey: sdkAllowancePda, isSigner: false, isWritable: true },
+                  { pubkey: mintAuthority.publicKey, isSigner: true, isWritable: true },
+                  { pubkey: destination, isSigner: false, isWritable: false },
+                  { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
+                ],
+                data: allowData,
+              });
+
+              const sdkTx = new Transaction().add(sdkAllowInstruction);
+              const sdkBlockhash = await connection.getLatestBlockhash('confirmed');
+              sdkTx.recentBlockhash = sdkBlockhash.blockhash;
+              sdkTx.feePayer = mintAuthority.publicKey;
+              sdkTx.sign(mintAuthority);
+
+              const sdkTxid = await connection.sendRawTransaction(sdkTx.serialize(), {
+                skipPreflight: true,
+                maxRetries: 3,
+              });
+
+              await connection.confirmTransaction({
+                blockhash: sdkBlockhash.blockhash,
+                lastValidBlockHeight: sdkBlockhash.lastValidBlockHeight,
+                signature: sdkTxid,
+              }, 'confirmed');
+
+              console.log('✅ SDK allowance created for covalidator!');
+            } else {
+              console.log('✅ SDK allowance already exists');
+            }
+          } catch (sdkAllowErr: any) {
+            console.error('⚠️ Failed to create SDK allowance:', sdkAllowErr.message);
+            console.error('   Decrypt may not work until SDK allowance is set up');
           }
         } else {
           console.log('⚠️ Handle is zero - check if mint succeeded');

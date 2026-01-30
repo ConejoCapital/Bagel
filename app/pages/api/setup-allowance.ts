@@ -8,13 +8,10 @@ import {
   SystemProgram,
 } from '@solana/web3.js';
 import { createHash } from 'crypto';
-import { INCO_BASE_PROGRAM_ID } from '@inco/solana-sdk/constants';
 
-// Inco Lightning Program ID (from env or SDK's INCO_BASE_PROGRAM_ID)
-// The SDK uses 5SpaVk72hvLTpxwEgtxDRKNcohJrg2xUavvDnDnE9XV1
-const INCO_LIGHTNING_ID = new PublicKey(
-  process.env.NEXT_PUBLIC_INCO_PROGRAM_ID || INCO_BASE_PROGRAM_ID
-);
+// Inco Lightning Program IDs
+const INCO_LIGHTNING_ENV = new PublicKey('5sjEbPiqgZrYwR31ahR6Uk9wf5awoX61YGg7jExQSwaj'); // For Inco Token Program
+const INCO_LIGHTNING_SDK = new PublicKey('5SpaVk72hvLTpxwEgtxDRKNcohJrg2xUavvDnDnE9XV1'); // For covalidator
 
 // Inco Token Program ID (from env)
 const INCO_TOKEN_PROGRAM_ID = new PublicKey(
@@ -110,7 +107,7 @@ export default async function handler(
 
     const handle = extractHandle(accountInfo.data as Buffer);
     console.log(`Handle (decimal): ${handle.toString()}`);
-    console.log(`Inco Lightning Program ID: ${INCO_LIGHTNING_ID.toBase58()}`);
+    console.log(`Inco Lightning Program ID: ${INCO_LIGHTNING_ENV.toBase58()}`);
     console.log(`SDK INCO_BASE_PROGRAM_ID: ${INCO_BASE_PROGRAM_ID}`);
 
     if (handle === BigInt(0)) {
@@ -121,13 +118,13 @@ export default async function handler(
     }
 
     // Derive the allowance PDA using the configured Inco Lightning program
-    const [allowancePda] = getAllowancePda(handle, owner, INCO_LIGHTNING_ID);
-    console.log(`Allowance PDA (using ${INCO_LIGHTNING_ID.toBase58()}): ${allowancePda.toBase58()}`);
+    const [allowancePda] = getAllowancePda(handle, owner, INCO_LIGHTNING_ENV);
+    console.log(`Allowance PDA (using ${INCO_LIGHTNING_ENV.toBase58()}): ${allowancePda.toBase58()}`);
     console.log(`Owner: ${owner.toBase58()}`);
 
     // Also show what the PDA would be with the alternate program ID for debugging
     const altProgramId = new PublicKey('5sjEbPiqgZrYwR31ahR6Uk9wf5awoX61YGg7jExQSwaj');
-    if (!altProgramId.equals(INCO_LIGHTNING_ID)) {
+    if (!altProgramId.equals(INCO_LIGHTNING_ENV)) {
       const [altPda] = getAllowancePda(handle, owner, altProgramId);
       console.log(`Alternate PDA (using 5sjE...): ${altPda.toBase58()}`);
     }
@@ -166,7 +163,7 @@ export default async function handler(
     ]);
 
     const allowInstruction = new TransactionInstruction({
-      programId: INCO_LIGHTNING_ID,
+      programId: INCO_LIGHTNING_ENV,
       keys: [
         { pubkey: allowancePda, isSigner: false, isWritable: true },
         { pubkey: mintAuthority.publicKey, isSigner: true, isWritable: true },
@@ -193,11 +190,59 @@ export default async function handler(
       'confirmed'
     );
 
-    console.log(`✅ Allowance set up! Transaction: ${txid}`);
+    console.log(`✅ ENV Allowance set up! Transaction: ${txid}`);
+
+    // CRITICAL: Also create SDK allowance for covalidator
+    let sdkTxid: string | undefined;
+    try {
+      const [sdkAllowancePda] = getAllowancePda(handle, owner, INCO_LIGHTNING_SDK);
+      console.log(`SDK Allowance PDA: ${sdkAllowancePda.toBase58()}`);
+
+      const existingSdkAllowance = await connection.getAccountInfo(sdkAllowancePda);
+      if (!existingSdkAllowance) {
+        console.log('Creating SDK allowance for covalidator...');
+
+        const sdkAllowInstruction = new TransactionInstruction({
+          programId: INCO_LIGHTNING_SDK,
+          keys: [
+            { pubkey: sdkAllowancePda, isSigner: false, isWritable: true },
+            { pubkey: mintAuthority.publicKey, isSigner: true, isWritable: true },
+            { pubkey: owner, isSigner: false, isWritable: false },
+            { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
+          ],
+          data: allowInstructionData,
+        });
+
+        const sdkTransaction = new Transaction().add(sdkAllowInstruction);
+        const sdkBlockhash = await connection.getLatestBlockhash('confirmed');
+        sdkTransaction.recentBlockhash = sdkBlockhash.blockhash;
+        sdkTransaction.feePayer = mintAuthority.publicKey;
+        sdkTransaction.sign(mintAuthority);
+
+        sdkTxid = await connection.sendRawTransaction(sdkTransaction.serialize(), {
+          skipPreflight: true,
+          maxRetries: 3,
+        });
+
+        await connection.confirmTransaction(
+          { blockhash: sdkBlockhash.blockhash, lastValidBlockHeight: sdkBlockhash.lastValidBlockHeight, signature: sdkTxid },
+          'confirmed'
+        );
+
+        console.log(`✅ SDK Allowance set up! Transaction: ${sdkTxid}`);
+      } else {
+        console.log('SDK allowance already exists');
+        sdkTxid = 'already_exists';
+      }
+    } catch (sdkErr: any) {
+      console.error('⚠️ Failed to create SDK allowance:', sdkErr.message);
+      console.error('   Decrypt may not work until SDK allowance is set up');
+    }
 
     return res.status(200).json({
       success: true,
       txid,
+      sdkTxid,
       allowancePda: allowancePda.toBase58(),
       handle: handle.toString(),
     });
