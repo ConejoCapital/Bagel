@@ -544,36 +544,39 @@ function TransferModal({ isOpen, onClose, onTransfer }: TransferModalProps) {
   const [decryptedBalance, setDecryptedBalance] = useState<number | null>(null);
   const [decrypting, setDecrypting] = useState(false);
   const [balanceLoading, setBalanceLoading] = useState(false);
+  const [balanceRefreshTrigger, setBalanceRefreshTrigger] = useState(0);
 
-  // Load balance when modal opens
-  useEffect(() => {
-    async function loadBalance() {
-      if (!isOpen || !publicKey) {
-        setEncryptedHandle(null);
-        setDecryptedBalance(null);
-        return;
-      }
+  // Load balance when modal opens or after transfer
+  const loadBalance = useCallback(async () => {
+    if (!isOpen || !publicKey) {
+      setEncryptedHandle(null);
+      setDecryptedBalance(null);
+      return;
+    }
 
-      setBalanceLoading(true);
-      try {
-        const tokenAccount = await resolveUserTokenAccount(connection, publicKey, USDBAGEL_MINT);
-        if (tokenAccount) {
-          const accountInfo = await connection.getAccountInfo(tokenAccount);
-          if (accountInfo?.data) {
-            const handle = extractHandle(accountInfo.data as Buffer);
-            if (handle !== BigInt(0)) {
-              setEncryptedHandle(handle);
-            }
+    setBalanceLoading(true);
+    setDecryptedBalance(null); // Clear decrypted balance when refreshing
+    try {
+      const tokenAccount = await resolveUserTokenAccount(connection, publicKey, USDBAGEL_MINT);
+      if (tokenAccount) {
+        const accountInfo = await connection.getAccountInfo(tokenAccount);
+        if (accountInfo?.data) {
+          const handle = extractHandle(accountInfo.data as Buffer);
+          if (handle !== BigInt(0)) {
+            setEncryptedHandle(handle);
           }
         }
-      } catch (err) {
-        console.error('Failed to load balance:', err);
-      } finally {
-        setBalanceLoading(false);
       }
+    } catch (err) {
+      console.error('Failed to load balance:', err);
+    } finally {
+      setBalanceLoading(false);
     }
-    loadBalance();
   }, [isOpen, publicKey, connection]);
+
+  useEffect(() => {
+    loadBalance();
+  }, [loadBalance, balanceRefreshTrigger]);
 
   // Decrypt balance
   const handleDecrypt = useCallback(async () => {
@@ -619,6 +622,10 @@ function TransferModal({ isOpen, onClose, onTransfer }: TransferModalProps) {
       setTxid(signature);
       setAmount('');
       setRecipient('');
+      // Refresh balance after successful transfer (wait a bit for allowance to be set up)
+      setTimeout(() => {
+        setBalanceRefreshTrigger(prev => prev + 1);
+      }, 2000);
     } catch (err: any) {
       console.error('Transfer error:', err);
       setError(err.message || 'Failed to transfer');

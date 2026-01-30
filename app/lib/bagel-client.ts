@@ -12,10 +12,15 @@
 
 import { Connection, PublicKey, SystemProgram, Transaction, TransactionInstruction } from '@solana/web3.js';
 import { WalletContextState } from '@solana/wallet-adapter-react';
+import { encryptValue } from '@inco/solana-sdk/encryption';
+import { hexToBuffer } from '@inco/solana-sdk/utils';
 
 // Deployed program ID on devnet (with confidential tokens enabled by default)
 export const BAGEL_PROGRAM_ID = new PublicKey('AEd52vEEAdXWUjKut1aQyLLJQnwMWqYMb4hSaHpxd8Hj');
 export const INCO_LIGHTNING_ID = new PublicKey('5sjEbPiqgZrYwR31ahR6Uk9wf5awoX61YGg7jExQSwaj');
+
+// Transfer discriminator from Inco Token Program IDL
+const TRANSFER_DISCRIMINATOR = Buffer.from([163, 52, 200, 231, 140, 3, 69, 186]);
 
 // PDA seeds
 const MASTER_VAULT_SEED = Buffer.from('master_vault');
@@ -807,33 +812,95 @@ export async function confidentialTransfer(
   console.log(`   From: ${senderIncoAccount.toBase58()}`);
   console.log(`   To: ${finalRecipientAccount}`);
 
-  // Call the transfer API endpoint
-  const response = await fetch('/api/transfer', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      amount,
-      fromTokenAccount: senderIncoAccount.toBase58(),
-      toTokenAccount: finalRecipientAccount,
-      senderPubkey: wallet.publicKey.toBase58(),
-    }),
-  });
-
-  const result = await response.json() as {
-    success: boolean;
-    txid?: string;
-    amount?: number;
-    error?: string;
-  };
-
-  if (!response.ok || !result.success) {
-    throw new Error(result.error || 'Failed to transfer tokens');
+  // Check if wallet can sign transactions
+  if (!wallet.signTransaction) {
+    throw new Error('Wallet does not support signing transactions');
   }
 
-  console.log('✅ Confidential transfer successful:', result.txid);
-  return result.txid!;
+  // Convert amount to lamports with 9 decimals and encrypt
+  const amountWithDecimals = BigInt(Math.floor(amount * 1_000_000_000));
+  console.log('Encrypting transfer amount using Inco SDK...');
+  const encryptedHex = await encryptValue(amountWithDecimals);
+  const encryptedAmount = hexToBuffer(encryptedHex);
+  console.log(`Encrypted buffer length: ${encryptedAmount.length} bytes`);
+
+  // Build instruction data: discriminator + length + amount (bytes) + input_type (u8)
+  const inputType = Buffer.alloc(1);
+  inputType.writeUInt8(1, 0); // 1 = raw bytes (from hexToBuffer)
+
+  const lengthPrefix = Buffer.alloc(4);
+  lengthPrefix.writeUInt32LE(encryptedAmount.length, 0);
+
+  const instructionData = Buffer.concat([
+    TRANSFER_DISCRIMINATOR,
+    lengthPrefix,
+    encryptedAmount,
+    inputType,
+  ]);
+
+  // Build transfer instruction - user's wallet is the authority
+  const transferInstruction = new TransactionInstruction({
+    programId: INCO_TOKEN_PROGRAM_ID,
+    keys: [
+      { pubkey: senderIncoAccount, isSigner: false, isWritable: true },
+      { pubkey: recipientIncoAccount, isSigner: false, isWritable: true },
+      { pubkey: wallet.publicKey, isSigner: true, isWritable: false }, // User signs as owner
+      { pubkey: INCO_LIGHTNING_ID, isSigner: false, isWritable: false },
+      { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
+    ],
+    data: instructionData,
+  });
+
+  // Build transaction
+  const transaction = new Transaction().add(transferInstruction);
+  const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('confirmed');
+  transaction.recentBlockhash = blockhash;
+  transaction.feePayer = wallet.publicKey;
+
+  // Have user sign the transaction
+  console.log('Requesting wallet signature...');
+  const signedTransaction = await wallet.signTransaction(transaction);
+
+  // Send signed transaction
+  const txid = await connection.sendRawTransaction(signedTransaction.serialize(), {
+    skipPreflight: false,
+    maxRetries: 3,
+  });
+
+  // Wait for confirmation
+  await connection.confirmTransaction(
+    {
+      blockhash,
+      lastValidBlockHeight,
+      signature: txid,
+    },
+    'confirmed'
+  );
+
+  console.log('✅ Confidential transfer successful:', txid);
+
+  // Set up allowance for sender to decrypt their new balance
+  console.log('Setting up allowance for sender to decrypt new balance...');
+  try {
+    const allowanceResponse = await fetch('/api/setup-allowance', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        tokenAccount: senderIncoAccount.toBase58(),
+        ownerAddress: wallet.publicKey.toBase58(),
+      }),
+    });
+    const allowanceResult = await allowanceResponse.json();
+    if (allowanceResult.success) {
+      console.log('✅ Sender allowance set up:', allowanceResult.txid);
+    } else {
+      console.warn('⚠️ Failed to set up sender allowance:', allowanceResult.error);
+    }
+  } catch (err) {
+    console.warn('⚠️ Failed to set up sender allowance:', err);
+  }
+
+  return txid;
 }
 
 // ============================================================

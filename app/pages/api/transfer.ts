@@ -3,10 +3,12 @@ import {
   Connection,
   Keypair,
   PublicKey,
+  SystemProgram,
   Transaction,
   TransactionInstruction,
 } from '@solana/web3.js';
-import { createHash } from 'crypto';
+import { encryptValue } from '@inco/solana-sdk/encryption';
+import { hexToBuffer } from '@inco/solana-sdk/utils';
 
 // Inco Token Program ID (from IDL)
 const INCO_TOKEN_PROGRAM_ID = new PublicKey(
@@ -19,12 +21,12 @@ const INCO_LIGHTNING_ID = new PublicKey('5sjEbPiqgZrYwR31ahR6Uk9wf5awoX61YGg7jEx
 // Transfer discriminator from IDL
 const TRANSFER_DISCRIMINATOR = Buffer.from([163, 52, 200, 231, 140, 3, 69, 186]);
 
-// Encrypt value for Inco (simulated FHE)
-function encryptForInco(value: bigint): Buffer {
-  const buffer = Buffer.alloc(16);
-  buffer.writeBigUInt64LE(value, 0);
-  const hash = createHash('sha256').update(buffer).update(Date.now().toString()).digest();
-  hash.copy(buffer, 8, 0, 8);
+// Encrypt value for Inco using real SDK
+async function encryptForInco(value: bigint): Promise<Buffer> {
+  console.log(`Encrypting transfer amount: ${value} using Inco SDK...`);
+  const encryptedHex = await encryptValue(value);
+  const buffer = hexToBuffer(encryptedHex);
+  console.log(`Encrypted buffer length: ${buffer.length} bytes`);
   return buffer;
 }
 
@@ -98,12 +100,12 @@ export default async function handler(
     // Convert amount to lamports with 9 decimals
     const amountWithDecimals = BigInt(Math.floor(amount * 1_000_000_000));
 
-    // Encrypt the amount for Inco FHE
-    const encryptedAmount = encryptForInco(amountWithDecimals);
+    // Encrypt the amount for Inco FHE using real SDK
+    const encryptedAmount = await encryptForInco(amountWithDecimals);
 
     // Build instruction data: discriminator + amount (bytes) + input_type (u8)
     const inputType = Buffer.alloc(1);
-    inputType.writeUInt8(0, 0); // 0 = ciphertext
+    inputType.writeUInt8(1, 0); // 1 = raw bytes (from hexToBuffer)
 
     const lengthPrefix = Buffer.alloc(4);
     lengthPrefix.writeUInt32LE(encryptedAmount.length, 0);
@@ -124,6 +126,7 @@ export default async function handler(
         { pubkey: toAccount, isSigner: false, isWritable: true },
         { pubkey: authority.publicKey, isSigner: true, isWritable: false }, // Use server authority
         { pubkey: INCO_LIGHTNING_ID, isSigner: false, isWritable: false },
+        { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
       ],
       data: instructionData,
     });
@@ -135,9 +138,9 @@ export default async function handler(
     transaction.feePayer = authority.publicKey;
     transaction.sign(authority);
 
-    // Send transaction
+    // Send transaction (with preflight to catch balance errors)
     const txid = await connection.sendRawTransaction(transaction.serialize(), {
-      skipPreflight: true,
+      skipPreflight: false,
       maxRetries: 3,
     });
 
