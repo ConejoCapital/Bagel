@@ -44,6 +44,107 @@ import {
 } from '@phosphor-icons/react';
 import { PublicKey } from '@solana/web3.js';
 import { decrypt } from '@inco/solana-sdk/attested-decrypt';
+import { toast } from 'sonner';
+import { Toaster } from '@/components/ui/toaster';
+
+// Signature cache - stores signatures per handle
+// Key: "handle_walletAddress", Value: { signature, timestamp }
+const signatureCache = new Map<string, { signature: Uint8Array; timestamp: number }>();
+const SIGNATURE_CACHE_DURATION = 24 * 60 * 60 * 1000; // 24 hours
+
+// Helper: Check if handle has changed before decrypting
+// Returns true if we should proceed with decrypt, false if handle is unchanged
+function shouldDecryptHandle(
+  currentHandle: bigint,
+  walletAddress: string
+): boolean {
+  const cacheKey = `bagel_balance_${walletAddress}`;
+  const cached = localStorage.getItem(cacheKey);
+
+  if (cached) {
+    try {
+      const { handle: cachedHandle, amount: cachedAmount } = JSON.parse(cached);
+      if (cachedHandle === currentHandle.toString()) {
+        // Handle hasn't changed - no new transactions!
+        toast.info('🥯 Your balance is fresh!', {
+          description: `Your handle is the same on-chain - no new transactions detected. Still holding ${cachedAmount.toFixed(2)} USDBagel, fully encrypted and secure!`,
+          duration: 4000,
+        });
+        return false; // Don't decrypt
+      }
+    } catch (e) {
+      // Continue with decrypt if cache parse fails
+    }
+  }
+
+  return true; // Proceed with decrypt
+}
+
+// Helper: Decrypt with cached signature and retry
+// User only signs ONCE per handle! Signature is reused for same handle.
+async function decryptWithRetry(
+  handles: string[],
+  options: { address: any; signMessage: any },
+  maxRetries = 3,
+  baseDelay = 2000
+): Promise<any> {
+  const handle = handles[0]; // We decrypt one handle at a time
+  const cacheKey = `${handle}_${options.address.toBase58()}`;
+  let lastError: any;
+
+  // Create a wrapper that caches signatures per handle
+  const cachedSignMessage = async (message: Uint8Array): Promise<Uint8Array> => {
+    const cached = signatureCache.get(cacheKey);
+
+    // Return cached signature if valid (REUSE SIGNATURE!)
+    if (cached && Date.now() - cached.timestamp < SIGNATURE_CACHE_DURATION) {
+      console.log(`♻️ REUSING cached signature for handle ${handle.slice(0, 16)}... (NO WALLET PROMPT!)`);
+      return cached.signature;
+    }
+
+    // Generate new signature by calling the original signMessage
+    console.log(`🔐 Requesting NEW signature for handle ${handle.slice(0, 16)}... (WALLET PROMPT)`);
+    const signature = await options.signMessage(message);
+
+    // Cache it for future use
+    signatureCache.set(cacheKey, { signature, timestamp: Date.now() });
+    console.log(`💾 Signature cached! Next decrypt for this handle won't need signing.`);
+
+    return signature;
+  };
+
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      if (attempt > 0) {
+        const delay = baseDelay * Math.pow(2, attempt - 1);
+        console.log(`🔄 Retry attempt ${attempt + 1}/${maxRetries} (waiting ${delay}ms)...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
+
+      const result = await decrypt(handles, {
+        address: options.address,
+        signMessage: cachedSignMessage,
+      });
+
+      if (attempt > 0) {
+        console.log(`✅ Decrypt succeeded on attempt ${attempt + 1}`);
+      }
+
+      return result;
+    } catch (err: any) {
+      lastError = err;
+      console.error(`❌ Decrypt attempt ${attempt + 1} failed:`, err.message);
+
+      // If it's a user rejection or auth error, don't retry
+      if (err.message?.includes('User rejected') || err.message?.includes('denied')) {
+        throw err;
+      }
+    }
+  }
+
+  console.error(`❌ All ${maxRetries} decrypt attempts failed`);
+  throw lastError;
+}
 
 const WalletButton = dynamic(() => import('../components/WalletButton'), {
   ssr: false,
@@ -89,13 +190,7 @@ const guideSteps: GuideStep[] = [
     description: 'Click here to send payroll to your team with complete privacy. Choose one-time or streaming payments.',
     position: 'bottom',
   },
-  {
-    id: 'stats',
-    target: '[data-guide="stats"]',
-    title: 'Track Your Stats',
-    description: 'Monitor your payroll metrics at a glance - employees, total payroll, transactions, and privacy status.',
-    position: 'bottom',
-  },
+
   {
     id: 'charts',
     target: '[data-guide="charts"]',
@@ -224,34 +319,82 @@ function PaymentModal({ isOpen, onClose, onDeposit, businessEntryIndex, employee
     loadBalance();
   }, [isOpen, publicKey, connection]);
 
-  // Decrypt balance - waits for allowance then decrypts once
+  // Decrypt balance - waits for allowance then decrypts with retry
   const handleDecrypt = useCallback(async () => {
-    if (!publicKey || !wallet.signMessage || !encryptedHandle) return;
+    if (!publicKey || !wallet.signMessage) return;
 
     setDecrypting(true);
     setError('');
 
     try {
+      // First, fetch the LATEST handle from the blockchain
+      console.log('🔄 Fetching latest handle from blockchain...');
+      const tokenAccount = await resolveUserTokenAccount(connection, publicKey, USDBAGEL_MINT);
+      if (!tokenAccount) {
+        setError('No token account found');
+        return;
+      }
+
+      const accountInfo = await connection.getAccountInfo(tokenAccount);
+      if (!accountInfo?.data) {
+        setError('No account data found');
+        return;
+      }
+
+      const currentHandle = extractHandle(accountInfo.data as Buffer);
+      if (currentHandle === BigInt(0)) {
+        setError('Handle is zero');
+        return;
+      }
+
+      // Update the state with latest handle
+      setEncryptedHandle(currentHandle);
+
+      // Check if handle has changed before decrypting
+      if (!shouldDecryptHandle(currentHandle, publicKey.toBase58())) {
+        setError(''); // Clear error since handle check will show toast
+        return; // Handle unchanged - toast already shown
+      }
+
+      // Handle has changed - set up allowance for the new handle
+      console.log('🔑 Setting up allowance for new handle...');
+      const allowanceResponse = await fetch('/api/setup-allowance', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tokenAccount: tokenAccount.toBase58(),
+          ownerAddress: publicKey.toBase58(),
+        }),
+      });
+
+      const allowanceData = await allowanceResponse.json();
+      if (!allowanceData.success) {
+        throw new Error(allowanceData.error || 'Failed to set up allowance');
+      }
+
       // Wait for allowance to propagate
       console.log('⏳ Waiting for allowance to propagate (5 seconds)...');
-      setError('Waiting for allowance to propagate...');
       await new Promise(resolve => setTimeout(resolve, 5000));
 
-      console.log(`🔓 Decrypting handle ${encryptedHandle.toString()}...`);
-      setError('Decrypting...');
-      const result = await decrypt([encryptedHandle.toString()], {
-        address: publicKey,
-        signMessage: wallet.signMessage,
-      });
+      console.log(`🔓 Decrypting handle ${currentHandle.toString()} with retry logic...`);
+      const result = await decryptWithRetry(
+        [currentHandle.toString()],
+        {
+          address: publicKey,
+          signMessage: wallet.signMessage,
+        },
+        5, // max retries (5 attempts total)
+        2000 // base delay (2s)
+      );
 
       if (result.plaintexts && result.plaintexts.length > 0) {
         const decryptedValue = Number(BigInt(result.plaintexts[0])) / 1_000_000_000;
         setDecryptedBalance(decryptedValue);
 
-        // Save to localStorage cache
+        // Save handle -> amount mapping to localStorage cache
         const cacheKey = `bagel_balance_${publicKey.toBase58()}`;
         const cacheData = {
-          handle: encryptedHandle.toString(),
+          handle: currentHandle.toString(),
           amount: decryptedValue,
         };
         localStorage.setItem(cacheKey, JSON.stringify(cacheData));
@@ -267,7 +410,7 @@ function PaymentModal({ isOpen, onClose, onDeposit, businessEntryIndex, employee
     } finally {
       setDecrypting(false);
     }
-  }, [publicKey, wallet.signMessage, encryptedHandle]);
+  }, [publicKey, wallet.signMessage, onBalanceUpdate]);
 
   // Calculate projected earnings (mock 10% APR)
   const formatEarnings = (value: number) => {
@@ -643,34 +786,82 @@ function TransferModal({ isOpen, onClose, onTransfer, onBalanceUpdate }: Transfe
     loadBalance();
   }, [loadBalance, balanceRefreshTrigger]);
 
-  // Decrypt balance - waits for allowance then decrypts once
+  // Decrypt balance - waits for allowance then decrypts with retry
   const handleDecrypt = useCallback(async () => {
-    if (!publicKey || !wallet.signMessage || !encryptedHandle) return;
+    if (!publicKey || !wallet.signMessage) return;
 
     setDecrypting(true);
     setError('');
 
     try {
+      // First, fetch the LATEST handle from the blockchain
+      console.log('🔄 Fetching latest handle from blockchain...');
+      const tokenAccount = await resolveUserTokenAccount(connection, publicKey, USDBAGEL_MINT);
+      if (!tokenAccount) {
+        setError('No token account found');
+        return;
+      }
+
+      const accountInfo = await connection.getAccountInfo(tokenAccount);
+      if (!accountInfo?.data) {
+        setError('No account data found');
+        return;
+      }
+
+      const currentHandle = extractHandle(accountInfo.data as Buffer);
+      if (currentHandle === BigInt(0)) {
+        setError('Handle is zero');
+        return;
+      }
+
+      // Update the state with latest handle
+      setEncryptedHandle(currentHandle);
+
+      // Check if handle has changed before decrypting
+      if (!shouldDecryptHandle(currentHandle, publicKey.toBase58())) {
+        setError(''); // Clear error since handle check will show toast
+        return; // Handle unchanged - toast already shown
+      }
+
+      // Handle has changed - set up allowance for the new handle
+      console.log('🔑 Setting up allowance for new handle...');
+      const allowanceResponse = await fetch('/api/setup-allowance', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tokenAccount: tokenAccount.toBase58(),
+          ownerAddress: publicKey.toBase58(),
+        }),
+      });
+
+      const allowanceData = await allowanceResponse.json();
+      if (!allowanceData.success) {
+        throw new Error(allowanceData.error || 'Failed to set up allowance');
+      }
+
       // Wait for allowance to propagate
       console.log('⏳ Waiting for allowance to propagate (5 seconds)...');
-      setError('Waiting for allowance to propagate...');
       await new Promise(resolve => setTimeout(resolve, 5000));
 
-      console.log(`🔓 Decrypting handle ${encryptedHandle.toString()}...`);
-      setError('Decrypting...');
-      const result = await decrypt([encryptedHandle.toString()], {
-        address: publicKey,
-        signMessage: wallet.signMessage,
-      });
+      console.log(`🔓 Decrypting handle ${currentHandle.toString()} with retry logic...`);
+      const result = await decryptWithRetry(
+        [currentHandle.toString()],
+        {
+          address: publicKey,
+          signMessage: wallet.signMessage,
+        },
+        5, // max retries (5 attempts total)
+        2000 // base delay (2s)
+      );
 
       if (result.plaintexts && result.plaintexts.length > 0) {
         const decryptedValue = Number(BigInt(result.plaintexts[0])) / 1_000_000_000;
         setDecryptedBalance(decryptedValue);
 
-        // Save to localStorage cache
+        // Save handle -> amount mapping to localStorage cache
         const cacheKey = `bagel_balance_${publicKey.toBase58()}`;
         const cacheData = {
-          handle: encryptedHandle.toString(),
+          handle: currentHandle.toString(),
           amount: decryptedValue,
         };
         localStorage.setItem(cacheKey, JSON.stringify(cacheData));
@@ -686,7 +877,7 @@ function TransferModal({ isOpen, onClose, onTransfer, onBalanceUpdate }: Transfe
     } finally {
       setDecrypting(false);
     }
-  }, [publicKey, wallet.signMessage, encryptedHandle]);
+  }, [publicKey, wallet.signMessage, onBalanceUpdate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1600,31 +1791,80 @@ export default function Dashboard() {
     loadNavbarBalance();
   }, [loadNavbarBalance, navbarBalanceRefreshTrigger]);
 
-  // Decrypt navbar balance - waits for allowance then decrypts once
+  // Decrypt navbar balance - waits for allowance then decrypts with retry
   const handleNavbarDecrypt = async () => {
-    if (!publicKey || !wallet.signMessage || !navbarEncryptedHandle) return;
+    if (!publicKey || !wallet.signMessage) return;
 
     setNavbarDecrypting(true);
 
     try {
+      // First, fetch the LATEST handle from the blockchain
+      console.log('🔄 Fetching latest handle from blockchain...');
+      const tokenAccount = await resolveUserTokenAccount(connection, publicKey, USDBAGEL_MINT);
+      if (!tokenAccount) {
+        console.error('No token account found');
+        return;
+      }
+
+      const accountInfo = await connection.getAccountInfo(tokenAccount);
+      if (!accountInfo?.data) {
+        console.error('No account data found');
+        return;
+      }
+
+      const currentHandle = extractHandle(accountInfo.data as Buffer);
+      if (currentHandle === BigInt(0)) {
+        console.error('Handle is zero');
+        return;
+      }
+
+      // Update the navbar state with latest handle
+      setNavbarEncryptedHandle(currentHandle);
+
+      // Check if handle has changed before decrypting
+      if (!shouldDecryptHandle(currentHandle, publicKey.toBase58())) {
+        return; // Handle unchanged - toast already shown
+      }
+
+      // Handle has changed - set up allowance for the new handle
+      console.log('🔑 Setting up allowance for new handle...');
+      const allowanceResponse = await fetch('/api/setup-allowance', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tokenAccount: tokenAccount.toBase58(),
+          ownerAddress: publicKey.toBase58(),
+        }),
+      });
+
+      const allowanceData = await allowanceResponse.json();
+      if (!allowanceData.success) {
+        throw new Error(allowanceData.error || 'Failed to set up allowance');
+      }
+
       // Wait for allowance to propagate
       console.log('⏳ Waiting for allowance to propagate (5 seconds)...');
       await new Promise(resolve => setTimeout(resolve, 5000));
 
-      console.log('🔓 Decrypting...');
-      const result = await decrypt([navbarEncryptedHandle.toString()], {
-        address: publicKey,
-        signMessage: wallet.signMessage,
-      });
+      console.log('🔓 Decrypting with retry logic...');
+      const result = await decryptWithRetry(
+        [currentHandle.toString()],
+        {
+          address: publicKey,
+          signMessage: wallet.signMessage,
+        },
+        5, // max retries (5 attempts total)
+        2000 // base delay (2s)
+      );
 
       if (result.plaintexts && result.plaintexts.length > 0) {
         const decryptedValue = Number(BigInt(result.plaintexts[0])) / 1_000_000_000;
         setNavbarDecryptedBalance(decryptedValue);
 
-        // Save to localStorage cache
+        // Save handle -> amount mapping to localStorage cache
         const cacheKey = `bagel_balance_${publicKey.toBase58()}`;
         const cacheData = {
-          handle: navbarEncryptedHandle.toString(),
+          handle: currentHandle.toString(),
           amount: decryptedValue,
         };
         localStorage.setItem(cacheKey, JSON.stringify(cacheData));
@@ -2181,57 +2421,7 @@ export default function Dashboard() {
 
               {/* Right Column - Privacy Status & Transactions */}
               <div className="w-80 space-y-6">
-                {/* Privacy Status Card */}
-                <motion.div
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  className="bg-white border border-gray-200 rounded p-5"
-                  data-guide="privacy"
-                >
-                  <div className="flex items-center gap-2 mb-4">
-                    <ShieldCheck className="w-5 h-5 text-bagel-orange" weight="fill" />
-                    <h3 className="font-semibold text-bagel-dark">Privacy Status</h3>
-                  </div>
-
-                  <div className="flex items-center justify-between mb-3">
-                    <span className="text-sm text-gray-600">Privacy Score</span>
-                    <span className="text-lg font-semibold text-green-600">98.7%</span>
-                  </div>
-
-                  <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden mb-6">
-                    <motion.div
-                      initial={{ width: 0 }}
-                      animate={{ width: '98.7%' }}
-                      transition={{ delay: 0.5, duration: 1 }}
-                      className="h-full bg-green-500 rounded-full"
-                    />
-                  </div>
-
-                  <div className="space-y-3">
-                    {privacyFeatures.map((feature, i) => (
-                      <motion.div
-                        key={feature.label}
-                        initial={{ opacity: 0, x: 10 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: 0.6 + i * 0.1 }}
-                        className="flex items-center justify-between"
-                      >
-                        <div className="flex items-center gap-2">
-                          <feature.icon className="w-4 h-4 text-gray-500" />
-                          <span className="text-sm text-gray-700">{feature.label}</span>
-                        </div>
-                        <CheckCircle className="w-4 h-4 text-green-500" weight="fill" />
-                      </motion.div>
-                    ))}
-                  </div>
-
-                  <div className="mt-5 p-3 bg-bagel-cream/50 rounded text-xs text-gray-600">
-                    All transactions are processed through our privacy layer on Solana Devnet.
-                    <div className="mt-2 font-mono text-[10px] text-gray-500 break-all">
-                      Program: {BAGEL_PROGRAM_ID.toBase58()}
-                    </div>
-                  </div>
-                </motion.div>
+               
 
                 {/* Mint Tokens Section */}
                 {connected && (
@@ -2316,6 +2506,9 @@ export default function Dashboard() {
         onClose={() => setIsGuideOpen(false)}
         onComplete={() => setIsGuideOpen(false)}
       />
+
+      {/* Toast Notifications */}
+      <Toaster />
     </>
   );
 }

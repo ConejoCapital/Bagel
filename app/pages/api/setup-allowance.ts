@@ -107,8 +107,8 @@ export default async function handler(
 
     const handle = extractHandle(accountInfo.data as Buffer);
     console.log(`Handle (decimal): ${handle.toString()}`);
-    console.log(`Inco Lightning Program ID: ${INCO_LIGHTNING_ENV.toBase58()}`);
-    console.log(`SDK INCO_BASE_PROGRAM_ID: ${INCO_BASE_PROGRAM_ID}`);
+    console.log(`Inco Lightning Program ID (ENV): ${INCO_LIGHTNING_ENV.toBase58()}`);
+    console.log(`Inco Lightning Program ID (SDK): ${INCO_LIGHTNING_SDK.toBase58()}`);
 
     if (handle === BigInt(0)) {
       return res.status(400).json({

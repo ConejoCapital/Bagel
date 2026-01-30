@@ -879,10 +879,12 @@ export async function confidentialTransfer(
 
   console.log('✅ Confidential transfer successful:', txid);
 
+  // Set up allowances for BOTH sender and recipient to decrypt their new balances
+  console.log('Setting up allowances for sender and recipient...');
+
   // Set up allowance for sender to decrypt their new balance
-  console.log('Setting up allowance for sender to decrypt new balance...');
   try {
-    const allowanceResponse = await fetch('/api/setup-allowance', {
+    const senderAllowanceResponse = await fetch('/api/setup-allowance', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -890,14 +892,34 @@ export async function confidentialTransfer(
         ownerAddress: wallet.publicKey.toBase58(),
       }),
     });
-    const allowanceResult = await allowanceResponse.json();
-    if (allowanceResult.success) {
-      console.log('✅ Sender allowance set up:', allowanceResult.txid);
+    const senderAllowanceResult = await senderAllowanceResponse.json();
+    if (senderAllowanceResult.success) {
+      console.log('✅ Sender allowance set up:', senderAllowanceResult.txid);
     } else {
-      console.warn('⚠️ Failed to set up sender allowance:', allowanceResult.error);
+      console.warn('⚠️ Failed to set up sender allowance:', senderAllowanceResult.error);
     }
   } catch (err) {
     console.warn('⚠️ Failed to set up sender allowance:', err);
+  }
+
+  // Set up allowance for recipient to decrypt their new balance
+  try {
+    const recipientAllowanceResponse = await fetch('/api/setup-allowance', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        tokenAccount: recipientIncoAccount.toBase58(),
+        ownerAddress: recipientPubkey.toBase58(),
+      }),
+    });
+    const recipientAllowanceResult = await recipientAllowanceResponse.json();
+    if (recipientAllowanceResult.success) {
+      console.log('✅ Recipient allowance set up:', recipientAllowanceResult.txid);
+    } else {
+      console.warn('⚠️ Failed to set up recipient allowance:', recipientAllowanceResult.error);
+    }
+  } catch (err) {
+    console.warn('⚠️ Failed to set up recipient allowance:', err);
   }
 
   return txid;
