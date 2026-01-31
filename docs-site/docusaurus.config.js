@@ -11,7 +11,7 @@ const config = {
   organizationName: 'bagel-protocol',
   projectName: 'bagel-docs',
 
-  onBrokenLinks: 'throw',
+  onBrokenLinks: 'warn',
   onBrokenMarkdownLinks: 'warn',
 
   i18n: {

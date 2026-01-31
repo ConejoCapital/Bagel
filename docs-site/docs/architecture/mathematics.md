@@ -12,35 +12,35 @@ Cryptographic and mathematical foundations of the Bagel Protocol.
 
 FHE allows computation on encrypted data:
 
-$$
-\text{Eval}(E(m_1), E(m_2), f) = E(f(m_1, m_2))
-$$
+```
+Eval(E(m₁), E(m₂), f) = E(f(m₁, m₂))
+```
 
 Where:
-- $E$ is the encryption function
-- $m_1, m_2$ are plaintext values
-- $f$ is any computable function
+- `E` is the encryption function
+- `m₁, m₂` are plaintext values
+- `f` is any computable function
 - The result is encrypted
 
 ### TFHE Scheme
 
 Bagel uses TFHE (Torus FHE) via Inco Lightning:
 
-$$
-\text{TFHE}: \mathbb{Z}_{2^{128}} \rightarrow \mathcal{C}
-$$
+```
+TFHE: ℤ₂¹²⁸ → C
 
-Where $\mathcal{C}$ is the ciphertext space.
+Where C = Ciphertext space
+```
 
 ## Homomorphic Operations
 
 ### Addition
 
-For encrypted values $E(a)$ and $E(b)$:
+For encrypted values `E(a)` and `E(b)`:
 
-$$
-E(a) \oplus E(b) = E((a + b) \mod 2^{128})
-$$
+```
+E(a) ⊕ E(b) = E((a + b) mod 2¹²⁸)
+```
 
 **Implementation:**
 ```rust
@@ -49,11 +49,11 @@ e_add(cpi_ctx, encrypted_a, encrypted_b, 0)
 
 ### Subtraction
 
-For encrypted values where $a \geq b$:
+For encrypted values where `a ≥ b`:
 
-$$
-E(a) \ominus E(b) = E(a - b)
-$$
+```
+E(a) ⊖ E(b) = E(a - b)
+```
 
 **Implementation:**
 ```rust
@@ -62,11 +62,11 @@ e_sub(cpi_ctx, encrypted_a, encrypted_b, 0)
 
 ### Scalar Multiplication
 
-For encrypted value $E(a)$ and plaintext scalar $k$:
+For encrypted value `E(a)` and plaintext scalar `k`:
 
-$$
-E(a) \otimes k = E(a \times k)
-$$
+```
+E(a) ⊗ k = E(a × k)
+```
 
 **Implementation:**
 ```rust
@@ -77,35 +77,35 @@ e_mul_scalar(cpi_ctx, encrypted_a, scalar, 0)
 
 ### Continuous Accrual
 
-For an employee with salary rate $S$ (per second):
+For an employee with salary rate `S` (per second):
 
-$$
-A(t) = A(t_0) + S \times (t - t_0)
-$$
+```
+A(t) = A(t₀) + S × (t - t₀)
 
 Where:
-- $A(t)$ = Accrued amount at time $t$
-- $A(t_0)$ = Previous accrued amount
-- $S$ = Salary per second
-- $t - t_0$ = Elapsed time
+  A(t)   = Accrued amount at time t
+  A(t₀)  = Previous accrued amount
+  S      = Salary per second
+  t - t₀ = Elapsed time
+```
 
 ### Encrypted Streaming
 
 With FHE, this becomes:
 
-$$
-E(A(t)) = E(A(t_0)) \oplus (E(S) \otimes \Delta t)
-$$
+```
+E(A(t)) = E(A(t₀)) ⊕ (E(S) ⊗ Δt)
+```
 
 All operations preserve encryption!
 
 ### Integral Form
 
-For continuous streaming from $t_0$ to $t_1$:
+For continuous streaming from `t₀` to `t₁`:
 
-$$
-A(t_1) = A(t_0) + \int_{t_0}^{t_1} S \, dt = A(t_0) + S \times (t_1 - t_0)
-$$
+```
+A(t₁) = A(t₀) + ∫[t₀,t₁] S dt = A(t₀) + S × (t₁ - t₀)
+```
 
 ## Balance Update Mathematics
 
@@ -113,62 +113,56 @@ $$
 
 Business balance after deposit:
 
-$$
-B'_{business} = E(B_{business}) \oplus E(\text{amount})
-$$
-
-Expands to:
-
-$$
-B'_{business} = E(B_{business} + \text{amount})
-$$
+```
+B'_business = E(B_business) ⊕ E(amount)
+            = E(B_business + amount)
+```
 
 ### Withdrawal Operation
 
 Employee accrued after withdrawal:
 
-$$
-A'_{employee} = E(A_{employee}) \ominus E(\text{amount})
-$$
-
-Expands to:
-
-$$
-A'_{employee} = E(A_{employee} - \text{amount})
-$$
+```
+A'_employee = E(A_employee) ⊖ E(amount)
+            = E(A_employee - amount)
+```
 
 ### Count Increment
 
 When adding a business or employee:
 
-$$
-C' = E(C) \oplus E(1) = E(C + 1)
-$$
+```
+C' = E(C) ⊕ E(1) = E(C + 1)
+```
 
 ## Privacy Guarantees
 
 ### Semantic Security
 
-For any two plaintexts $m_0, m_1$:
+For any two plaintexts `m₀, m₁`:
 
-$$
-\Pr[\text{Distinguish}(E(m_0), E(m_1))] \leq \frac{1}{2} + \text{negl}(\lambda)
-$$
+```
+Pr[Distinguish(E(m₀), E(m₁))] ≤ 1/2 + negl(λ)
+```
 
 An adversary cannot distinguish ciphertexts with non-negligible advantage.
 
-### Indistinguishability Under Chosen Plaintext Attack (IND-CPA)
+### Ciphertext Indistinguishability
 
-$$
-\text{Adv}_{\mathcal{A}}^{\text{IND-CPA}}(\lambda) \leq \text{negl}(\lambda)
-$$
+All ciphertexts look random, regardless of plaintext value.
+
+### Key Security
+
+- Decryption keys never leave Inco's secure infrastructure
+- Access controlled by Solana signatures
+- No on-chain key material
 
 ## PDA Privacy Analysis
 
 ### Traditional PDA (Information Leakage)
 
 ```
-PDA = H(\text{"employee"} \| \text{employer\_pk} \| \text{employee\_pk})
+PDA = H("employee" || employer_pk || employee_pk)
 ```
 
 An observer can:
@@ -181,7 +175,7 @@ An observer can:
 ### Index-Based PDA (Privacy Preserved)
 
 ```
-PDA = H(\text{"employee"} \| \text{business\_pda} \| \text{index})
+PDA = H("employee" || business_pda || index)
 ```
 
 An observer sees:
@@ -191,17 +185,17 @@ An observer sees:
 
 ### Formal Privacy Property
 
-Let $\mathcal{O}$ be the set of observable information:
+Let `O` be the set of observable information:
 
-$$
-\mathcal{O} = \{ \text{PDAs}, \text{indices}, \text{tx\_sigs}, \text{timestamps} \}
-$$
+```
+O = { PDAs, indices, tx_sigs, timestamps }
+```
 
-The mapping from $\mathcal{O}$ to real identities is computationally infeasible:
+The mapping from O to real identities is computationally infeasible:
 
-$$
-\Pr[\text{Identity}(PDA)] \leq \frac{1}{|\text{Possible Identities}|}
-$$
+```
+Pr[Identity(PDA)] ≤ 1 / |Possible Identities|
+```
 
 ## Rate Limiting
 
@@ -209,15 +203,15 @@ $$
 
 Minimum time between withdrawals:
 
-$$
-\Delta t_{\min} = 60 \text{ seconds}
-$$
+```
+Δt_min = 60 seconds
+```
 
 Constraint:
 
-$$
-t_{\text{current}} - t_{\text{last\_action}} \geq \Delta t_{\min}
-$$
+```
+t_current - t_last_action ≥ Δt_min
+```
 
 ### Purpose
 
@@ -232,19 +226,17 @@ Prevents:
 
 All operations use checked arithmetic:
 
-$$
-\text{checked\_add}(a, b) = \begin{cases}
-a + b & \text{if } a + b < 2^{64} \\
-\text{Error} & \text{otherwise}
-\end{cases}
-$$
+```
+checked_add(a, b) = {
+  a + b    if a + b < 2⁶⁴
+  Error    otherwise
+}
 
-$$
-\text{checked\_sub}(a, b) = \begin{cases}
-a - b & \text{if } a \geq b \\
-\text{Error} & \text{otherwise}
-\end{cases}
-$$
+checked_sub(a, b) = {
+  a - b    if a ≥ b
+  Error    otherwise
+}
+```
 
 ### Rust Implementation
 
@@ -259,21 +251,23 @@ let result = current
 ### USDBagel
 
 - **Decimals**: 6
-- **Minimum unit**: $10^{-6}$ (1 lamport)
+- **Minimum unit**: 10⁻⁶ (1 lamport)
 
 ### Salary Conversion
 
-Annual salary $S_a$ to per-second rate $S_s$:
+Annual salary `Sₐ` to per-second rate `Sₛ`:
 
-$$
-S_s = \frac{S_a}{365.25 \times 24 \times 3600} = \frac{S_a}{31,557,600}
-$$
+```
+Sₛ = Sₐ / (365.25 × 24 × 3600)
+   = Sₐ / 31,557,600
+```
 
 Example: $100,000/year:
 
-$$
-S_s = \frac{100,000 \times 10^6}{31,557,600} \approx 3.17 \text{ lamports/second}
-$$
+```
+Sₛ = (100,000 × 10⁶) / 31,557,600
+   ≈ 3.17 lamports/second
+```
 
 ## Confidential Transfer Proofs
 
@@ -281,17 +275,17 @@ $$
 
 Inco verifies:
 
-$$
-E(B_{\text{source}}) \ominus E(\text{amount}) \geq E(0)
-$$
+```
+E(B_source) ⊖ E(amount) ≥ E(0)
+```
 
 Without revealing actual values!
 
 ### Conservation Proof
 
-$$
-E(B_{\text{source}}) + E(B_{\text{dest}}) = E(B'_{\text{source}}) + E(B'_{\text{dest}})
-$$
+```
+E(B_source) + E(B_dest) = E(B'_source) + E(B'_dest)
+```
 
 Total balance is conserved (verified on encrypted values).
 
@@ -300,9 +294,9 @@ Total balance is conserved (verified on encrypted values).
 | Operation | Time Complexity | Space Complexity |
 |-----------|-----------------|------------------|
 | Encryption | O(1) | O(16 bytes) |
-| `e_add` | O(1) | O(16 bytes) |
-| `e_sub` | O(1) | O(16 bytes) |
-| `e_mul` | O(1) | O(16 bytes) |
+| e_add | O(1) | O(16 bytes) |
+| e_sub | O(1) | O(16 bytes) |
+| e_mul | O(1) | O(16 bytes) |
 | Decryption | O(1) | O(8 bytes) |
 | PDA derivation | O(1) | O(32 bytes) |
 

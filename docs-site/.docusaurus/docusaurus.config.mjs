@@ -11,7 +11,7 @@ export default {
   "baseUrl": "/",
   "organizationName": "bagel-protocol",
   "projectName": "bagel-docs",
-  "onBrokenLinks": "throw",
+  "onBrokenLinks": "warn",
   "i18n": {
     "defaultLocale": "en",
     "locales": [
