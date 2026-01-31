@@ -139,6 +139,6 @@ Ready to build with Bagel? Start with our guides:
 
 ## Resources
 
-- [GitHub Repository](https://github.com/bagel-protocol/bagel)
+- [GitHub Repository](https://github.com/ConejoCapital/Bagel)
 - [API Reference](./reference/program-api)
 - [TypeScript SDK](./reference/typescript-sdk)

@@ -48,7 +48,7 @@ npm install @solana/wallet-adapter-base @solana/wallet-adapter-react @solana/wal
 ### Clone Repository
 
 ```bash
-git clone https://github.com/bagel-protocol/bagel.git
+git clone https://github.com/ConejoCapital/Bagel.git
 cd bagel
 ```
 
@@ -213,7 +213,7 @@ solana airdrop 2 --url devnet
 ### Getting Help
 
 - [Discord Community](https://discord.gg/bagel)
-- [GitHub Issues](https://github.com/bagel-protocol/bagel/issues)
+- [GitHub Issues](https://github.com/ConejoCapital/Bagel/issues)
 - [FAQ](./faq)
 
 ## Next Steps

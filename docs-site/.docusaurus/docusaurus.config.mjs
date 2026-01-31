@@ -9,7 +9,7 @@ export default {
   "favicon": "img/favicon.ico",
   "url": "https://bagel.finance",
   "baseUrl": "/",
-  "organizationName": "bagel-protocol",
+  "organizationName": "ConejoCapital",
   "projectName": "bagel-docs",
   "onBrokenLinks": "warn",
   "i18n": {
@@ -46,7 +46,7 @@ export default {
       {
         "docs": {
           "sidebarPath": "./sidebars.js",
-          "editUrl": "https://github.com/bagel-protocol/bagel/tree/main/docs-site/"
+          "editUrl": "https://github.com/ConejoCapital/Bagel/tree/main/docs-site/"
         },
         "theme": {
           "customCss": "./src/css/custom.css"
@@ -71,7 +71,7 @@ export default {
           "label": "Documentation"
         },
         {
-          "href": "https://github.com/bagel-protocol/bagel",
+          "href": "https://github.com/ConejoCapital/Bagel",
           "label": "GitHub",
           "position": "right"
         }
@@ -112,7 +112,7 @@ export default {
           "items": [
             {
               "label": "GitHub",
-              "href": "https://github.com/bagel-protocol/bagel"
+              "href": "https://github.com/ConejoCapital/Bagel"
             }
           ]
         }

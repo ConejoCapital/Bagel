@@ -221,7 +221,7 @@ Now that you have the basics working:
 
 ## Example Repository
 
-Check out our [example repository](https://github.com/bagel-protocol/bagel-examples) for complete working examples including:
+Check out our [example repository](https://github.com/ConejoCapital/Bagel-examples) for complete working examples including:
 
 - React/Next.js integration
 - Full payroll workflow

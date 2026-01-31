@@ -8,7 +8,7 @@ const config = {
   url: 'https://bagel.finance',
   baseUrl: '/',
 
-  organizationName: 'bagel-protocol',
+  organizationName: 'ConejoCapital',
   projectName: 'bagel-docs',
 
   onBrokenLinks: 'warn',
@@ -32,7 +32,7 @@ const config = {
       ({
         docs: {
           sidebarPath: './sidebars.js',
-          editUrl: 'https://github.com/bagel-protocol/bagel/tree/main/docs-site/',
+          editUrl: 'https://github.com/ConejoCapital/Bagel/tree/main/docs-site/',
         },
         theme: {
           customCss: './src/css/custom.css',
@@ -61,7 +61,7 @@ const config = {
             label: 'Documentation',
           },
           {
-            href: 'https://github.com/bagel-protocol/bagel',
+            href: 'https://github.com/ConejoCapital/Bagel',
             label: 'GitHub',
             position: 'right',
           },
@@ -101,7 +101,7 @@ const config = {
             items: [
               {
                 label: 'GitHub',
-                href: 'https://github.com/bagel-protocol/bagel',
+                href: 'https://github.com/ConejoCapital/Bagel',
               },
             ],
           },

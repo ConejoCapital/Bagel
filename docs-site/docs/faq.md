@@ -74,7 +74,7 @@ MagicBlock TEE allows balance updates every ~10ms:
 ### What tokens are supported?
 
 USDBagel (confidential USDC) on Devnet:
-- Mint: `A3G2NBGL7xH9T6BYwVkwRGsSYxtFPdg4HSThfTmV94ht`
+- Mint: `GhCZ59UK4Afg4WGpQ11HyRc8ya4swgWFXMh2BxuWQXHt`
 
 ### How do I get test tokens?
 
@@ -168,7 +168,7 @@ Check the Solana Explorer for detailed error messages. Common causes:
 ### Where can I get help?
 
 - [Discord](https://discord.gg/bagel)
-- [GitHub Issues](https://github.com/bagel-protocol/bagel/issues)
+- [GitHub Issues](https://github.com/ConejoCapital/Bagel/issues)
 - [Twitter](https://twitter.com/bagelprotocol)
 
 ### How do I report bugs?
