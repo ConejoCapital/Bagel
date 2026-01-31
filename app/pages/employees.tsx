@@ -49,7 +49,6 @@ const navItems = [
   { icon: Users, label: 'Employees', href: '/employees', active: true },
   { icon: PaperPlaneTilt, label: 'Send Payment', href: '/send' },
   { icon: ClockCounterClockwise, label: 'Transaction History', href: '/history' },
-  { icon: Vault, label: 'Privacy Vault', href: '/vault' },
   { icon: Wallet, label: 'Wallets', href: '/wallets' },
   { icon: ChartBar, label: 'Reports', href: '/reports' },
 ];
@@ -821,7 +820,7 @@ export default function Employees() {
                           <code className="text-sm text-gray-600 bg-gray-100 px-2 py-1 rounded">{employee.wallet}</code>
                         </td>
                         <td className="px-4 py-4">
-                          <div className="text-sm font-medium text-bagel-dark">${employee.salary.toLocaleString()}</div>
+                          <div className="text-sm font-medium text-bagel-dark">${(employee.salary || 0).toLocaleString()}</div>
                           <div className="text-xs text-gray-500">{employee.currency}</div>
                         </td>
                         <td className="px-4 py-4">

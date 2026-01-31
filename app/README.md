@@ -53,7 +53,7 @@ npm run dev
 
 ### Employee Dashboard (`pages/employee.tsx`)
 - Request withdrawals using business and employee indices
-- Private withdrawal with optional ShadowWire ZK proofs
+- Private withdrawal with FHE encrypted transfers
 - Transaction verification links
 
 ## Demo Mode
@@ -99,7 +99,7 @@ NEXT_PUBLIC_BAGEL_PROGRAM_ID=J45uxvT26szuQcmxvs5NRgtAMornKM9Ga9WaQ58bKUNE
 
 Located in `lib/`:
 - `inco.ts` - Inco Lightning client for FHE encrypted state
-- `shadowwire.ts` - ShadowWire client for zero-knowledge transfers
+- `shadowwire.ts` - ShadowWire client for confidential transfers
 - `magicblock.ts` - MagicBlock client for streaming payments
 - `range.ts` - Range API client for compliance checks
 - `helius.ts` - Helius RPC and DAS API client

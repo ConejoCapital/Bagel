@@ -41,7 +41,6 @@ const navItems = [
   { icon: Users, label: 'Employees', href: '/employees' },
   { icon: PaperPlaneTilt, label: 'Send Payment', href: '/send' },
   { icon: ClockCounterClockwise, label: 'Transaction History', href: '/history', active: true },
-  { icon: Vault, label: 'Privacy Vault', href: '/vault' },
   { icon: Wallet, label: 'Wallets', href: '/wallets' },
   { icon: ChartBar, label: 'Reports', href: '/reports' },
 ];

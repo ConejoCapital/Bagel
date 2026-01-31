@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
@@ -8,19 +8,17 @@ import {
   Users,
   PaperPlaneTilt,
   ClockCounterClockwise,
-  Vault,
   Wallet,
   ChartBar,
   MagnifyingGlass,
   Command,
   TrendUp,
   TrendDown,
-  CalendarBlank,
   CurrencyDollar,
   ShieldCheck,
   ArrowRight,
-  Export,
-  CaretDown,
+  LockSimple,
+  Lightning,
 } from '@phosphor-icons/react';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { useTransactions } from '../hooks/useTransactions';
@@ -33,9 +31,8 @@ const WalletButton = dynamic(() => import('../components/WalletButton'), {
 const navItems = [
   { icon: House, label: 'Home', href: '/dashboard' },
   { icon: Users, label: 'Employees', href: '/employees' },
-  { icon: PaperPlaneTilt, label: 'Send Payment', href: '/send' },
+  { icon: PaperPlaneTilt, label: 'Send Payment', href: '/dashboard?transfer=true' },
   { icon: ClockCounterClockwise, label: 'Transaction History', href: '/history' },
-  { icon: Vault, label: 'Privacy Vault', href: '/vault' },
   { icon: Wallet, label: 'Wallets', href: '/wallets' },
   { icon: ChartBar, label: 'Reports', href: '/reports', active: true },
 ];
@@ -54,10 +51,9 @@ const EMPLOYEES_STORAGE_KEY = 'bagel_employees';
 
 export default function Reports() {
   const { publicKey, connected } = useWallet();
-  const { transactions, stats } = useTransactions(50);
+  const { transactions, loading: txLoading } = useTransactions(100);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [employees, setEmployees] = useState<Employee[]>([]);
-  const [dateRange, setDateRange] = useState<'7d' | '30d' | '90d' | 'all'>('30d');
 
   // Load employees from localStorage
   useEffect(() => {
@@ -90,23 +86,74 @@ export default function Reports() {
   const totalOutgoing = outgoingTransactions.reduce((sum, tx) => sum + tx.amount, 0);
   const totalIncoming = incomingTransactions.reduce((sum, tx) => sum + tx.amount, 0);
 
-  // Mock data for charts (in production, calculate from actual data)
-  const monthlyData = [
-    { month: 'Aug', amount: 45000 },
-    { month: 'Sep', amount: 52000 },
-    { month: 'Oct', amount: 48000 },
-    { month: 'Nov', amount: 61000 },
-    { month: 'Dec', amount: 55000 },
-    { month: 'Jan', amount: monthlyPayroll || 58000 },
-  ];
+  // Group transactions by month for trend chart
+  const monthlyTrend = useMemo(() => {
+    const months: Record<string, { month: string; outgoing: number; incoming: number; count: number }> = {};
+    const now = new Date();
 
-  const departmentBreakdown = [
-    { name: 'Engineering', amount: 45000, percent: 45 },
-    { name: 'Product', amount: 25000, percent: 25 },
-    { name: 'Design', amount: 15000, percent: 15 },
-    { name: 'Marketing', amount: 10000, percent: 10 },
-    { name: 'Other', amount: 5000, percent: 5 },
-  ];
+    // Initialize last 6 months
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const key = `${d.getFullYear()}-${d.getMonth()}`;
+      const monthName = d.toLocaleDateString('en-US', { month: 'short' });
+      months[key] = { month: monthName, outgoing: 0, incoming: 0, count: 0 };
+    }
+
+    // Fill with transaction data
+    transactions.forEach(tx => {
+      const d = new Date(tx.timestamp * 1000);
+      const key = `${d.getFullYear()}-${d.getMonth()}`;
+      if (months[key]) {
+        months[key].count++;
+        if (tx.direction === 'out') {
+          months[key].outgoing += tx.amount;
+        } else {
+          months[key].incoming += tx.amount;
+        }
+      }
+    });
+
+    return Object.values(months);
+  }, [transactions]);
+
+  // Group transactions by type
+  const transactionsByType = useMemo(() => {
+    const types: Record<string, { count: number; amount: number }> = {};
+
+    transactions.forEach(tx => {
+      const type = tx.type || 'Other';
+      if (!types[type]) {
+        types[type] = { count: 0, amount: 0 };
+      }
+      types[type].count++;
+      types[type].amount += tx.amount;
+    });
+
+    return Object.entries(types)
+      .map(([name, data]) => ({
+        name,
+        count: data.count,
+        amount: data.amount,
+        percent: transactions.length > 0 ? Math.round((data.count / transactions.length) * 100) : 0,
+      }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 5);
+  }, [transactions]);
+
+  // Employee salary breakdown
+  const employeeBreakdown = useMemo(() => {
+    return activeEmployees
+      .map(emp => ({
+        name: emp.name,
+        salary: emp.salary,
+        frequency: emp.paymentFrequency,
+        monthly: emp.paymentFrequency === 'Weekly' ? emp.salary * 4 :
+                 emp.paymentFrequency === 'Bi-weekly' ? emp.salary * 2 : emp.salary,
+      }))
+      .sort((a, b) => b.monthly - a.monthly);
+  }, [activeEmployees]);
+
+  const maxMonthlyAmount = Math.max(...monthlyTrend.map(d => Math.max(d.outgoing, d.incoming)), 0.001);
 
   return (
     <>
@@ -179,31 +226,11 @@ export default function Reports() {
           <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-6">
             <div>
               <h1 className="text-xl font-semibold text-bagel-dark">Reports</h1>
-              <p className="text-sm text-gray-500">Payroll analytics and insights</p>
+              <p className="text-sm text-gray-500">Analytics and insights</p>
             </div>
-            <div className="flex items-center gap-3">
-              {/* Date Range Selector */}
-              <div className="relative">
-                <select
-                  value={dateRange}
-                  onChange={(e) => setDateRange(e.target.value as typeof dateRange)}
-                  className="appearance-none px-4 py-2 pr-8 bg-gray-50 border border-gray-200 rounded text-sm focus:outline-none focus:border-bagel-orange cursor-pointer"
-                >
-                  <option value="7d">Last 7 days</option>
-                  <option value="30d">Last 30 days</option>
-                  <option value="90d">Last 90 days</option>
-                  <option value="all">All time</option>
-                </select>
-                <CaretDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
-              </div>
-              <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                className="flex items-center gap-2 px-4 py-2 bg-bagel-orange text-white rounded font-medium text-sm"
-              >
-                <Export className="w-4 h-4" />
-                Export
-              </motion.button>
+            <div className="flex items-center gap-2 text-sm text-gray-500">
+              <LockSimple className="w-4 h-4 text-bagel-orange" />
+              All amounts encrypted via FHE
             </div>
           </header>
 
@@ -224,29 +251,25 @@ export default function Reports() {
                       icon: CurrencyDollar,
                       value: `$${monthlyPayroll.toLocaleString()}`,
                       label: 'Monthly Payroll',
-                      change: '+12%',
-                      trend: 'up',
+                      sub: `${activeEmployees.length} active employee${activeEmployees.length !== 1 ? 's' : ''}`,
                     },
                     {
                       icon: Users,
-                      value: activeEmployees.length.toString(),
-                      label: 'Active Employees',
-                      change: `${employees.length} total`,
-                      trend: 'neutral',
+                      value: employees.length.toString(),
+                      label: 'Total Employees',
+                      sub: `${activeEmployees.length} active`,
                     },
                     {
-                      icon: ChartBar,
+                      icon: Lightning,
                       value: transactions.length.toString(),
                       label: 'Transactions',
-                      change: dateRange === '30d' ? 'Last 30 days' : dateRange === '7d' ? 'Last 7 days' : dateRange === '90d' ? 'Last 90 days' : 'All time',
-                      trend: 'neutral',
+                      sub: txLoading ? 'Loading...' : 'From Helius',
                     },
                     {
                       icon: ShieldCheck,
-                      value: `${Math.round(stats.privateTransactionPercent)}%`,
-                      label: 'Private Transactions',
-                      change: 'FHE encrypted',
-                      trend: 'up',
+                      value: '100%',
+                      label: 'FHE Encrypted',
+                      sub: 'Inco confidential',
                     },
                   ].map((stat, i) => (
                     <motion.div
@@ -260,21 +283,7 @@ export default function Reports() {
                         <div className="w-10 h-10 bg-bagel-cream rounded flex items-center justify-center">
                           <stat.icon className="w-5 h-5 text-bagel-orange" />
                         </div>
-                        {stat.trend === 'up' && (
-                          <span className="flex items-center gap-1 text-xs text-green-600 font-medium">
-                            <TrendUp className="w-3 h-3" />
-                            {stat.change}
-                          </span>
-                        )}
-                        {stat.trend === 'down' && (
-                          <span className="flex items-center gap-1 text-xs text-red-600 font-medium">
-                            <TrendDown className="w-3 h-3" />
-                            {stat.change}
-                          </span>
-                        )}
-                        {stat.trend === 'neutral' && (
-                          <span className="text-xs text-gray-500">{stat.change}</span>
-                        )}
+                        <span className="text-xs text-gray-500">{stat.sub}</span>
                       </div>
                       <div className="text-2xl font-semibold text-bagel-dark mb-1">{stat.value}</div>
                       <div className="text-sm text-gray-500">{stat.label}</div>
@@ -284,7 +293,7 @@ export default function Reports() {
 
                 {/* Charts Row */}
                 <div className="grid grid-cols-2 gap-6">
-                  {/* Payroll Trend */}
+                  {/* Transaction Trend */}
                   <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -292,47 +301,60 @@ export default function Reports() {
                     className="bg-white border border-gray-200 rounded p-6"
                   >
                     <div className="flex items-center justify-between mb-6">
-                      <h3 className="text-lg font-semibold text-bagel-dark">Payroll Trend</h3>
-                      <div className="flex items-center gap-2 text-xs text-gray-500">
-                        <CalendarBlank className="w-4 h-4" />
-                        Last 6 months
+                      <h3 className="text-lg font-semibold text-bagel-dark">Transaction Activity</h3>
+                      <div className="flex items-center gap-4 text-xs">
+                        <div className="flex items-center gap-1">
+                          <div className="w-3 h-3 bg-red-400 rounded" />
+                          <span className="text-gray-500">Outgoing</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <div className="w-3 h-3 bg-green-400 rounded" />
+                          <span className="text-gray-500">Incoming</span>
+                        </div>
                       </div>
                     </div>
 
-                    {/* Simple Bar Chart */}
-                    <div className="flex items-end justify-between h-48 gap-3">
-                      {monthlyData.map((item, i) => (
-                        <div key={item.month} className="flex-1 flex flex-col items-center">
-                          <motion.div
-                            initial={{ height: 0 }}
-                            animate={{ height: `${(item.amount / Math.max(...monthlyData.map(d => d.amount))) * 100}%` }}
-                            transition={{ delay: 0.3 + i * 0.1, duration: 0.5 }}
-                            className="w-full bg-bagel-orange/20 rounded-t relative group cursor-pointer hover:bg-bagel-orange/30 transition-colors"
-                          >
-                            <div className="absolute -top-8 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity bg-bagel-dark text-white text-xs px-2 py-1 rounded whitespace-nowrap">
-                              ${item.amount.toLocaleString()}
-                            </div>
-                          </motion.div>
-                          <div className="text-xs text-gray-500 mt-2">{item.month}</div>
+                    {/* Bar Chart */}
+                    <div className="flex items-end justify-between h-40 gap-2">
+                      {monthlyTrend.map((item, i) => (
+                        <div key={item.month} className="flex-1 flex flex-col items-center gap-1">
+                          <div className="w-full flex gap-0.5 items-end h-32">
+                            <motion.div
+                              initial={{ height: 0 }}
+                              animate={{ height: `${(item.outgoing / maxMonthlyAmount) * 100}%` }}
+                              transition={{ delay: 0.3 + i * 0.05, duration: 0.4 }}
+                              className="flex-1 bg-red-400/60 rounded-t min-h-[2px]"
+                              title={`Out: ${item.outgoing.toFixed(4)} SOL`}
+                            />
+                            <motion.div
+                              initial={{ height: 0 }}
+                              animate={{ height: `${(item.incoming / maxMonthlyAmount) * 100}%` }}
+                              transition={{ delay: 0.35 + i * 0.05, duration: 0.4 }}
+                              className="flex-1 bg-green-400/60 rounded-t min-h-[2px]"
+                              title={`In: ${item.incoming.toFixed(4)} SOL`}
+                            />
+                          </div>
+                          <div className="text-xs text-gray-500">{item.month}</div>
+                          <div className="text-[10px] text-gray-400">{item.count} tx</div>
                         </div>
                       ))}
                     </div>
 
                     <div className="mt-4 pt-4 border-t border-gray-100 flex items-center justify-between">
                       <div>
-                        <div className="text-sm text-gray-500">Annual Projection</div>
+                        <div className="text-sm text-gray-500">Annual Payroll Projection</div>
                         <div className="text-xl font-semibold text-bagel-dark">${annualPayroll.toLocaleString()}</div>
                       </div>
                       <Link
                         href="/history"
                         className="text-sm text-bagel-orange font-medium flex items-center gap-1 hover:underline"
                       >
-                        View Details <ArrowRight className="w-4 h-4" />
+                        View History <ArrowRight className="w-4 h-4" />
                       </Link>
                     </div>
                   </motion.div>
 
-                  {/* Department Breakdown */}
+                  {/* Transaction Types or Employee Breakdown */}
                   <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -340,33 +362,68 @@ export default function Reports() {
                     className="bg-white border border-gray-200 rounded p-6"
                   >
                     <div className="flex items-center justify-between mb-6">
-                      <h3 className="text-lg font-semibold text-bagel-dark">By Department</h3>
-                      <span className="text-xs text-gray-500">Monthly breakdown</span>
+                      <h3 className="text-lg font-semibold text-bagel-dark">
+                        {employeeBreakdown.length > 0 ? 'Employee Salaries' : 'Transaction Types'}
+                      </h3>
+                      <span className="text-xs text-gray-500">
+                        {employeeBreakdown.length > 0 ? 'Monthly breakdown' : 'By category'}
+                      </span>
                     </div>
 
-                    <div className="space-y-4">
-                      {departmentBreakdown.map((dept, i) => (
-                        <motion.div
-                          key={dept.name}
-                          initial={{ opacity: 0, x: -20 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          transition={{ delay: 0.4 + i * 0.1 }}
-                        >
-                          <div className="flex items-center justify-between mb-1">
-                            <span className="text-sm font-medium text-bagel-dark">{dept.name}</span>
-                            <span className="text-sm text-gray-500">${dept.amount.toLocaleString()}</span>
-                          </div>
-                          <div className="h-2 bg-gray-100 rounded overflow-hidden">
-                            <motion.div
-                              initial={{ width: 0 }}
-                              animate={{ width: `${dept.percent}%` }}
-                              transition={{ delay: 0.5 + i * 0.1, duration: 0.5 }}
-                              className="h-full bg-bagel-orange rounded"
-                            />
-                          </div>
-                        </motion.div>
-                      ))}
-                    </div>
+                    {employeeBreakdown.length > 0 ? (
+                      <div className="space-y-4">
+                        {employeeBreakdown.slice(0, 5).map((emp, i) => (
+                          <motion.div
+                            key={emp.name}
+                            initial={{ opacity: 0, x: -20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: 0.4 + i * 0.1 }}
+                          >
+                            <div className="flex items-center justify-between mb-1">
+                              <span className="text-sm font-medium text-bagel-dark">{emp.name}</span>
+                              <span className="text-sm text-gray-500">${emp.monthly.toLocaleString()}/mo</span>
+                            </div>
+                            <div className="h-2 bg-gray-100 rounded overflow-hidden">
+                              <motion.div
+                                initial={{ width: 0 }}
+                                animate={{ width: `${monthlyPayroll > 0 ? (emp.monthly / monthlyPayroll) * 100 : 0}%` }}
+                                transition={{ delay: 0.5 + i * 0.1, duration: 0.5 }}
+                                className="h-full bg-bagel-orange rounded"
+                              />
+                            </div>
+                            <div className="text-xs text-gray-400 mt-1">{emp.frequency}</div>
+                          </motion.div>
+                        ))}
+                      </div>
+                    ) : transactionsByType.length > 0 ? (
+                      <div className="space-y-4">
+                        {transactionsByType.map((type, i) => (
+                          <motion.div
+                            key={type.name}
+                            initial={{ opacity: 0, x: -20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: 0.4 + i * 0.1 }}
+                          >
+                            <div className="flex items-center justify-between mb-1">
+                              <span className="text-sm font-medium text-bagel-dark truncate max-w-[150px]">{type.name}</span>
+                              <span className="text-sm text-gray-500">{type.count} tx</span>
+                            </div>
+                            <div className="h-2 bg-gray-100 rounded overflow-hidden">
+                              <motion.div
+                                initial={{ width: 0 }}
+                                animate={{ width: `${type.percent}%` }}
+                                transition={{ delay: 0.5 + i * 0.1, duration: 0.5 }}
+                                className="h-full bg-bagel-orange rounded"
+                              />
+                            </div>
+                          </motion.div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-8 text-gray-500 text-sm">
+                        No data yet. Add employees or make transactions.
+                      </div>
+                    )}
 
                     <div className="mt-6 pt-4 border-t border-gray-100">
                       <Link
@@ -476,7 +533,7 @@ export default function Reports() {
                     }`}>
                       {totalIncoming - totalOutgoing >= 0 ? '+' : ''}{(totalIncoming - totalOutgoing).toFixed(4)} SOL
                     </div>
-                    <div className="text-xs text-gray-500 mt-1">Current period</div>
+                    <div className="text-xs text-gray-500 mt-1">Based on {transactions.length} transactions</div>
                   </motion.div>
                 </div>
               </div>
