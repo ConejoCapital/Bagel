@@ -54,9 +54,7 @@ export default {
       }
     ]
   ],
-  "plugins": [
-    "/Users/tomas/solana-hackathon/Bagel/docs-site/node_modules/@easyops-cn/docusaurus-search-local/dist/server/server/index.js"
-  ],
+  "plugins": [],
   "themeConfig": {
     "image": "img/bagel-social-card.jpg",
     "navbar": {

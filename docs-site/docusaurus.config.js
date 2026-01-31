@@ -41,9 +41,7 @@ const config = {
     ],
   ],
 
-  plugins: [
-    require.resolve('@easyops-cn/docusaurus-search-local'),
-  ],
+  plugins: [],
 
   themeConfig:
     /** @type {import('@docusaurus/preset-classic').ThemeConfig} */
