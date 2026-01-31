@@ -1439,6 +1439,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "payroll"
+version = "0.1.0"
+dependencies = [
+ "anchor-lang 0.31.1",
+ "inco-lightning",
+ "inco-token",
+]
+
+[[package]]
 name = "pbkdf2"
 version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"

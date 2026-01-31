@@ -1,4 +1,5 @@
 [toolchain]
+anchor_version = "0.31.1"
 
 [features]
 resolution = true
@@ -6,11 +7,13 @@ skip-lint = false
 
 [programs.devnet]
 bagel = "AEd52vEEAdXWUjKut1aQyLLJQnwMWqYMb4hSaHpxd8Hj"
+payroll = "J11xMm4pLQ6BUEhTpNwF1Mh4UhzUJNZCcw52zvZJspK2"
 delegation_program = "DELeGGvXpWV2fqJUhqcF5ZSYMS4JTLjteaAMARRSaeSh"
 inco_lightning = "5sjEbPiqgZrYwR31ahR6Uk9wf5awoX61YGg7jExQSwaj"
 
 [programs.localnet]
 bagel = "EijHU9DFQX1gYprK2rd9pNunPxTEQaByUQd1KDngmN8b"
+payroll = "J11xMm4pLQ6BUEhTpNwF1Mh4UhzUJNZCcw52zvZJspK2"
 
 [programs.mainnet]
 bagel = "EijHU9DFQX1gYprK2rd9pNunPxTEQaByUQd1KDngmN8b"
