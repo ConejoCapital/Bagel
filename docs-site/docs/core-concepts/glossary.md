@@ -17,8 +17,12 @@ The Rust framework used to build Solana programs. Bagel uses Anchor 0.29+.
 ## B
 
 ### Bagel Program
-The main Solana smart contract that manages payroll operations with privacy.
+Token account registry program. Manages user token account PDAs.
 - **Program ID**: `AEd52vEEAdXWUjKut1aQyLLJQnwMWqYMb4hSaHpxd8Hj`
+
+### Bagel Payroll Program
+The main payroll program for confidential payroll operations. Handles business registration, deposits, employees, and payments.
+- **Program ID**: `J11xMm4pLQ6BUEhTpNwF1Mh4UhzUJNZCcw52zvZJspK2`
 
 ### BusinessEntry
 An on-chain account representing a registered business. Uses index-based PDA for privacy.
@@ -95,9 +99,9 @@ seeds = ["employee", business_pda, employee_index]
 The FHE service providing encrypted storage and computation on Solana.
 - **Program ID**: `5sjEbPiqgZrYwR31ahR6Uk9wf5awoX61YGg7jExQSwaj`
 
-### Inco Tokens
+### Inco Token Program
 Confidential token program for encrypted transfers.
-- **Program ID**: `HuUn2JwCPCLWwJ3z17m7CER73jseqsxvbcFuZN4JAw22`
+- **Program ID**: `4cyJHzecVWuU2xux6bCAPAhALKQT8woBh4Vx3AGEGe5N`
 
 ## L
 
@@ -147,7 +151,7 @@ The specific FHE scheme used by Inco Lightning.
 
 ### USDBagel
 The confidential stablecoin used in Bagel Protocol.
-- **Mint**: `A3G2NBGL7xH9T6BYwVkwRGsSYxtFPdg4HSThfTmV94ht`
+- **Mint**: `GhCZ59UK4Afg4WGpQ11HyRc8ya4swgWFXMh2BxuWQXHt`
 
 ### UserTokenAccount
 PDA-based registry for deterministic token account lookup.

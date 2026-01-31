@@ -427,8 +427,10 @@ interface EmployeeEntry {
 ```typescript
 export const BAGEL_PROGRAM_ID = new PublicKey('AEd52vEEAdXWUjKut1aQyLLJQnwMWqYMb4hSaHpxd8Hj');
 export const INCO_LIGHTNING_ID = new PublicKey('5sjEbPiqgZrYwR31ahR6Uk9wf5awoX61YGg7jExQSwaj');
-export const INCO_TOKEN_ID = new PublicKey('HuUn2JwCPCLWwJ3z17m7CER73jseqsxvbcFuZN4JAw22');
+export const INCO_TOKEN_ID = new PublicKey('4cyJHzecVWuU2xux6bCAPAhALKQT8woBh4Vx3AGEGe5N');
 export const MAGICBLOCK_ID = new PublicKey('DELeGGvXpWV2fqJUhqcF5ZSYMS4JTLjteaAMARRSaeSh');
-export const USDBAGEL_MINT = new PublicKey('A3G2NBGL7xH9T6BYwVkwRGsSYxtFPdg4HSThfTmV94ht');
+export const USDBAGEL_MINT = new PublicKey('GhCZ59UK4Afg4WGpQ11HyRc8ya4swgWFXMh2BxuWQXHt');
+export const PAYROLL_PROGRAM_ID = new PublicKey('J11xMm4pLQ6BUEhTpNwF1Mh4UhzUJNZCcw52zvZJspK2');
+export const VAULT_TOKEN_ACCOUNT = new PublicKey('9CpzGYPnsBESxfaPyvQ4ZFLQaKahVu62TMbK5o3qofw3');
 export const MIN_WITHDRAW_INTERVAL = 60; // seconds
 ```

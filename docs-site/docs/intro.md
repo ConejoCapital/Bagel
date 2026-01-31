@@ -123,12 +123,19 @@ Ready to build with Bagel? Start with our guides:
 
 ## Program IDs
 
-| Program | Address | Network |
+| Program | Address | Purpose |
 |---------|---------|---------|
-| Bagel | `AEd52vEEAdXWUjKut1aQyLLJQnwMWqYMb4hSaHpxd8Hj` | Devnet |
-| Inco Lightning | `5sjEbPiqgZrYwR31ahR6Uk9wf5awoX61YGg7jExQSwaj` | Devnet |
-| Inco Tokens | `HuUn2JwCPCLWwJ3z17m7CER73jseqsxvbcFuZN4JAw22` | Devnet |
-| MagicBlock | `DELeGGvXpWV2fqJUhqcF5ZSYMS4JTLjteaAMARRSaeSh` | Devnet |
+| Bagel (Token Registry) | `AEd52vEEAdXWUjKut1aQyLLJQnwMWqYMb4hSaHpxd8Hj` | Token account PDAs |
+| Payroll Program | `J11xMm4pLQ6BUEhTpNwF1Mh4UhzUJNZCcw52zvZJspK2` | Payroll operations |
+| Inco Lightning | `5sjEbPiqgZrYwR31ahR6Uk9wf5awoX61YGg7jExQSwaj` | FHE operations |
+| Inco Token Program | `4cyJHzecVWuU2xux6bCAPAhALKQT8woBh4Vx3AGEGe5N` | Encrypted transfers |
+| MagicBlock Delegation | `DELeGGvXpWV2fqJUhqcF5ZSYMS4JTLjteaAMARRSaeSh` | TEE streaming |
+
+## Token Information
+
+| Token | Mint Address | Decimals |
+|-------|--------------|----------|
+| USDBagel | `GhCZ59UK4Afg4WGpQ11HyRc8ya4swgWFXMh2BxuWQXHt` | 9 |
 
 ## Resources
 

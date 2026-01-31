@@ -121,13 +121,13 @@ NEXT_PUBLIC_BAGEL_PROGRAM_ID=AEd52vEEAdXWUjKut1aQyLLJQnwMWqYMb4hSaHpxd8Hj
 # Inco FHE Configuration
 # ===========================================
 NEXT_PUBLIC_INCO_LIGHTNING_ID=5sjEbPiqgZrYwR31ahR6Uk9wf5awoX61YGg7jExQSwaj
-NEXT_PUBLIC_INCO_TOKEN_ID=HuUn2JwCPCLWwJ3z17m7CER73jseqsxvbcFuZN4JAw22
+NEXT_PUBLIC_INCO_TOKEN_ID=4cyJHzecVWuU2xux6bCAPAhALKQT8woBh4Vx3AGEGe5N
 NEXT_PUBLIC_INCO_NETWORK=devnet
 
 # ===========================================
 # Token Configuration
 # ===========================================
-NEXT_PUBLIC_USDBAGEL_MINT=A3G2NBGL7xH9T6BYwVkwRGsSYxtFPdg4HSThfTmV94ht
+NEXT_PUBLIC_USDBAGEL_MINT=GhCZ59UK4Afg4WGpQ11HyRc8ya4swgWFXMh2BxuWQXHt
 
 # ===========================================
 # MagicBlock TEE (Optional)

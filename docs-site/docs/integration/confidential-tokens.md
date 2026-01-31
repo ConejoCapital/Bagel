@@ -10,8 +10,8 @@ Guide to integrating Inco Confidential Tokens for encrypted transfers.
 
 Inco Confidential Tokens enable transfers where amounts are encrypted:
 
-- **Program ID**: `HuUn2JwCPCLWwJ3z17m7CER73jseqsxvbcFuZN4JAw22`
-- **Token Mint**: `A3G2NBGL7xH9T6BYwVkwRGsSYxtFPdg4HSThfTmV94ht` (USDBagel)
+- **Program ID**: `4cyJHzecVWuU2xux6bCAPAhALKQT8woBh4Vx3AGEGe5N`
+- **Token Mint**: `GhCZ59UK4Afg4WGpQ11HyRc8ya4swgWFXMh2BxuWQXHt` (USDBagel)
 
 ## Dependencies
 
