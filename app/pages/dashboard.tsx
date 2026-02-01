@@ -164,6 +164,7 @@ import {
   getMasterVaultTokenAccount,
   getConfidentialTokenAccount,
   getEmployeeEntrySalaryData,
+  type EmployeeEntrySalaryData,
   solToLamports,
   lamportsToSOL,
   BAGEL_PROGRAM_ID,
@@ -1704,7 +1705,7 @@ export default function Dashboard() {
   const [employeeClaimTxid, setEmployeeClaimTxid] = useState('');
   const [employeeClaimError, setEmployeeClaimError] = useState('');
   // Salary to claim (employee view) – real-time polling
-  const [salaryToClaimData, setSalaryToClaimData] = useState<Awaited<ReturnType<typeof getEmployeeEntrySalaryData>>(null);
+  const [salaryToClaimData, setSalaryToClaimData] = useState<EmployeeEntrySalaryData | null>(null);
   const [decryptedAccrued, setDecryptedAccrued] = useState<bigint | null>(null);
   const [decryptedSalaryPerSecond, setDecryptedSalaryPerSecond] = useState<bigint | null>(null);
   const [salaryDecrypting, setSalaryDecrypting] = useState(false);
@@ -1783,8 +1784,10 @@ export default function Dashboard() {
         signMessage: (msg: Uint8Array) => wallet.signMessage!(msg),
       });
       if (Array.isArray(result?.plaintexts) && result.plaintexts.length >= 2) {
-        setDecryptedSalaryPerSecond(result.plaintexts[0]);
-        setDecryptedAccrued(result.plaintexts[1]);
+        const salary = result.plaintexts[0];
+        const accrued = result.plaintexts[1];
+        setDecryptedSalaryPerSecond(typeof salary === 'bigint' ? salary : BigInt(String(salary)));
+        setDecryptedAccrued(typeof accrued === 'bigint' ? accrued : BigInt(String(accrued)));
       }
     } catch (e) {
       console.error('Decrypt salary failed:', e);
