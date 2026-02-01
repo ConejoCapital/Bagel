@@ -538,6 +538,35 @@ export async function requestWithdrawal(
   return txid;
 }
 
+/**
+ * EmployeeEntry layout (Bagel program): discriminator 8, business_entry 32, employee_index 8,
+ * encrypted_employee_id 16, encrypted_salary 16, encrypted_accrued 16, last_action 8, is_active 1, bump 1, padding.
+ */
+export interface EmployeeEntrySalaryData {
+  lastAction: number;
+  encryptedSalaryHex: string;
+  encryptedAccruedHex: string;
+  isActive: boolean;
+}
+
+/**
+ * Fetch EmployeeEntry account and parse public + encrypted fields for salary/claim display.
+ * Use with Inco decrypt to show Total to Claim, Max salary/year-month, max withdraw.
+ */
+export async function getEmployeeEntrySalaryData(
+  connection: Connection,
+  employeeEntryPda: PublicKey
+): Promise<EmployeeEntrySalaryData | null> {
+  const accountInfo = await connection.getAccountInfo(employeeEntryPda);
+  if (!accountInfo?.data || accountInfo.data.length < 104) return null;
+  const data = accountInfo.data;
+  const lastAction = Number(data.readBigInt64LE(96));
+  const isActive = data[104] === 1;
+  const encryptedSalaryHex = data.slice(64, 80).toString('hex');
+  const encryptedAccruedHex = data.slice(80, 96).toString('hex');
+  return { lastAction, encryptedSalaryHex, encryptedAccruedHex, isActive };
+}
+
 // Utility functions
 export function solToLamports(sol: number): number {
   return Math.floor(sol * 1_000_000_000);

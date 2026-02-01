@@ -159,9 +159,11 @@ import {
   getCurrentBusinessIndex,
   getCurrentEmployeeIndex,
   getBusinessEntryPDA,
+  getEmployeeEntryPDA,
   getMasterVaultPDA,
   getMasterVaultTokenAccount,
   getConfidentialTokenAccount,
+  getEmployeeEntrySalaryData,
   solToLamports,
   lamportsToSOL,
   BAGEL_PROGRAM_ID,
@@ -1701,6 +1703,11 @@ export default function Dashboard() {
   const [employeeClaiming, setEmployeeClaiming] = useState(false);
   const [employeeClaimTxid, setEmployeeClaimTxid] = useState('');
   const [employeeClaimError, setEmployeeClaimError] = useState('');
+  // Salary to claim (employee view) – real-time polling
+  const [salaryToClaimData, setSalaryToClaimData] = useState<Awaited<ReturnType<typeof getEmployeeEntrySalaryData>>(null);
+  const [decryptedAccrued, setDecryptedAccrued] = useState<bigint | null>(null);
+  const [decryptedSalaryPerSecond, setDecryptedSalaryPerSecond] = useState<bigint | null>(null);
+  const [salaryDecrypting, setSalaryDecrypting] = useState(false);
 
   // Load employees from localStorage
   useEffect(() => {
@@ -1740,6 +1747,52 @@ export default function Dashboard() {
       setPayrollBusiness(null);
     }
   }, [publicKey, connection]);
+
+  // Poll salary-to-claim data (employee entry 0) every 10s when user has a business
+  const fetchSalaryToClaimData = useCallback(async () => {
+    if (!connection || businessEntryIndex === null) return;
+    try {
+      const [masterVaultPda] = getMasterVaultPDA();
+      const [businessEntryPda] = getBusinessEntryPDA(masterVaultPda, businessEntryIndex);
+      const [employeeEntryPda] = getEmployeeEntryPDA(businessEntryPda, 0);
+      const data = await getEmployeeEntrySalaryData(connection, employeeEntryPda);
+      setSalaryToClaimData(data);
+    } catch {
+      setSalaryToClaimData(null);
+    }
+  }, [connection, businessEntryIndex]);
+
+  useEffect(() => {
+    if (!connected || businessEntryIndex === null) {
+      setSalaryToClaimData(null);
+      return;
+    }
+    fetchSalaryToClaimData();
+    const interval = setInterval(fetchSalaryToClaimData, 10_000);
+    return () => clearInterval(interval);
+  }, [connected, businessEntryIndex, fetchSalaryToClaimData]);
+
+  // Decrypt salary/accrued for "Salary to Claim" (user signs once)
+  const handleDecryptSalaryToClaim = useCallback(async () => {
+    if (!salaryToClaimData || !wallet.publicKey || !wallet.signMessage) return;
+    setSalaryDecrypting(true);
+    try {
+      const handles = [salaryToClaimData.encryptedSalaryHex, salaryToClaimData.encryptedAccruedHex];
+      const result = await decrypt(handles, {
+        address: wallet.publicKey,
+        signMessage: (msg: Uint8Array) => wallet.signMessage!(msg),
+      });
+      if (Array.isArray(result?.plaintexts) && result.plaintexts.length >= 2) {
+        setDecryptedSalaryPerSecond(result.plaintexts[0]);
+        setDecryptedAccrued(result.plaintexts[1]);
+      }
+    } catch (e) {
+      console.error('Decrypt salary failed:', e);
+      toast.error('Decryption failed or denied');
+    } finally {
+      setSalaryDecrypting(false);
+    }
+  }, [salaryToClaimData, wallet.publicKey, wallet.signMessage]);
 
   // Load payroll business data
   const loadPayrollBusinessData = async () => {
@@ -2628,6 +2681,89 @@ export default function Dashboard() {
                         </a>
                       </div>
                     )}
+                  </motion.div>
+                )}
+
+                {/* Salary to Claim metrics (Total to Claim, Max/year, Max/month, Max withdraw) – real-time */}
+                {connected && businessEntryIndex !== null && salaryToClaimData && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-xl p-6"
+                  >
+                    <h3 className="text-lg font-semibold text-bagel-dark flex items-center gap-2 mb-4">
+                      <CurrencyDollar className="w-5 h-5 text-green-600" weight="fill" />
+                      Total Salary to Claim &amp; Max Withdraw
+                    </h3>
+                    <p className="text-sm text-gray-600 mb-4">
+                      You&apos;re registered as Employee #0 in a payroll business. Values update in real time.
+                    </p>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-4">
+                      <div>
+                        <div className="text-xs text-gray-500 uppercase tracking-wider mb-1">Total Salary to Claim</div>
+                        <div className="text-lg font-semibold text-bagel-dark">
+                          {decryptedAccrued !== null
+                            ? `${formatBalance(Number(decryptedAccrued) / 1e6)} USDBagel`
+                            : '••••••'}
+                        </div>
+                      </div>
+                      <div>
+                        <div className="text-xs text-gray-500 uppercase tracking-wider mb-1">Max Salary / year</div>
+                        <div className="text-lg font-semibold text-bagel-dark">
+                          {decryptedSalaryPerSecond !== null
+                            ? `${formatBalance((Number(decryptedSalaryPerSecond) * 31557600) / 1e6)} USDBagel`
+                            : '••••••'}
+                        </div>
+                      </div>
+                      <div>
+                        <div className="text-xs text-gray-500 uppercase tracking-wider mb-1">Max Salary / month</div>
+                        <div className="text-lg font-semibold text-bagel-dark">
+                          {decryptedSalaryPerSecond !== null
+                            ? `${formatBalance((Number(decryptedSalaryPerSecond) * 2629800) / 1e6)} USDBagel`
+                            : '••••••'}
+                        </div>
+                      </div>
+                      <div>
+                        <div className="text-xs text-gray-500 uppercase tracking-wider mb-1">Max available to withdraw</div>
+                        <div className="text-lg font-semibold text-bagel-dark">
+                          {decryptedAccrued !== null
+                            ? `${formatBalance(Number(decryptedAccrued) / 1e6)} USDBagel`
+                            : '••••••'}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-4 flex-wrap">
+                      {decryptedAccrued === null && (
+                        <motion.button
+                          type="button"
+                          onClick={handleDecryptSalaryToClaim}
+                          disabled={salaryDecrypting}
+                          className="px-4 py-2 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white text-sm font-medium rounded-lg transition-colors flex items-center gap-2"
+                        >
+                          {salaryDecrypting ? (
+                            <>
+                              <CircleNotch className="w-4 h-4 animate-spin" />
+                              Decrypting...
+                            </>
+                          ) : (
+                            <>
+                              <LockSimpleOpen className="w-4 h-4" />
+                              Decrypt to view amounts
+                            </>
+                          )}
+                        </motion.button>
+                      )}
+                      <span className="text-xs text-gray-500 flex items-center gap-1">
+                        <Clock className="w-3.5 h-3.5" />
+                        Last action: {salaryToClaimData.lastAction > 0 ? `${Math.max(0, Math.floor(Date.now() / 1000 - salaryToClaimData.lastAction))}s ago` : '—'}
+                      </span>
+                      {salaryToClaimData.isActive && (
+                        <span className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium bg-green-100 text-green-700">
+                          <CheckCircle className="w-3 h-3" weight="fill" />
+                          Active
+                        </span>
+                      )}
+                    </div>
                   </motion.div>
                 )}
 
