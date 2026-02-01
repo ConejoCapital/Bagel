@@ -28,12 +28,24 @@ const sidebars = {
     },
     {
       type: 'category',
+      label: 'Payroll Program',
+      items: [
+        'payroll-program/overview',
+        'payroll-program/accounts',
+        'payroll-program/instructions',
+        'payroll-program/employee-lifecycle',
+        'payroll-program/vault-integration',
+      ],
+    },
+    {
+      type: 'category',
       label: 'Integration',
       items: [
         'integration/inco-lightning',
         'integration/confidential-tokens',
         'integration/magicblock-tee',
         'integration/helius-rpc',
+        'integration/orbmarkets-scan',
       ],
     },
     {
