@@ -217,7 +217,7 @@ try {
 1. Withdraw at varied intervals
 2. Don't publicly discuss amounts
 3. Use secure wallet practices
-4. Verify transactions on trusted explorer
+4. Verify transactions on [OrbMarkets Scan](https://orbmarkets.io)
 
 ## Audit Status
 

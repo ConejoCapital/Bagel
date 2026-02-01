@@ -158,10 +158,14 @@ Ensure you're using the correct wallet:
 
 ### Transaction fails silently
 
-Check the Solana Explorer for detailed error messages. Common causes:
+Check [OrbMarkets Scan](https://orbmarkets.io) for detailed error messages and transaction logs. Common causes:
 - Insufficient SOL for fees
 - Wrong account addresses
 - Program ID mismatch
+
+```
+https://orbmarkets.io/tx/{signature}?cluster=devnet
+```
 
 ## Support
 
