@@ -1,14 +1,20 @@
 /**
  * Payroll Program Client
  *
- * Integrates with deployed payroll program for confidential payroll operations.
+ * Integrates with the deployed Confidential Streaming Payroll program.
  * Program ID: J11xMm4pLQ6BUEhTpNwF1Mh4UhzUJNZCcw52zvZJspK2
  *
+ * Architecture:
+ * - Business PDA: ["business", owner_pubkey]
+ * - Vault PDA: ["vault", business_pubkey]
+ * - Employee PDA: ["employee", business_pubkey, employee_index (u64)]
+ *
  * Features:
- * - Register business with confidential token account
- * - Deposit encrypted funds via CPI to Inco Token Program
- * - Add employees with encrypted salary
- * - Pay employees with encrypted transfers
+ * - Register business with confidential vault
+ * - Deposit encrypted tokens to vault via CPI
+ * - Add employees with encrypted salary (INDEX-based for privacy)
+ * - TEE streaming via MagicBlock delegation
+ * - Withdrawals (auto/manual/simple)
  */
 
 import { Connection, PublicKey, SystemProgram, Transaction, TransactionInstruction } from '@solana/web3.js';
@@ -16,28 +22,119 @@ import { WalletContextState } from '@solana/wallet-adapter-react';
 import { encryptValue } from '@inco/solana-sdk/encryption';
 import { hexToBuffer } from '@inco/solana-sdk/utils';
 
-// Program IDs
-export const PAYROLL_PROGRAM_ID = new PublicKey('J11xMm4pLQ6BUEhTpNwF1Mh4UhzUJNZCcw52zvZJspK2');
-export const BAGEL_PROGRAM_ID = new PublicKey('AEd52vEEAdXWUjKut1aQyLLJQnwMWqYMb4hSaHpxd8Hj');
-export const INCO_TOKEN_PROGRAM_ID = new PublicKey('4cyJHzecVWuU2xux6bCAPAhALKQT8woBh4Vx3AGEGe5N');
-export const INCO_LIGHTNING_ID = new PublicKey('5sjEbPiqgZrYwR31ahR6Uk9wf5awoX61YGg7jExQSwaj');
-export const USDBAGEL_MINT = new PublicKey('GhCZ59UK4Afg4WGpQ11HyRc8ya4swgWFXMh2BxuWQXHt');
+// ============================================================
+// Program IDs (from env with fallbacks)
+// ============================================================
 
-// PDA Seeds
+export const PAYROLL_PROGRAM_ID = new PublicKey(
+  process.env.NEXT_PUBLIC_PAYROLL_PROGRAM_ID || 'J11xMm4pLQ6BUEhTpNwF1Mh4UhzUJNZCcw52zvZJspK2'
+);
+
+export const INCO_LIGHTNING_ID = new PublicKey(
+  process.env.NEXT_PUBLIC_INCO_PROGRAM_ID || '5sjEbPiqgZrYwR31ahR6Uk9wf5awoX61YGg7jExQSwaj'
+);
+
+export const INCO_TOKEN_PROGRAM_ID = new PublicKey(
+  process.env.NEXT_PUBLIC_INCO_TOKEN_PROGRAM_ID || '4cyJHzecVWuU2xux6bCAPAhALKQT8woBh4Vx3AGEGe5N'
+);
+
+export const USDBAGEL_MINT = new PublicKey(
+  process.env.NEXT_PUBLIC_USDBAGEL_MINT || 'GhCZ59UK4Afg4WGpQ11HyRc8ya4swgWFXMh2BxuWQXHt'
+);
+
+// MagicBlock Delegation Program
+export const MAGICBLOCK_DELEGATION_PROGRAM = new PublicKey(
+  process.env.NEXT_PUBLIC_MAGICBLOCK_DELEGATION_PROGRAM || 'DELeGGvXpWV2fqJUhqcF5ZSYMS4JTLjteaAMARRSaeSh'
+);
+
+// Default TEE Validator
+export const TEE_VALIDATOR = new PublicKey('FnE6VJT5QNZdedZPnCoLsARgBwoE6DeJNjBs2H1gySXA');
+
+// ============================================================
+// Demo Environment Addresses (from env)
+// ============================================================
+
+export function getDemoAddresses() {
+  return {
+    businessPDA: process.env.NEXT_PUBLIC_PAYROLL_BUSINESS_PDA
+      ? new PublicKey(process.env.NEXT_PUBLIC_PAYROLL_BUSINESS_PDA)
+      : null,
+    vaultPDA: process.env.NEXT_PUBLIC_PAYROLL_VAULT_PDA
+      ? new PublicKey(process.env.NEXT_PUBLIC_PAYROLL_VAULT_PDA)
+      : null,
+    vaultToken: process.env.NEXT_PUBLIC_PAYROLL_VAULT_TOKEN
+      ? new PublicKey(process.env.NEXT_PUBLIC_PAYROLL_VAULT_TOKEN)
+      : null,
+    employeePDA: process.env.NEXT_PUBLIC_PAYROLL_EMPLOYEE_PDA
+      ? new PublicKey(process.env.NEXT_PUBLIC_PAYROLL_EMPLOYEE_PDA)
+      : null,
+    employeeToken: process.env.NEXT_PUBLIC_PAYROLL_EMPLOYEE_TOKEN
+      ? new PublicKey(process.env.NEXT_PUBLIC_PAYROLL_EMPLOYEE_TOKEN)
+      : null,
+  };
+}
+
+// ============================================================
+// PDA Seeds (matching on-chain program)
+// ============================================================
+
 const BUSINESS_SEED = Buffer.from('business');
+const VAULT_SEED = Buffer.from('vault');
 const EMPLOYEE_SEED = Buffer.from('employee');
-const USER_TOKEN_SEED = Buffer.from('user_token');
+const VAULT_TOKEN_SEED = Buffer.from('vault_token');
 
-// Instruction discriminators (from program IDL)
+// ============================================================
+// Instruction Discriminators (Anchor-style sha256)
+// ============================================================
+
+import { createHash } from 'crypto';
+
+/**
+ * Compute Anchor instruction discriminator
+ * Formula: sha256("global:<instruction_name>")[0..8]
+ */
+function anchorDiscriminator(instructionName: string): Buffer {
+  const hash = createHash('sha256')
+    .update(`global:${instructionName}`)
+    .digest();
+  return hash.slice(0, 8);
+}
+
+// Compute discriminators dynamically to ensure correctness
 const DISCRIMINATORS = {
-  register_business: Buffer.from([73, 228, 5, 59, 229, 67, 133, 82]),
-  deposit: Buffer.from([242, 35, 198, 137, 82, 225, 242, 182]),
-  add_employee: Buffer.from([14, 82, 239, 156, 50, 90, 189, 61]),
-  pay_employee: Buffer.from([202, 231, 86, 72, 42, 110, 167, 118]),
+  // Setup
+  register_business: anchorDiscriminator('register_business'),
+  init_vault: anchorDiscriminator('init_vault'),
+
+  // Operations
+  deposit: anchorDiscriminator('deposit'),
+  add_employee: anchorDiscriminator('add_employee'),
+
+  // MagicBlock TEE
+  delegate_to_tee: anchorDiscriminator('delegate_to_tee'),
+  mark_delegated: anchorDiscriminator('mark_delegated'),
+  accrue: anchorDiscriminator('accrue'),
+
+  // Withdrawals
+  auto_payment: anchorDiscriminator('auto_payment'),
+  manual_withdraw: anchorDiscriminator('manual_withdraw'),
+  simple_withdraw: anchorDiscriminator('simple_withdraw'),
+  undelegate: anchorDiscriminator('undelegate'),
 };
+
+// Debug: Log computed discriminators
+if (typeof window === 'undefined') {
+  console.log('Computed discriminators:');
+  console.log('  init_vault:', Array.from(DISCRIMINATORS.init_vault));
+}
+
+// ============================================================
+// PDA Derivation Functions
+// ============================================================
 
 /**
  * Derive Business PDA
+ * Seeds: ["business", owner_pubkey]
  */
 export function getBusinessPDA(owner: PublicKey): [PublicKey, number] {
   return PublicKey.findProgramAddressSync(
@@ -47,72 +144,266 @@ export function getBusinessPDA(owner: PublicKey): [PublicKey, number] {
 }
 
 /**
- * Derive Employee PDA
+ * Derive Vault PDA
+ * Seeds: ["vault", business_pubkey]
  */
-export function getEmployeePDA(business: PublicKey, employeeWallet: PublicKey): [PublicKey, number] {
+export function getVaultPDA(business: PublicKey): [PublicKey, number] {
   return PublicKey.findProgramAddressSync(
-    [EMPLOYEE_SEED, business.toBuffer(), employeeWallet.toBuffer()],
+    [VAULT_SEED, business.toBuffer()],
     PAYROLL_PROGRAM_ID
   );
 }
 
 /**
- * Get user's Bagel PDA for token account resolution
+ * Derive Employee PDA (INDEX-BASED for privacy)
+ * Seeds: ["employee", business_pubkey, employee_index (u64 LE)]
+ *
+ * NOTE: Uses index, NOT employee wallet pubkey!
+ * This prevents correlation between on-chain PDAs and employee identities.
  */
-export function getUserTokenPDA(owner: PublicKey, mint: PublicKey = USDBAGEL_MINT): [PublicKey, number] {
+export function getEmployeePDA(business: PublicKey, employeeIndex: number): [PublicKey, number] {
+  const indexBuffer = Buffer.alloc(8);
+  indexBuffer.writeBigUInt64LE(BigInt(employeeIndex));
   return PublicKey.findProgramAddressSync(
-    [USER_TOKEN_SEED, owner.toBuffer(), mint.toBuffer()],
-    BAGEL_PROGRAM_ID
+    [EMPLOYEE_SEED, business.toBuffer(), indexBuffer],
+    PAYROLL_PROGRAM_ID
   );
 }
 
 /**
- * Resolve Inco Token account from Bagel PDA registry
+ * Derive Vault Token Account PDA
+ * Seeds: ["vault_token", vault_pubkey]
  */
-export async function resolveUserTokenAccount(
+export function getVaultTokenPDA(vault: PublicKey): [PublicKey, number] {
+  return PublicKey.findProgramAddressSync(
+    [VAULT_TOKEN_SEED, vault.toBuffer()],
+    PAYROLL_PROGRAM_ID
+  );
+}
+
+// ============================================================
+// Account Data Parsing
+// ============================================================
+
+/**
+ * Parse Business account data
+ */
+export interface BusinessAccount {
+  address: PublicKey;
+  owner: PublicKey;
+  vault: PublicKey;
+  nextEmployeeIndex: number;
+  encryptedEmployeeCount: Uint8Array;
+  isActive: boolean;
+  createdAt: number;
+  bump: number;
+}
+
+export async function getBusinessAccount(
   connection: Connection,
-  owner: PublicKey,
-  mint: PublicKey = USDBAGEL_MINT
-): Promise<PublicKey | null> {
-  const [userTokenPDA] = getUserTokenPDA(owner, mint);
+  owner: PublicKey
+): Promise<BusinessAccount | null> {
+  const [businessPDA] = getBusinessPDA(owner);
+  const accountInfo = await connection.getAccountInfo(businessPDA);
 
-  try {
-    const accountInfo = await connection.getAccountInfo(userTokenPDA);
-    if (!accountInfo || !accountInfo.data) {
-      console.log(`No Bagel PDA found for ${owner.toBase58()}`);
-      return null;
-    }
-
-    // Parse inco_token_account from account data
-    // Offset: discriminator(8) + owner(32) + mint(32) = 72
-    const INCO_TOKEN_ACCOUNT_OFFSET = 72;
-    const incoTokenAccountBytes = accountInfo.data.slice(
-      INCO_TOKEN_ACCOUNT_OFFSET,
-      INCO_TOKEN_ACCOUNT_OFFSET + 32
-    );
-    const incoTokenAccount = new PublicKey(incoTokenAccountBytes);
-
-    // Check if it's not default (all zeros)
-    if (incoTokenAccount.equals(PublicKey.default)) {
-      console.log(`Bagel PDA exists but inco_token_account not linked for ${owner.toBase58()}`);
-      return null;
-    }
-
-    return incoTokenAccount;
-  } catch (err) {
-    console.error(`Error resolving token account:`, err);
+  if (!accountInfo) {
     return null;
   }
+
+  // Parse account data
+  // Business struct layout:
+  // 0-8: discriminator
+  // 8-40: owner (32)
+  // 40-72: vault (32)
+  // 72-80: next_employee_index (u64)
+  // 80-112: encrypted_employee_count (32)
+  // 112: is_active (1)
+  // 113-121: created_at (i64)
+  // 121: bump (1)
+  const data = accountInfo.data;
+
+  return {
+    address: businessPDA,
+    owner: new PublicKey(data.slice(8, 40)),
+    vault: new PublicKey(data.slice(40, 72)),
+    nextEmployeeIndex: Number(data.readBigUInt64LE(72)),
+    encryptedEmployeeCount: data.slice(80, 112),
+    isActive: data[112] === 1,
+    createdAt: Number(data.readBigInt64LE(113)),
+    bump: data[121],
+  };
 }
 
 /**
- * Register a business for payroll
+ * Parse Vault account data
+ */
+export interface VaultAccount {
+  address: PublicKey;
+  business: PublicKey;
+  mint: PublicKey;
+  tokenAccount: PublicKey;
+  encryptedBalance: Uint8Array;
+  bump: number;
+}
+
+export async function getVaultAccount(
+  connection: Connection,
+  business: PublicKey
+): Promise<VaultAccount | null> {
+  const [vaultPDA] = getVaultPDA(business);
+  const accountInfo = await connection.getAccountInfo(vaultPDA);
+
+  if (!accountInfo) {
+    return null;
+  }
+
+  // Vault struct layout:
+  // 0-8: discriminator
+  // 8-40: business (32)
+  // 40-72: mint (32)
+  // 72-104: token_account (32)
+  // 104-136: encrypted_balance (32)
+  // 136: bump (1)
+  const data = accountInfo.data;
+
+  return {
+    address: vaultPDA,
+    business: new PublicKey(data.slice(8, 40)),
+    mint: new PublicKey(data.slice(40, 72)),
+    tokenAccount: new PublicKey(data.slice(72, 104)),
+    encryptedBalance: data.slice(104, 136),
+    bump: data[136],
+  };
+}
+
+/**
+ * Parse Employee account data
+ */
+export interface EmployeeAccount {
+  address: PublicKey;
+  business: PublicKey;
+  employeeIndex: number;
+  encryptedEmployeeId: Uint8Array;
+  encryptedSalaryRate: Uint8Array;
+  encryptedAccrued: Uint8Array;
+  lastAccrualTime: number;
+  isActive: boolean;
+  isDelegated: boolean;
+  bump: number;
+}
+
+export async function getEmployeeAccount(
+  connection: Connection,
+  business: PublicKey,
+  employeeIndex: number
+): Promise<EmployeeAccount | null> {
+  const [employeePDA] = getEmployeePDA(business, employeeIndex);
+  const accountInfo = await connection.getAccountInfo(employeePDA);
+
+  if (!accountInfo) {
+    return null;
+  }
+
+  // Employee struct layout:
+  // 0-8: discriminator
+  // 8-40: business (32)
+  // 40-48: employee_index (u64)
+  // 48-80: encrypted_employee_id (32)
+  // 80-112: encrypted_salary_rate (32)
+  // 112-144: encrypted_accrued (32)
+  // 144-152: last_accrual_time (i64)
+  // 152: is_active (1)
+  // 153: is_delegated (1)
+  // 154: bump (1)
+  const data = accountInfo.data;
+
+  return {
+    address: employeePDA,
+    business: new PublicKey(data.slice(8, 40)),
+    employeeIndex: Number(data.readBigUInt64LE(40)),
+    encryptedEmployeeId: data.slice(48, 80),
+    encryptedSalaryRate: data.slice(80, 112),
+    encryptedAccrued: data.slice(112, 144),
+    lastAccrualTime: Number(data.readBigInt64LE(144)),
+    isActive: data[152] === 1,
+    isDelegated: data[153] === 1,
+    bump: data[154],
+  };
+}
+
+// ============================================================
+// Transaction Helpers
+// ============================================================
+
+async function sendAndConfirmTransaction(
+  connection: Connection,
+  wallet: WalletContextState,
+  instruction: TransactionInstruction
+): Promise<string> {
+  if (!wallet.publicKey || !wallet.signTransaction) {
+    throw new Error('Wallet not connected');
+  }
+
+  const transaction = new Transaction().add(instruction);
+  const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('confirmed');
+  transaction.recentBlockhash = blockhash;
+  transaction.feePayer = wallet.publicKey;
+
+  const signed = await wallet.signTransaction(transaction);
+  const txid = await connection.sendRawTransaction(signed.serialize(), {
+    skipPreflight: false, // Enable preflight to catch errors early
+    maxRetries: 3,
+  });
+
+  const confirmation = await connection.confirmTransaction({
+    blockhash,
+    lastValidBlockHeight,
+    signature: txid,
+  }, 'confirmed');
+
+  // Check if transaction actually succeeded
+  if (confirmation.value.err) {
+    console.error('Transaction failed on-chain:', confirmation.value.err);
+    throw new Error(`Transaction failed: ${JSON.stringify(confirmation.value.err)}`);
+  }
+
+  return txid;
+}
+
+// ============================================================
+// Encryption Helpers
+// ============================================================
+
+/**
+ * Encrypt a value for Inco FHE
+ */
+async function encryptForInco(value: bigint): Promise<Buffer> {
+  const encryptedHex = await encryptValue(value);
+  return hexToBuffer(encryptedHex);
+}
+
+/**
+ * Hash a pubkey to create encrypted employee ID
+ */
+async function hashPubkeyForEmployeeId(pubkey: PublicKey): Promise<Buffer> {
+  const pubkeyBuffer = pubkey.toBuffer();
+  const hashBuffer = await crypto.subtle.digest('SHA-256', new Uint8Array(pubkeyBuffer));
+  return Buffer.from(hashBuffer).slice(0, 32);
+}
+
+// ============================================================
+// Setup Instructions
+// ============================================================
+
+/**
+ * Register a new business
+ * Creates Business PDA for the owner
  */
 export async function registerBusiness(
   connection: Connection,
   wallet: WalletContextState
 ): Promise<{ txid: string; businessPDA: PublicKey }> {
-  if (!wallet.publicKey || !wallet.signTransaction) {
+  if (!wallet.publicKey) {
     throw new Error('Wallet not connected');
   }
 
@@ -124,143 +415,39 @@ export async function registerBusiness(
     throw new Error('Business already registered');
   }
 
-  // Resolve owner's token account
-  const ownerTokenAccount = await resolveUserTokenAccount(connection, wallet.publicKey);
-  if (!ownerTokenAccount) {
-    throw new Error('Owner must have USDBagel token account. Please mint tokens first.');
-  }
-
-  console.log('Registering business...');
-  console.log(`  Business PDA: ${businessPDA.toBase58()}`);
-  console.log(`  Token Account: ${ownerTokenAccount.toBase58()}`);
-
   const instruction = new TransactionInstruction({
     keys: [
       { pubkey: wallet.publicKey, isSigner: true, isWritable: true },
       { pubkey: businessPDA, isSigner: false, isWritable: true },
-      { pubkey: ownerTokenAccount, isSigner: false, isWritable: false },
       { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
     ],
     programId: PAYROLL_PROGRAM_ID,
     data: DISCRIMINATORS.register_business,
   });
 
-  const transaction = new Transaction().add(instruction);
-  const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('confirmed');
-  transaction.recentBlockhash = blockhash;
-  transaction.feePayer = wallet.publicKey;
-
-  const signed = await wallet.signTransaction(transaction);
-  const txid = await connection.sendRawTransaction(signed.serialize(), {
-    skipPreflight: false,
-    maxRetries: 3,
-  });
-
-  await connection.confirmTransaction({
-    blockhash,
-    lastValidBlockHeight,
-    signature: txid,
-  }, 'confirmed');
-
-  console.log(`✅ Business registered: ${txid}`);
+  const txid = await sendAndConfirmTransaction(connection, wallet, instruction);
   return { txid, businessPDA };
 }
 
 /**
- * Deposit confidential funds to business payroll
+ * Initialize the business vault
+ * Creates Vault PDA and links to Inco Token account
+ *
+ * Note: The Inco Token account must be created externally first,
+ * with the vault PDA as the owner.
  */
-export async function depositToPayroll(
+export async function initVault(
   connection: Connection,
   wallet: WalletContextState,
-  amountUSDBagel: number
-): Promise<string> {
-  if (!wallet.publicKey || !wallet.signTransaction) {
+  vaultTokenAccount: PublicKey,
+  mint: PublicKey = USDBAGEL_MINT
+): Promise<{ txid: string; vaultPDA: PublicKey }> {
+  if (!wallet.publicKey) {
     throw new Error('Wallet not connected');
   }
 
   const [businessPDA] = getBusinessPDA(wallet.publicKey);
-
-  // Verify business exists and get vault token account
-  const businessAccount = await connection.getAccountInfo(businessPDA);
-  if (!businessAccount) {
-    throw new Error('Business not registered. Please register first.');
-  }
-
-  // Parse business token account from business data
-  // Business struct: discriminator(8) + owner(32) + token_account(32) + ...
-  const businessTokenAccount = new PublicKey(businessAccount.data.slice(40, 72));
-
-  // Resolve owner's token account (source)
-  const fromTokenAccount = await resolveUserTokenAccount(connection, wallet.publicKey);
-  if (!fromTokenAccount) {
-    throw new Error('No USDBagel token account found. Please mint tokens first.');
-  }
-
-  // Destination is the business vault (stored in business account)
-  const toTokenAccount = businessTokenAccount;
-
-  // Encrypt amount
-  const amountLamports = BigInt(Math.floor(amountUSDBagel * 1_000_000_000));
-  console.log(`Depositing ${amountUSDBagel} USDBagel (encrypted)...`);
-
-  const encryptedHex = await encryptValue(amountLamports);
-  const encryptedAmount = hexToBuffer(encryptedHex);
-
-  // Build instruction data
-  const lengthBytes = Buffer.alloc(4);
-  lengthBytes.writeUInt32LE(encryptedAmount.length);
-  const data = Buffer.concat([DISCRIMINATORS.deposit, lengthBytes, encryptedAmount]);
-
-  const instruction = new TransactionInstruction({
-    keys: [
-      { pubkey: wallet.publicKey, isSigner: true, isWritable: true },
-      { pubkey: businessPDA, isSigner: false, isWritable: true },
-      { pubkey: fromTokenAccount, isSigner: false, isWritable: true },
-      { pubkey: toTokenAccount, isSigner: false, isWritable: true },
-      { pubkey: INCO_TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
-      { pubkey: INCO_LIGHTNING_ID, isSigner: false, isWritable: false },
-      { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
-    ],
-    programId: PAYROLL_PROGRAM_ID,
-    data,
-  });
-
-  const transaction = new Transaction().add(instruction);
-  const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('confirmed');
-  transaction.recentBlockhash = blockhash;
-  transaction.feePayer = wallet.publicKey;
-
-  const signed = await wallet.signTransaction(transaction);
-  const txid = await connection.sendRawTransaction(signed.serialize(), {
-    skipPreflight: false,
-    maxRetries: 3,
-  });
-
-  await connection.confirmTransaction({
-    blockhash,
-    lastValidBlockHeight,
-    signature: txid,
-  }, 'confirmed');
-
-  console.log(`✅ Deposited ${amountUSDBagel} USDBagel: ${txid}`);
-  return txid;
-}
-
-/**
- * Add an employee to the business
- */
-export async function addEmployee(
-  connection: Connection,
-  wallet: WalletContextState,
-  employeeWallet: PublicKey,
-  salaryPerMonth: number
-): Promise<{ txid: string; employeePDA: PublicKey }> {
-  if (!wallet.publicKey || !wallet.signTransaction) {
-    throw new Error('Wallet not connected');
-  }
-
-  const [businessPDA] = getBusinessPDA(wallet.publicKey);
-  const [employeePDA] = getEmployeePDA(businessPDA, employeeWallet);
+  const [vaultPDA] = getVaultPDA(businessPDA);
 
   // Verify business exists
   const businessAccount = await connection.getAccountInfo(businessPDA);
@@ -268,37 +455,74 @@ export async function addEmployee(
     throw new Error('Business not registered. Please register first.');
   }
 
-  // Check if employee already exists
-  const existing = await connection.getAccountInfo(employeePDA);
-  if (existing) {
-    throw new Error('Employee already added');
-  }
-
-  // Resolve employee's token account
-  const employeeTokenAccount = await resolveUserTokenAccount(connection, employeeWallet);
-  if (!employeeTokenAccount) {
-    throw new Error('Employee must have USDBagel token account. Ask them to mint tokens first.');
-  }
-
-  console.log(`Adding employee ${employeeWallet.toBase58()}...`);
-  console.log(`  Salary: ${salaryPerMonth} USDBagel/month`);
-
-  // Build instruction data
-  const walletBuffer = employeeWallet.toBuffer();
-  const salaryBuffer = Buffer.alloc(8);
-  salaryBuffer.writeBigUInt64LE(BigInt(Math.floor(salaryPerMonth * 1_000_000_000)));
-  const data = Buffer.concat([DISCRIMINATORS.add_employee, walletBuffer, salaryBuffer]);
+  // Build instruction data: discriminator + mint (32) + vault_token_account (32)
+  const data = Buffer.concat([
+    DISCRIMINATORS.init_vault,
+    mint.toBuffer(),
+    vaultTokenAccount.toBuffer(),
+  ]);
 
   const instruction = new TransactionInstruction({
     keys: [
       { pubkey: wallet.publicKey, isSigner: true, isWritable: true },
       { pubkey: businessPDA, isSigner: false, isWritable: true },
-      { pubkey: employeePDA, isSigner: false, isWritable: true },
-      { pubkey: employeeTokenAccount, isSigner: false, isWritable: false },
+      { pubkey: vaultPDA, isSigner: false, isWritable: true },
       { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
     ],
     programId: PAYROLL_PROGRAM_ID,
     data,
+  });
+
+  const txid = await sendAndConfirmTransaction(connection, wallet, instruction);
+  return { txid, vaultPDA };
+}
+
+// ============================================================
+// Vault Token Account Creation
+// ============================================================
+
+/**
+ * Create Inco Token account for vault (automatic setup)
+ *
+ * This creates a new Inco Token account owned by the vault PDA.
+ * The user pays for account creation but doesn't need vault PDA to sign.
+ *
+ * @returns The new token account public key
+ */
+export async function createVaultTokenAccount(
+  connection: Connection,
+  wallet: WalletContextState,
+  vaultPDA: PublicKey,
+  mint: PublicKey = USDBAGEL_MINT
+): Promise<{ txid: string; tokenAccount: PublicKey }> {
+  if (!wallet.publicKey || !wallet.signTransaction) {
+    throw new Error('Wallet not connected');
+  }
+
+  // Generate a new keypair for the token account
+  const { Keypair, SystemProgram } = await import('@solana/web3.js');
+  const tokenAccountKeypair = Keypair.generate();
+
+  console.log('🔐 Creating vault token account...');
+  console.log('   Vault PDA (owner):', vaultPDA.toBase58());
+  console.log('   Token Account:', tokenAccountKeypair.publicKey.toBase58());
+  console.log('   Mint:', mint.toBase58());
+
+  // Inco Token init_account instruction
+  // Keys: [token_account (signer), mint, owner, payer (signer), system_program, inco_lightning]
+  const INIT_ACCOUNT_DISCRIMINATOR = Buffer.from([74, 115, 99, 93, 197, 69, 103, 7]);
+
+  const instruction = new TransactionInstruction({
+    programId: INCO_TOKEN_PROGRAM_ID,
+    keys: [
+      { pubkey: tokenAccountKeypair.publicKey, isSigner: true, isWritable: true }, // token_account
+      { pubkey: mint, isSigner: false, isWritable: false }, // mint
+      { pubkey: vaultPDA, isSigner: false, isWritable: false }, // owner (vault PDA - no signature needed!)
+      { pubkey: wallet.publicKey, isSigner: true, isWritable: true }, // payer
+      { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
+      { pubkey: INCO_LIGHTNING_ID, isSigner: false, isWritable: false },
+    ],
+    data: INIT_ACCOUNT_DISCRIMINATOR,
   });
 
   const transaction = new Transaction().add(instruction);
@@ -306,7 +530,10 @@ export async function addEmployee(
   transaction.recentBlockhash = blockhash;
   transaction.feePayer = wallet.publicKey;
 
+  // Sign with both wallet and the new token account keypair
+  transaction.partialSign(tokenAccountKeypair);
   const signed = await wallet.signTransaction(transaction);
+
   const txid = await connection.sendRawTransaction(signed.serialize(), {
     skipPreflight: false,
     maxRetries: 3,
@@ -318,59 +545,56 @@ export async function addEmployee(
     signature: txid,
   }, 'confirmed');
 
-  console.log(`✅ Employee added: ${txid}`);
-  return { txid, employeePDA };
+  console.log('✅ Vault token account created:', txid);
+
+  return { txid, tokenAccount: tokenAccountKeypair.publicKey };
 }
 
+// ============================================================
+// Deposit Instruction
+// ============================================================
+
 /**
- * Pay an employee (confidential withdrawal)
+ * Deposit encrypted tokens to business vault
+ *
+ * PRIVACY: Amount is encrypted using Inco FHE
  */
-export async function payEmployee(
+export async function deposit(
   connection: Connection,
   wallet: WalletContextState,
-  employeeWallet: PublicKey,
+  depositorTokenAccount: PublicKey,
+  vaultTokenAccount: PublicKey,
   amountUSDBagel: number
 ): Promise<string> {
-  if (!wallet.publicKey || !wallet.signTransaction) {
+  if (!wallet.publicKey) {
     throw new Error('Wallet not connected');
   }
 
   const [businessPDA] = getBusinessPDA(wallet.publicKey);
-  const [employeePDA] = getEmployeePDA(businessPDA, employeeWallet);
+  const [vaultPDA] = getVaultPDA(businessPDA);
 
-  // Verify employee exists
-  const employeeAccount = await connection.getAccountInfo(employeePDA);
-  if (!employeeAccount) {
-    throw new Error('Employee not found. Please add employee first.');
+  // Verify business and vault exist
+  const business = await getBusinessAccount(connection, wallet.publicKey);
+  if (!business) {
+    throw new Error('Business not registered');
   }
 
-  // Resolve token accounts
-  const fromTokenAccount = await resolveUserTokenAccount(connection, wallet.publicKey);
-  const toTokenAccount = await resolveUserTokenAccount(connection, employeeWallet);
-
-  if (!fromTokenAccount || !toTokenAccount) {
-    throw new Error('Token accounts not found');
-  }
-
-  // Encrypt amount
+  // Encrypt amount (9 decimals)
   const amountLamports = BigInt(Math.floor(amountUSDBagel * 1_000_000_000));
-  console.log(`Paying employee ${amountUSDBagel} USDBagel (encrypted)...`);
+  const encryptedAmount = await encryptForInco(amountLamports);
 
-  const encryptedHex = await encryptValue(amountLamports);
-  const encryptedAmount = hexToBuffer(encryptedHex);
-
-  // Build instruction data
+  // Build instruction data: discriminator + encrypted_amount (Vec<u8>)
   const lengthBytes = Buffer.alloc(4);
   lengthBytes.writeUInt32LE(encryptedAmount.length);
-  const data = Buffer.concat([DISCRIMINATORS.pay_employee, lengthBytes, encryptedAmount]);
+  const data = Buffer.concat([DISCRIMINATORS.deposit, lengthBytes, encryptedAmount]);
 
   const instruction = new TransactionInstruction({
     keys: [
       { pubkey: wallet.publicKey, isSigner: true, isWritable: true },
       { pubkey: businessPDA, isSigner: false, isWritable: false },
-      { pubkey: employeePDA, isSigner: false, isWritable: true },
-      { pubkey: fromTokenAccount, isSigner: false, isWritable: true },
-      { pubkey: toTokenAccount, isSigner: false, isWritable: true },
+      { pubkey: vaultPDA, isSigner: false, isWritable: true },
+      { pubkey: depositorTokenAccount, isSigner: false, isWritable: true },
+      { pubkey: vaultTokenAccount, isSigner: false, isWritable: true },
       { pubkey: INCO_TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
       { pubkey: INCO_LIGHTNING_ID, isSigner: false, isWritable: false },
       { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
@@ -379,93 +603,395 @@ export async function payEmployee(
     data,
   });
 
-  const transaction = new Transaction().add(instruction);
-  const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('confirmed');
-  transaction.recentBlockhash = blockhash;
-  transaction.feePayer = wallet.publicKey;
+  return sendAndConfirmTransaction(connection, wallet, instruction);
+}
 
-  const signed = await wallet.signTransaction(transaction);
-  const txid = await connection.sendRawTransaction(signed.serialize(), {
-    skipPreflight: false,
-    maxRetries: 3,
+// ============================================================
+// Employee Management
+// ============================================================
+
+/**
+ * Add an employee with encrypted salary rate
+ *
+ * PRIVACY: Uses INDEX-based PDA derivation - no employee pubkey on-chain!
+ *
+ * @param employeeWallet - Employee's wallet (hashed and encrypted, not stored directly)
+ * @param salaryRatePerSecond - Salary per second in USDBagel (encrypted)
+ */
+export async function addEmployee(
+  connection: Connection,
+  wallet: WalletContextState,
+  employeeWallet: PublicKey,
+  salaryRatePerSecond: number
+): Promise<{ txid: string; employeePDA: PublicKey; employeeIndex: number }> {
+  if (!wallet.publicKey) {
+    throw new Error('Wallet not connected');
+  }
+
+  const [businessPDA] = getBusinessPDA(wallet.publicKey);
+
+  // Get current employee index from business
+  const business = await getBusinessAccount(connection, wallet.publicKey);
+  if (!business) {
+    throw new Error('Business not registered');
+  }
+
+  const employeeIndex = business.nextEmployeeIndex;
+  const [employeePDA] = getEmployeePDA(businessPDA, employeeIndex);
+
+  // Encrypt employee ID (hash of wallet) and salary
+  const encryptedEmployeeId = await hashPubkeyForEmployeeId(employeeWallet);
+  const salaryLamports = BigInt(Math.floor(salaryRatePerSecond * 1_000_000_000));
+  const encryptedSalary = await encryptForInco(salaryLamports);
+
+  // Build instruction data: discriminator + encrypted_employee_id (Vec<u8>) + encrypted_salary (Vec<u8>)
+  const idLen = Buffer.alloc(4);
+  idLen.writeUInt32LE(encryptedEmployeeId.length);
+  const salaryLen = Buffer.alloc(4);
+  salaryLen.writeUInt32LE(encryptedSalary.length);
+
+  const data = Buffer.concat([
+    DISCRIMINATORS.add_employee,
+    idLen, encryptedEmployeeId,
+    salaryLen, encryptedSalary,
+  ]);
+
+  const instruction = new TransactionInstruction({
+    keys: [
+      { pubkey: wallet.publicKey, isSigner: true, isWritable: true },
+      { pubkey: businessPDA, isSigner: false, isWritable: true },
+      { pubkey: employeePDA, isSigner: false, isWritable: true },
+      { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
+    ],
+    programId: PAYROLL_PROGRAM_ID,
+    data,
   });
 
-  await connection.confirmTransaction({
-    blockhash,
-    lastValidBlockHeight,
-    signature: txid,
-  }, 'confirmed');
+  const txid = await sendAndConfirmTransaction(connection, wallet, instruction);
+  return { txid, employeePDA, employeeIndex };
+}
 
-  console.log(`✅ Employee paid ${amountUSDBagel} USDBagel: ${txid}`);
+// ============================================================
+// MagicBlock TEE Streaming
+// ============================================================
 
-  // Set up allowance for employee to decrypt their new balance
-  try {
-    await fetch('/api/setup-allowance', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        tokenAccount: toTokenAccount.toBase58(),
-        ownerAddress: employeeWallet.toBase58(),
-      }),
-    });
-  } catch (err) {
-    console.warn('Failed to set up allowance:', err);
+/**
+ * Delegate employee account to MagicBlock TEE
+ *
+ * Once delegated, the TEE auto-accrues salary in real-time.
+ */
+export async function delegateToTee(
+  connection: Connection,
+  wallet: WalletContextState,
+  employeeIndex: number,
+  validator: PublicKey = TEE_VALIDATOR
+): Promise<string> {
+  if (!wallet.publicKey) {
+    throw new Error('Wallet not connected');
   }
 
-  return txid;
+  const [businessPDA] = getBusinessPDA(wallet.publicKey);
+  const [employeePDA] = getEmployeePDA(businessPDA, employeeIndex);
+
+  // Verify employee exists and is not already delegated
+  const employee = await getEmployeeAccount(connection, businessPDA, employeeIndex);
+  if (!employee) {
+    throw new Error('Employee not found');
+  }
+  if (employee.isDelegated) {
+    throw new Error('Employee already delegated to TEE');
+  }
+  if (!employee.isActive) {
+    throw new Error('Employee is not active');
+  }
+
+  const instruction = new TransactionInstruction({
+    keys: [
+      { pubkey: wallet.publicKey, isSigner: true, isWritable: true },
+      { pubkey: businessPDA, isSigner: false, isWritable: false },
+      { pubkey: employeePDA, isSigner: false, isWritable: true },
+      { pubkey: validator, isSigner: false, isWritable: false },
+      { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
+    ],
+    programId: PAYROLL_PROGRAM_ID,
+    data: DISCRIMINATORS.delegate_to_tee,
+  });
+
+  return sendAndConfirmTransaction(connection, wallet, instruction);
 }
 
 /**
- * Fetch business account data
+ * Undelegate employee from TEE
  */
-export async function getBusinessAccount(
+export async function undelegate(
+  connection: Connection,
+  wallet: WalletContextState,
+  employeeIndex: number
+): Promise<string> {
+  if (!wallet.publicKey) {
+    throw new Error('Wallet not connected');
+  }
+
+  const [businessPDA] = getBusinessPDA(wallet.publicKey);
+  const [employeePDA] = getEmployeePDA(businessPDA, employeeIndex);
+
+  const instruction = new TransactionInstruction({
+    keys: [
+      { pubkey: wallet.publicKey, isSigner: true, isWritable: true },
+      { pubkey: employeePDA, isSigner: false, isWritable: true },
+    ],
+    programId: PAYROLL_PROGRAM_ID,
+    data: DISCRIMINATORS.undelegate,
+  });
+
+  return sendAndConfirmTransaction(connection, wallet, instruction);
+}
+
+// ============================================================
+// Withdrawal Instructions
+// ============================================================
+
+/**
+ * Simple withdrawal (no TEE required)
+ *
+ * For testing: employee signs to claim a specific encrypted amount.
+ */
+export async function simpleWithdraw(
+  connection: Connection,
+  wallet: WalletContextState,
+  businessOwner: PublicKey,
+  employeeIndex: number,
+  employeeTokenAccount: PublicKey,
+  vaultTokenAccount: PublicKey,
+  amountUSDBagel: number
+): Promise<string> {
+  if (!wallet.publicKey) {
+    throw new Error('Wallet not connected');
+  }
+
+  const [businessPDA] = getBusinessPDA(businessOwner);
+  const [vaultPDA] = getVaultPDA(businessPDA);
+  const [employeePDA] = getEmployeePDA(businessPDA, employeeIndex);
+
+  // Encrypt amount
+  const amountLamports = BigInt(Math.floor(amountUSDBagel * 1_000_000_000));
+  const encryptedAmount = await encryptForInco(amountLamports);
+
+  // Build instruction data
+  const lengthBytes = Buffer.alloc(4);
+  lengthBytes.writeUInt32LE(encryptedAmount.length);
+  const data = Buffer.concat([DISCRIMINATORS.simple_withdraw, lengthBytes, encryptedAmount]);
+
+  const instruction = new TransactionInstruction({
+    keys: [
+      { pubkey: wallet.publicKey, isSigner: true, isWritable: true }, // employee_signer
+      { pubkey: businessPDA, isSigner: false, isWritable: false },
+      { pubkey: vaultPDA, isSigner: false, isWritable: true },
+      { pubkey: employeePDA, isSigner: false, isWritable: true },
+      { pubkey: vaultTokenAccount, isSigner: false, isWritable: true },
+      { pubkey: employeeTokenAccount, isSigner: false, isWritable: true },
+      { pubkey: INCO_TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
+      { pubkey: INCO_LIGHTNING_ID, isSigner: false, isWritable: false },
+      { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
+    ],
+    programId: PAYROLL_PROGRAM_ID,
+    data,
+  });
+
+  return sendAndConfirmTransaction(connection, wallet, instruction);
+}
+
+// ============================================================
+// Helper Functions
+// ============================================================
+
+/**
+ * Get the next employee index from a business
+ */
+export async function getNextEmployeeIndex(
   connection: Connection,
   owner: PublicKey
-): Promise<any | null> {
-  const [businessPDA] = getBusinessPDA(owner);
-  const accountInfo = await connection.getAccountInfo(businessPDA);
-
-  if (!accountInfo) {
-    return null;
+): Promise<number> {
+  const business = await getBusinessAccount(connection, owner);
+  if (!business) {
+    throw new Error('Business not registered');
   }
-
-  // Parse business account data
-  const data = accountInfo.data;
-  return {
-    address: businessPDA,
-    owner: new PublicKey(data.slice(8, 40)),
-    tokenAccount: new PublicKey(data.slice(40, 72)),
-    totalDeposited: Number(data.readBigUInt64LE(72)),
-    employeeCount: data.readUInt32LE(80),
-    isActive: data[84] === 1,
-  };
+  return business.nextEmployeeIndex;
 }
 
 /**
- * Fetch employee account data
+ * Check if a business is registered
  */
-export async function getEmployeeAccount(
+export async function isBusinessRegistered(
   connection: Connection,
-  business: PublicKey,
-  employeeWallet: PublicKey
-): Promise<any | null> {
-  const [employeePDA] = getEmployeePDA(business, employeeWallet);
-  const accountInfo = await connection.getAccountInfo(employeePDA);
+  owner: PublicKey
+): Promise<boolean> {
+  const [businessPDA] = getBusinessPDA(owner);
+  const accountInfo = await connection.getAccountInfo(businessPDA);
+  return accountInfo !== null;
+}
 
-  if (!accountInfo) {
-    return null;
+/**
+ * Check if vault is initialized
+ */
+export async function isVaultInitialized(
+  connection: Connection,
+  owner: PublicKey
+): Promise<boolean> {
+  const business = await getBusinessAccount(connection, owner);
+  if (!business) return false;
+  return !business.vault.equals(PublicKey.default);
+}
+
+// ============================================================
+// Explorer Link Utilities (OrbMarkets only)
+// ============================================================
+
+/**
+ * Generate OrbMarkets explorer link for a transaction
+ *
+ * IMPORTANT: Use only OrbMarkets - no Solscan/Sol Explorer
+ */
+export function getExplorerTxLink(signature: string, cluster: 'devnet' | 'mainnet-beta' = 'devnet'): string {
+  return `https://orbmarkets.io/tx/${signature}?cluster=${cluster}`;
+}
+
+/**
+ * Generate OrbMarkets explorer link for an account
+ */
+export function getExplorerAccountLink(address: string | PublicKey, cluster: 'devnet' | 'mainnet-beta' = 'devnet'): string {
+  const addressStr = typeof address === 'string' ? address : address.toBase58();
+  return `https://orbmarkets.io/account/${addressStr}?cluster=${cluster}`;
+}
+
+// ============================================================
+// Conversion Utilities
+// ============================================================
+
+export function usdbagelToLamports(amount: number): bigint {
+  return BigInt(Math.floor(amount * 1_000_000_000));
+}
+
+export function lamportsToUsdbagel(lamports: bigint): number {
+  return Number(lamports) / 1_000_000_000;
+}
+
+/**
+ * Calculate salary per second from monthly rate
+ */
+export function monthlyToPerSecond(monthlyRate: number): number {
+  // Assume 30 days per month
+  const secondsPerMonth = 30 * 24 * 60 * 60;
+  return monthlyRate / secondsPerMonth;
+}
+
+/**
+ * Calculate monthly from per-second rate
+ */
+export function perSecondToMonthly(perSecond: number): number {
+  const secondsPerMonth = 30 * 24 * 60 * 60;
+  return perSecond * secondsPerMonth;
+}
+
+// ============================================================
+// Backwards Compatibility (for dashboard.tsx)
+// ============================================================
+
+/**
+ * @deprecated Use deposit() instead
+ */
+export async function depositToPayroll(
+  connection: Connection,
+  wallet: WalletContextState,
+  amountUSDBagel: number
+): Promise<string> {
+  if (!wallet.publicKey) {
+    throw new Error('Wallet not connected');
   }
 
-  // Parse employee account data
-  const data = accountInfo.data;
+  // Get depositor's token account
+  const { resolveUserTokenAccount } = await import('./bagel-client');
+  const depositorTokenAccount = await resolveUserTokenAccount(connection, wallet.publicKey, USDBAGEL_MINT);
+  if (!depositorTokenAccount) {
+    throw new Error('No USDBagel token account found. Please mint tokens first.');
+  }
+
+  // Get the user's vault account from on-chain data
+  const business = await getBusinessAccount(connection, wallet.publicKey);
+  if (!business) {
+    throw new Error('Business not registered. Register first before depositing.');
+  }
+
+  // Check if vault is initialized (not default pubkey)
+  if (business.vault.equals(PublicKey.default)) {
+    throw new Error('Vault not initialized. Initialize vault first before depositing.');
+  }
+
+  // Get vault account to read the token_account
+  const vault = await getVaultAccount(connection, business.address);
+  if (!vault) {
+    throw new Error('Vault account not found on-chain.');
+  }
+
+  console.log('💰 Depositing to vault token account:', vault.tokenAccount.toBase58());
+
+  return deposit(connection, wallet, depositorTokenAccount, vault.tokenAccount, amountUSDBagel);
+}
+
+/**
+ * @deprecated The streaming payroll model doesn't have direct pay - use simpleWithdraw instead
+ */
+export async function payEmployee(
+  connection: Connection,
+  wallet: WalletContextState,
+  employeeWallet: PublicKey,
+  amountUSDBagel: number
+): Promise<string> {
+  // In the new streaming model, employees withdraw their accrued salary
+  // This is a compatibility shim that performs a simple withdrawal for the employee
+  // Note: In production, the employee would sign their own withdrawal
+
+  const demoAddresses = getDemoAddresses();
+  if (!demoAddresses.employeeToken || !demoAddresses.vaultToken) {
+    throw new Error('Token accounts not configured');
+  }
+
+  // For backwards compatibility, we assume employee index 0
+  // In production, you'd need to look up the employee index by wallet
+  return simpleWithdraw(
+    connection,
+    wallet,
+    wallet.publicKey!, // business owner
+    0, // Default to first employee - in production, look up by wallet
+    demoAddresses.employeeToken,
+    demoAddresses.vaultToken,
+    amountUSDBagel
+  );
+}
+
+/**
+ * Extended BusinessAccount with backwards-compatible fields
+ */
+export interface LegacyBusinessAccount extends BusinessAccount {
+  employeeCount: number;
+  totalDeposited: number;
+  tokenAccount: PublicKey;
+}
+
+/**
+ * @deprecated Use getBusinessAccount() - this adds legacy compatibility fields
+ */
+export async function getLegacyBusinessAccount(
+  connection: Connection,
+  owner: PublicKey
+): Promise<LegacyBusinessAccount | null> {
+  const business = await getBusinessAccount(connection, owner);
+  if (!business) return null;
+
   return {
-    address: employeePDA,
-    business: new PublicKey(data.slice(8, 40)),
-    wallet: new PublicKey(data.slice(40, 72)),
-    tokenAccount: new PublicKey(data.slice(72, 104)),
-    salaryPerPeriod: Number(data.readBigUInt64LE(104)),
-    lastPayment: Number(data.readBigInt64LE(112)),
-    totalPaid: Number(data.readBigUInt64LE(120)),
-    isActive: data[128] === 1,
+    ...business,
+    employeeCount: business.nextEmployeeIndex,
+    totalDeposited: 0, // Encrypted - can't read directly
+    tokenAccount: business.vault, // Point to vault for compatibility
   };
 }

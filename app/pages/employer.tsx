@@ -136,12 +136,10 @@ export default function EmployerDashboard() {
       console.log('🥯 Creating real payroll on Solana...');
       console.log('Employer:', wallet.publicKey.toBase58());
       console.log('Employee:', employeeAddress);
-      console.log('Salary:', salaryPerSecond, 'SOL/second');
+      // PRIVACY: Salary amount is not logged - will be encrypted on-chain
 
       // Convert SOL to lamports
       const salaryLamports = solToLamports(parseFloat(salaryPerSecond));
-      
-      console.log('Salary in lamports:', salaryLamports);
 
       // Step 1: Register business if not already registered
       let entryIndex = businessEntryIndex;
@@ -465,7 +463,7 @@ export default function EmployerDashboard() {
                       rel="noopener noreferrer"
                       className="inline-block bg-[#FF6B35] hover:bg-[#E55A24] text-white font-bold py-3 px-6 rounded-lg transition-all duration-300"
                     >
-                      🔍 View on Solana Explorer →
+                      🔍 View on OrbMarkets →
                     </a>
 
                     <div className="bg-white p-4 rounded-lg mt-4">
@@ -489,7 +487,7 @@ export default function EmployerDashboard() {
                         <li>✅ bake_payroll instruction executed successfully</li>
                         <li>✅ Employer & employee addresses stored on-chain</li>
                         <li>✅ Initial state written to blockchain</li>
-                        <li>✅ 100% verifiable on Solana Explorer</li>
+                        <li>✅ 100% verifiable on OrbMarkets Explorer</li>
                       </ul>
                     </div>
 
@@ -558,7 +556,7 @@ export default function EmployerDashboard() {
                         rel="noopener noreferrer"
                         className="text-green-700 hover:text-green-900 text-sm font-medium"
                       >
-                        🔍 View Deposit on Solana Explorer →
+                        🔍 View Deposit on OrbMarkets →
                       </a>
                     </div>
                   )}

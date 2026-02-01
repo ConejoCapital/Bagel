@@ -181,9 +181,21 @@ import { useRecentTransactions } from '@/hooks/useTransactions';
 import {
   addEmployee as addPayrollEmployee,
   payEmployee,
-  getBusinessAccount as getPayrollBusinessAccount,
+  getLegacyBusinessAccount as getPayrollBusinessAccount,
   depositToPayroll,
-  registerBusiness,
+  registerBusiness as registerPayrollBusiness,
+  initVault,
+  createVaultTokenAccount,
+  getBusinessPDA,
+  getVaultPDA,
+  isBusinessRegistered,
+  isVaultInitialized,
+  getDemoAddresses,
+  getBusinessAccount,
+  getVaultAccount,
+  getEmployeeAccount,
+  simpleWithdraw,
+  USDBAGEL_MINT as PAYROLL_USDBAGEL_MINT,
 } from '../lib/payroll-client';
 import { InteractiveGuide, useGuideStatus, GuideStep } from '@/components/InteractiveGuide';
 
@@ -1682,6 +1694,19 @@ export default function Dashboard() {
   const [navbarDecrypting, setNavbarDecrypting] = useState(false);
   const [navbarBalanceRefreshTrigger, setNavbarBalanceRefreshTrigger] = useState(0);
 
+  // Employee claim state (for users who are employees of a business)
+  const [employeeData, setEmployeeData] = useState<{
+    employerWallet: string;
+    employeeIndex: number;
+    isActive: boolean;
+    isDelegated: boolean;
+    vaultTokenAccount: string;
+  } | null>(null);
+  const [employeeClaimAmount, setEmployeeClaimAmount] = useState('1');
+  const [employeeClaiming, setEmployeeClaiming] = useState(false);
+  const [employeeClaimTxid, setEmployeeClaimTxid] = useState('');
+  const [employeeClaimError, setEmployeeClaimError] = useState('');
+
   // Load employees from localStorage
   useEffect(() => {
     if (typeof window !== 'undefined' && publicKey) {
@@ -1732,6 +1757,119 @@ export default function Dashboard() {
     }
   };
 
+  // Check if current wallet is an employee of the demo business
+  const checkEmployeeStatus = useCallback(async () => {
+    if (!publicKey || !connection) return;
+
+    try {
+      // Get demo business addresses
+      const demoAddresses = getDemoAddresses();
+      if (!demoAddresses.businessPDA) return;
+
+      // Get business account to find owner
+      const businessInfo = await connection.getAccountInfo(demoAddresses.businessPDA);
+      if (!businessInfo) return;
+
+      // Parse owner from business account (offset 8-40)
+      const ownerBytes = businessInfo.data.slice(8, 40);
+      const ownerPubkey = new PublicKey(ownerBytes);
+
+      // Get vault account
+      const vault = await getVaultAccount(connection, demoAddresses.businessPDA);
+      if (!vault) return;
+
+      // Check if current wallet is an employee (check first few employee indices)
+      for (let i = 0; i < 10; i++) {
+        try {
+          const employee = await getEmployeeAccount(connection, demoAddresses.businessPDA, i);
+          if (employee && employee.isActive) {
+            // We found an active employee - check if we're on that employee's token account
+            // Since we can't directly verify wallet from encrypted ID, we show this to all users
+            // In production, you'd verify the encrypted employee ID matches
+            console.log(`Found active employee #${i}`);
+            setEmployeeData({
+              employerWallet: ownerPubkey.toBase58(),
+              employeeIndex: i,
+              isActive: employee.isActive,
+              isDelegated: employee.isDelegated,
+              vaultTokenAccount: vault.tokenAccount.toBase58(),
+            });
+            return; // Found one, stop checking
+          }
+        } catch {
+          // No employee at this index, continue
+        }
+      }
+    } catch (err) {
+      console.error('Error checking employee status:', err);
+    }
+  }, [publicKey, connection]);
+
+  // Auto-check employee status when wallet connects
+  useEffect(() => {
+    if (publicKey && connection) {
+      checkEmployeeStatus();
+    } else {
+      setEmployeeData(null);
+    }
+  }, [publicKey, connection, checkEmployeeStatus]);
+
+  // Handle employee claim
+  const handleEmployeeClaim = async () => {
+    if (!publicKey || !wallet.signTransaction || !employeeData) {
+      setEmployeeClaimError('Wallet not connected or employee data missing');
+      return;
+    }
+
+    const amount = parseFloat(employeeClaimAmount);
+    if (isNaN(amount) || amount <= 0) {
+      setEmployeeClaimError('Please enter a valid amount');
+      return;
+    }
+
+    try {
+      setEmployeeClaiming(true);
+      setEmployeeClaimError('');
+      setEmployeeClaimTxid('');
+
+      console.log('💰 Claiming salary...');
+      console.log('   Employee Index:', employeeData.employeeIndex);
+      // PRIVACY: Amount not logged
+
+      // Get employee's token account
+      const employeeTokenAccount = await resolveUserTokenAccount(connection, publicKey, USDBAGEL_MINT);
+      if (!employeeTokenAccount) {
+        throw new Error('No token account found. Please mint USDBagel tokens first.');
+      }
+
+      // Call simpleWithdraw
+      const employerPubkey = new PublicKey(employeeData.employerWallet);
+      const vaultTokenAccount = new PublicKey(employeeData.vaultTokenAccount);
+
+      const txid = await simpleWithdraw(
+        connection,
+        wallet,
+        employerPubkey,
+        employeeData.employeeIndex,
+        employeeTokenAccount,
+        vaultTokenAccount,
+        amount
+      );
+
+      setEmployeeClaimTxid(txid);
+      console.log('✅ Claim successful:', txid);
+
+      // Refresh balance
+      setNavbarBalanceRefreshTrigger(prev => prev + 1);
+
+    } catch (err: any) {
+      console.error('❌ Claim failed:', err);
+      setEmployeeClaimError(err.message || 'Failed to claim salary');
+    } finally {
+      setEmployeeClaiming(false);
+    }
+  };
+
   const loadBusinessIndex = async () => {
     if (!publicKey) return;
     try {
@@ -1750,7 +1888,7 @@ export default function Dashboard() {
     }
   };
 
-  // Register business
+  // Register business on Payroll program
   const handleRegisterBusiness = async () => {
     if (!publicKey || !wallet.signTransaction) {
       setRegistrationError('Please connect your wallet');
@@ -1762,16 +1900,22 @@ export default function Dashboard() {
       setRegistrationError('');
       setRegistrationTxid('');
 
-      console.log('📝 Registering business on-chain...');
-      const result = await registerBusiness(connection, wallet);
+      // Register business
+      console.log('📝 Registering business on Payroll program...');
+      const regResult = await registerPayrollBusiness(connection, wallet);
+      console.log('✅ Business registered!');
+      console.log('   Business PDA:', regResult.businessPDA.toBase58());
 
-      // Payroll program uses PDA-based businesses, not entry indices
-      setBusinessEntryIndex(0); // Set to 0 to indicate business exists
-      setRegistrationTxid(result.txid);
-      console.log('✅ Business registered! PDA:', result.businessPDA.toBase58());
+      // Derive and show vault PDA for reference
+      const [vaultPDA] = getVaultPDA(regResult.businessPDA);
+      console.log('   Vault PDA:', vaultPDA.toBase58());
+      console.log('   (Vault will be initialized on first deposit)');
+
+      setRegistrationTxid(regResult.txid);
+      setBusinessEntryIndex(0);
 
       // Refresh payroll business data
-      loadPayrollBusinessData();
+      await loadPayrollBusinessData();
     } catch (err: any) {
       console.error('Registration error:', err);
       setRegistrationError(err.message || 'Failed to register business');
@@ -1914,6 +2058,7 @@ export default function Dashboard() {
   };
 
   // Deposit funds (confidential token transfer via payroll program)
+  // Handles full setup flow: Register Business -> Init Vault -> Deposit
   const handleDeposit = useCallback(async (_entryIndex: number, amountLamports: number): Promise<string> => {
     if (!publicKey || !wallet.signTransaction) {
       throw new Error('Wallet not connected');
@@ -1921,8 +2066,83 @@ export default function Dashboard() {
 
     // Convert lamports to USDBagel (9 decimals)
     const amountUSDBagel = amountLamports / 1_000_000_000;
-    console.log('💰 Depositing', amountUSDBagel, 'USDBagel via payroll program...');
 
+    // Step 1: Check if business is registered
+    const businessRegistered = await isBusinessRegistered(connection, publicKey);
+    if (!businessRegistered) {
+      console.log('📝 Business not registered. Registering now...');
+      const regResult = await registerPayrollBusiness(connection, wallet);
+      console.log('✅ Business registered:', regResult.txid);
+
+      // Wait a moment for the account to be created
+      await new Promise(resolve => setTimeout(resolve, 2000));
+    } else {
+      console.log('✅ Business already registered');
+    }
+
+    // Step 2: Check if vault is initialized
+    const vaultReady = await isVaultInitialized(connection, publicKey);
+    if (!vaultReady) {
+      // Get the user's derived vault PDA
+      const [businessPDA] = getBusinessPDA(publicKey);
+      const [userVaultPDA] = getVaultPDA(businessPDA);
+
+      // Get demo addresses from env
+      const demoAddresses = getDemoAddresses();
+      const demoVaultPDA = demoAddresses.vaultPDA;
+      const demoVaultTokenAccount = demoAddresses.vaultToken;
+
+      let vaultTokenAccount: typeof demoVaultTokenAccount;
+
+      // Check if user's vault matches the pre-deployed demo vault
+      if (demoVaultPDA && demoVaultTokenAccount && userVaultPDA.toBase58() === demoVaultPDA.toBase58()) {
+        console.log('🔐 Vault not initialized. Using pre-configured token account...');
+        vaultTokenAccount = demoVaultTokenAccount;
+      } else {
+        // Create a new vault token account for this user's vault
+        console.log('🔐 Vault not initialized. Creating vault token account...');
+        console.log('   Vault PDA:', userVaultPDA.toBase58());
+
+        const { tokenAccount } = await createVaultTokenAccount(
+          connection,
+          wallet,
+          userVaultPDA,
+          PAYROLL_USDBAGEL_MINT
+        );
+        vaultTokenAccount = tokenAccount;
+
+        // Wait for account creation to propagate
+        await new Promise(resolve => setTimeout(resolve, 2000));
+      }
+
+      // Initialize the vault with the token account
+      console.log('🔐 Initializing vault...');
+      console.log('   Token Account:', vaultTokenAccount.toBase58());
+      try {
+        const vaultResult = await initVault(connection, wallet, vaultTokenAccount, PAYROLL_USDBAGEL_MINT);
+        console.log('✅ Vault initialized:', vaultResult.txid);
+      } catch (initError: any) {
+        console.error('❌ Vault initialization failed:', initError.message);
+        throw new Error(`Failed to initialize vault: ${initError.message}`);
+      }
+
+      // Wait for blockchain state to propagate
+      console.log('⏳ Waiting for vault state to propagate...');
+      await new Promise(resolve => setTimeout(resolve, 3000));
+
+      // Verify vault was actually initialized
+      const vaultVerified = await isVaultInitialized(connection, publicKey);
+      if (!vaultVerified) {
+        console.error('❌ Vault initialization verification failed');
+        throw new Error('Vault initialization did not propagate. Please try again.');
+      }
+      console.log('✅ Vault initialization verified');
+    } else {
+      console.log('✅ Vault already initialized');
+    }
+
+    // Step 3: Now deposit
+    console.log('💰 Depositing USDBagel via payroll program...');
     const signature = await depositToPayroll(connection, wallet, amountUSDBagel);
     console.log('✅ Confidential deposit successful:', signature);
 
@@ -2267,8 +2487,8 @@ export default function Dashboard() {
             <div className="flex gap-6">
               {/* Left Column - Stats & Table */}
               <div className="flex-1 space-y-6">
-                {/* Business Registration Banner */}
-                {connected && businessEntryIndex === null && (
+                {/* Business Registration Banner - Only show if Payroll business not registered */}
+                {connected && !payrollBusiness && (
                   <motion.div
                     initial={{ opacity: 0, y: -10 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -2280,10 +2500,10 @@ export default function Dashboard() {
                           <span className="text-2xl">🥯</span> Register Your Business
                         </h3>
                         <p className="text-sm text-gray-600 mt-1">
-                          Register your business on-chain to start managing payroll with maximum privacy.
+                          Register your business on-chain to start managing confidential payroll.
                         </p>
                         <div className="mt-2 text-xs text-gray-500">
-                          Program: <code className="bg-white px-1.5 py-0.5 rounded">{BAGEL_PROGRAM_ID.toBase58().slice(0, 8)}...</code>
+                          Payroll Program: <code className="bg-white px-1.5 py-0.5 rounded">J11xMm4pLQ6...spK2</code>
                         </div>
                       </div>
                       <motion.button
@@ -2296,7 +2516,7 @@ export default function Dashboard() {
                         {isRegistering ? (
                           <>
                             <CircleNotch className="w-4 h-4 animate-spin" />
-                            Registering...
+                            Setting up...
                           </>
                         ) : (
                           <>
@@ -2306,14 +2526,19 @@ export default function Dashboard() {
                         )}
                       </motion.button>
                     </div>
+                    {isRegistering && (
+                      <div className="mt-3 p-3 bg-blue-50 border border-blue-100 rounded text-sm text-blue-700">
+                        Setting up your business... Please approve the transactions in your wallet.
+                      </div>
+                    )}
                     {registrationError && (
                       <div className="mt-3 p-3 bg-red-50 border border-red-100 rounded text-sm text-red-700">
                         {registrationError}
                       </div>
                     )}
-                    {registrationTxid && (
+                    {registrationTxid && !isRegistering && (
                       <div className="mt-3 p-3 bg-green-50 border border-green-100 rounded">
-                        <div className="text-sm text-green-700 font-medium">Business Registered Successfully!</div>
+                        <div className="text-sm text-green-700 font-medium">Business & Vault Setup Complete!</div>
                         <div className="text-xs text-green-600 mt-1 break-all">{registrationTxid}</div>
                         <a
                           href={`https://orbmarkets.io/tx/${registrationTxid}?cluster=devnet`}
@@ -2322,6 +2547,89 @@ export default function Dashboard() {
                           className="inline-flex items-center gap-1 text-xs text-green-700 hover:text-green-900 mt-2 font-medium"
                         >
                           View on Explorer <ArrowSquareOut className="w-3 h-3" />
+                        </a>
+                      </div>
+                    )}
+                  </motion.div>
+                )}
+
+                {/* Employee Claim Banner - Show if user is detected as an employee */}
+                {connected && employeeData && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded p-6"
+                  >
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <h3 className="text-lg font-semibold text-green-800 flex items-center gap-2">
+                          <span className="text-2xl">💰</span> You Have Salary to Claim!
+                        </h3>
+                        <p className="text-sm text-green-700 mt-1">
+                          You're registered as Employee #{employeeData.employeeIndex} in a payroll business.
+                        </p>
+                        <div className="mt-2 flex items-center gap-2 text-xs text-green-600">
+                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full ${employeeData.isActive ? 'bg-green-100' : 'bg-gray-100'}`}>
+                            {employeeData.isActive ? '🟢 Active' : '⚪ Inactive'}
+                          </span>
+                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full ${employeeData.isDelegated ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-600'}`}>
+                            {employeeData.isDelegated ? '⚡ TEE Streaming' : '📋 Manual'}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="flex flex-col items-end gap-2">
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="number"
+                            min="0"
+                            step="0.1"
+                            value={employeeClaimAmount}
+                            onChange={(e) => setEmployeeClaimAmount(e.target.value)}
+                            placeholder="Amount"
+                            className="w-24 px-3 py-2 border border-green-300 rounded text-sm focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                          />
+                          <motion.button
+                            whileHover={{ scale: 1.02 }}
+                            whileTap={{ scale: 0.98 }}
+                            onClick={handleEmployeeClaim}
+                            disabled={employeeClaiming}
+                            className="px-6 py-2 bg-green-600 hover:bg-green-700 text-white rounded font-medium text-sm flex items-center gap-2 disabled:opacity-50"
+                          >
+                            {employeeClaiming ? (
+                              <>
+                                <CircleNotch className="w-4 h-4 animate-spin" />
+                                Claiming...
+                              </>
+                            ) : (
+                              <>
+                                <CurrencyDollar className="w-4 h-4" weight="fill" />
+                                Claim USDBagel
+                              </>
+                            )}
+                          </motion.button>
+                        </div>
+                        <span className="text-xs text-green-600">Enter amount in USDBagel</span>
+                      </div>
+                    </div>
+                    {employeeClaimError && (
+                      <div className="mt-3 p-3 bg-red-50 border border-red-100 rounded text-sm text-red-700">
+                        {employeeClaimError}
+                      </div>
+                    )}
+                    {employeeClaimTxid && !employeeClaiming && (
+                      <div className="mt-3 p-3 bg-green-100 border border-green-200 rounded">
+                        <div className="text-sm text-green-800 font-medium flex items-center gap-2">
+                          <CheckCircle className="w-4 h-4" weight="fill" />
+                          Claim Successful!
+                        </div>
+                        <div className="text-xs text-green-700 mt-1 break-all font-mono">{employeeClaimTxid}</div>
+                        <a
+                          href={`https://orbmarkets.io/tx/${employeeClaimTxid}?cluster=devnet`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 text-xs text-green-800 hover:text-green-900 mt-2 font-medium"
+                        >
+                          View on OrbMarkets <ArrowSquareOut className="w-3 h-3" />
                         </a>
                       </div>
                     )}

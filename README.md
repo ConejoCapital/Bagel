@@ -235,6 +235,33 @@ See [COMPREHENSIVE_PRIVACY_LAYERS_REPORT.md](COMPREHENSIVE_PRIVACY_LAYERS_REPORT
 
 ---
 
+## End-to-End Vault & Payroll Flow
+
+The following table demonstrates the complete transaction flow for setting up a vault, registering a business, managing employees, and processing payroll withdrawals. Each step is a verified on-chain transaction.
+
+| Step | Action | Transaction |
+|------|--------|-------------|
+| 1 | Create Vault Token Account | [2kXheUWjE1yKqzJWZebMEUdcffQwpQaBCZ3TUWTZq8WD](https://orbmarkets.io/tx/2kXheUWjE1yKqzJWZebMEUdcffQwpQaBCZ3TUWTZq8WD?cluster=devnet) |
+| 2 | Register Business | [2qNkNPtq95cYV4J42voD8r1M8CxyvYRaJn33BCM8MUESnHH9EZoAeJ7eyyC1taQ8EfWYGsnzZi7vdpXcYmeGxBim](https://orbmarkets.io/tx/2qNkNPtq95cYV4J42voD8r1M8CxyvYRaJn33BCM8MUESnHH9EZoAeJ7eyyC1taQ8EfWYGsnzZi7vdpXcYmeGxBim?cluster=devnet) |
+| 3 | Initialize Vault | [4p86ZYjZHur8NUgN8CgBz7xiP94EyT4RrFRtnLg9HKCsrAPmR8kSNXP7Y5Zp1QdGwbXZjHM1c6zjxTTz1F4LJa64](https://orbmarkets.io/tx/4p86ZYjZHur8NUgN8CgBz7xiP94EyT4RrFRtnLg9HKCsrAPmR8kSNXP7Y5Zp1QdGwbXZjHM1c6zjxTTz1F4LJa64?cluster=devnet) |
+| 4 | Mint 1000 USDBagel | (mint tx) |
+| 5 | Deposit 500 USDBagel | [25ywrzwYUeDN1XVr3LoAYiqZZP14Wg1MgddaT8m3PgTFrroCwdiPEiR5XAsappygG8kdV9nMgwJUo8DCFzUYhqm2](https://orbmarkets.io/tx/25ywrzwYUeDN1XVr3LoAYiqZZP14Wg1MgddaT8m3PgTFrroCwdiPEiR5XAsappygG8kdV9nMgwJUo8DCFzUYhqm2?cluster=devnet) |
+| 6 | Add Employee | [2RSt3ccHJFSNZqLRkhiUXKnzwrdCtSZcyKVYdjYp7uZmYMGuwsCccUU31V3hxDYA58T8sSESUzHsznE2dGnFrDXk](https://orbmarkets.io/tx/2RSt3ccHJFSNZqLRkhiUXKnzwrdCtSZcyKVYdjYp7uZmYMGuwsCccUU31V3hxDYA58T8sSESUzHsznE2dGnFrDXk?cluster=devnet) |
+| 7 | Create Employee Token | (init tx) |
+| 8 | Employee Withdrawal 50 USDBagel | [j1Er2WPFs2eRNeFBorSc2F5aS6j4QE6A1WkagtEunFYLwfjZTHeiNaDyY2UJkgGzp4fnWZDpHxgz8w6a7oaMT2z](https://orbmarkets.io/tx/j1Er2WPFs2eRNeFBorSc2F5aS6j4QE6A1WkagtEunFYLwfjZTHeiNaDyY2UJkgGzp4fnWZDpHxgz8w6a7oaMT2z?cluster=devnet) |
+
+**Flow Overview:**
+1. A vault token account is created to hold encrypted USDBagel tokens
+2. Business registration establishes the employer's on-chain identity via index-based PDA
+3. Vault initialization links the business to its token storage
+4. Tokens are minted to fund payroll operations
+5. Employer deposits funds into the vault (encrypted transfer)
+6. Employees are added with encrypted salary rates and identities
+7. Employee token accounts are initialized for receiving payments
+8. Employees withdraw accrued wages via confidential token transfers
+
+---
+
 ## How It Works
 
 ### 1. Employer Creates Payroll

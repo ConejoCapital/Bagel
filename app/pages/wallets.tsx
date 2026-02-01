@@ -224,7 +224,7 @@ export default function WalletsPage() {
                     )}
                   </button>
                   <a
-                    href={`https://explorer.solana.com/address/${publicKey.toBase58()}?cluster=devnet`}
+                    href={`https://orbmarkets.io/address/${publicKey.toBase58()}?cluster=devnet`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="p-2 hover:bg-gray-200 rounded transition-colors"
@@ -353,7 +353,7 @@ export default function WalletsPage() {
                             )}
                           </button>
                           <a
-                            href={`https://explorer.solana.com/address/${accountInfo.bagelPDA}?cluster=devnet`}
+                            href={`https://orbmarkets.io/address/${accountInfo.bagelPDA}?cluster=devnet`}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="p-2 hover:bg-gray-200 rounded transition-colors"
@@ -407,7 +407,7 @@ export default function WalletsPage() {
                             )}
                           </button>
                           <a
-                            href={`https://explorer.solana.com/address/${accountInfo.incoTokenAccount}?cluster=devnet`}
+                            href={`https://orbmarkets.io/address/${accountInfo.incoTokenAccount}?cluster=devnet`}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="p-2 hover:bg-gray-200 rounded transition-colors"

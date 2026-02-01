@@ -83,7 +83,7 @@ async function main() {
   }, 'confirmed');
 
   console.log(`\nSuccess! Transaction: ${tx}`);
-  console.log(`Explorer: https://solscan.io/tx/${tx}?cluster=devnet`);
+  console.log(`Explorer: https://orbmarkets.io/tx/${tx}?cluster=devnet`);
   console.log(`\nVault Token Account: ${vaultTokenAccount.publicKey.toBase58()}`);
   console.log('\nAdd this to .confidential-token-config:');
   console.log(`VAULT_TOKEN_ACCOUNT=${vaultTokenAccount.publicKey.toBase58()}`);

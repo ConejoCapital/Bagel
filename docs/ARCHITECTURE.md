@@ -1236,7 +1236,7 @@ All events are designed for minimal information leakage:
 - [Inco FHE Overview](https://docs.inco.org/svm/rust-sdk/overview)
 - [Helius RPC & APIs](https://docs.helius.dev/)
 - [MagicBlock Ephemeral Rollups](https://docs.magicblock.gg)
-- [Solana Explorer](https://explorer.solana.com)
+- [OrbMarkets Explorer](https://orbmarkets.io)
 
 ---
 

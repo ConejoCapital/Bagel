@@ -966,7 +966,7 @@ const balance = await incoClient.decryptSalary(
                   <ul className="space-y-3">
                     <li><Link href="/docs" className="text-gray-600 hover:text-bagel-orange transition-colors text-sm">Documentation</Link></li>
                     <li><a href="https://github.com/ConejoCapital/Bagel" className="text-gray-600 hover:text-bagel-orange transition-colors text-sm flex items-center gap-1"><Github size={14} /> GitHub</a></li>
-                    <li><a href="https://orbmarkets.io/address/J45uxvT26szuQcmxvs5NRgtAMornKM9Ga9WaQ58bKUNE?cluster=devnet" className="text-gray-600 hover:text-bagel-orange transition-colors text-sm flex items-center gap-1"><ExternalLink size={14} /> Solana Explorer</a></li>
+                    <li><a href="https://orbmarkets.io/address/J45uxvT26szuQcmxvs5NRgtAMornKM9Ga9WaQ58bKUNE?cluster=devnet" className="text-gray-600 hover:text-bagel-orange transition-colors text-sm flex items-center gap-1"><ExternalLink size={14} /> OrbMarkets</a></li>
                   </ul>
                 </div>
 

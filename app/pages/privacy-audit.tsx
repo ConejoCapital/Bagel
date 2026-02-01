@@ -519,7 +519,7 @@ export default function PrivacyAuditPage() {
                 rel="noopener noreferrer"
                 className="text-blue-600 hover:underline"
               >
-                View on Solana Explorer →
+                View on OrbMarkets →
               </a>
             </div>
           </div>

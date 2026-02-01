@@ -73,7 +73,7 @@ async function main() {
   console.log(`   echo '[${Array.from(vaultTokenAccount.secretKey)}]' > vault-token-account.json\n`);
   console.log(`3. Restart your dev server to pick up the new env var\n`);
 
-  console.log(`🔗 Explorer: https://explorer.solana.com/address/${vaultTokenAccount.publicKey.toBase58()}?cluster=devnet`);
+  console.log(`🔗 Explorer: https://orbmarkets.io/address/${vaultTokenAccount.publicKey.toBase58()}?cluster=devnet`);
 }
 
 main().catch(console.error);

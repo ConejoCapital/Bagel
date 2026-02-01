@@ -78,7 +78,7 @@ async function main() {
   }, 'confirmed');
 
   console.log(`\nSuccess! Transaction: ${tx}`);
-  console.log(`Explorer: https://solscan.io/tx/${tx}?cluster=devnet`);
+  console.log(`Explorer: https://orbmarkets.io/tx/${tx}?cluster=devnet`);
 
   // Verify by reading vault data
   await new Promise(r => setTimeout(r, 2000));
