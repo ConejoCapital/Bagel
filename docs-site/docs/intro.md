@@ -120,6 +120,7 @@ Ready to build with Bagel? Start with our guides:
 - [Getting Started](./getting-started) - Quick setup and first steps
 - [Installation](./installation) - Detailed installation instructions
 - [Core Concepts](./core-concepts/privacy-layer) - Understand the privacy architecture
+- [Payroll Program](./payroll-program/overview) - Complete payroll program documentation
 
 ## Program IDs
 
@@ -142,3 +143,4 @@ Ready to build with Bagel? Start with our guides:
 - [GitHub Repository](https://github.com/ConejoCapital/Bagel)
 - [API Reference](./reference/program-api)
 - [TypeScript SDK](./reference/typescript-sdk)
+- [OrbMarkets Scan](./integration/orbmarkets-scan) - Transaction verification

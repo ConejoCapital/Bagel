@@ -263,6 +263,11 @@ With TEE streaming, employees can withdraw exactly what they've earned up to the
 - Wait and retry commit
 - Check network connectivity
 
+## Related Documentation
+
+- [Employee Lifecycle](../payroll-program/employee-lifecycle) - Complete employee streaming workflow
+- [Payroll Streaming Concepts](../core-concepts/payroll-streaming) - Streaming mathematics
+
 ## References
 
 - [MagicBlock Documentation](https://docs.magicblock.gg)

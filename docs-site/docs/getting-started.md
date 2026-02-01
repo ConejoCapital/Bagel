@@ -216,8 +216,10 @@ Now that you have the basics working:
 
 1. [Learn about the privacy layer](./core-concepts/privacy-layer) - Understand how FHE protects your data
 2. [Explore the architecture](./architecture/overview) - Deep dive into the system design
-3. [Check the API reference](./reference/program-api) - Full documentation of all instructions
-4. [Enable real-time streaming](./integration/magicblock-tee) - Set up MagicBlock TEE for streaming payments
+3. [Payroll Program documentation](./payroll-program/overview) - Complete guide to the Payroll Program
+4. [Check the API reference](./reference/program-api) - Full documentation of all instructions
+5. [Enable real-time streaming](./integration/magicblock-tee) - Set up MagicBlock TEE for streaming payments
+6. [Verify transactions](./integration/orbmarkets-scan) - Use OrbMarkets Scan for transaction verification
 
 ## Example Repository
 
