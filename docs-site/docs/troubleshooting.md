@@ -285,11 +285,11 @@ try {
 }
 ```
 
-### Use Solana Explorer
+### Use OrbMarkets Explorer
 
 View detailed transaction info:
 ```
-https://explorer.solana.com/tx/{signature}?cluster=devnet
+https://orbmarkets.io/tx/{signature}?cluster=devnet
 ```
 
 ## Getting Help
