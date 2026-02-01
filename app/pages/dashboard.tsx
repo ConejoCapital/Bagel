@@ -47,6 +47,7 @@ import { PublicKey } from '@solana/web3.js';
 import { decrypt } from '@inco/solana-sdk/attested-decrypt';
 import { toast } from 'sonner';
 import { Toaster } from '@/components/ui/toaster';
+import { formatBalance } from '@/lib/format';
 
 // Signature cache - stores signatures per handle
 // Key: "handle_walletAddress", Value: { signature, timestamp }
@@ -68,7 +69,7 @@ function shouldDecryptHandle(
       if (cachedHandle === currentHandle.toString()) {
         // Handle hasn't changed - no new transactions!
         toast.info('🥯 Your balance is fresh!', {
-          description: `Your handle is the same on-chain - no new transactions detected. Still holding ${cachedAmount.toFixed(2)} USDBagel, fully encrypted and secure!`,
+          description: `Your handle is the same on-chain - no new transactions detected. Still holding ${formatBalance(cachedAmount)} USDBagel, fully encrypted and secure!`,
           duration: 4000,
         });
         return false; // Don't decrypt
@@ -418,16 +419,10 @@ function PaymentModal({ isOpen, onClose, onDeposit, businessEntryIndex, employee
   }, [publicKey, wallet.signMessage, onBalanceUpdate]);
 
   // Calculate projected earnings (mock 10% APR)
-  const formatEarnings = (value: number) => {
-    if (value >= 1000) return value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    if (value >= 1) return value.toFixed(2);
-    if (value >= 0.01) return value.toFixed(2);
-    return value.toFixed(4);
-  };
   const projectedEarnings = amount ? {
-    daily: formatEarnings(parseFloat(amount) * 0.10 / 365),
-    monthly: formatEarnings(parseFloat(amount) * 0.10 / 12),
-    yearly: formatEarnings(parseFloat(amount) * 0.10),
+    daily: formatBalance(parseFloat(amount) * 0.10 / 365),
+    monthly: formatBalance(parseFloat(amount) * 0.10 / 12),
+    yearly: formatBalance(parseFloat(amount) * 0.10),
   } : null;
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -529,7 +524,7 @@ function PaymentModal({ isOpen, onClose, onDeposit, businessEntryIndex, employee
                     ) : decryptedBalance !== null ? (
                       <span className="text-sm font-semibold text-green-600 flex items-center gap-1">
                         <LockSimpleOpen className="w-3 h-3" />
-                        {decryptedBalance.toFixed(2)} USDBagel
+                        {formatBalance(decryptedBalance)} USDBagel
                       </span>
                     ) : encryptedHandle ? (
                       <span className="text-xs text-gray-500 flex items-center gap-1">
@@ -970,7 +965,7 @@ function TransferModal({ isOpen, onClose, onTransfer, onBalanceUpdate }: Transfe
                     ) : decryptedBalance !== null ? (
                       <span className="text-sm font-semibold text-green-600 flex items-center gap-1">
                         <LockSimpleOpen className="w-3 h-3" />
-                        {decryptedBalance.toFixed(2)} USDBagel
+                        {formatBalance(decryptedBalance)} USDBagel
                       </span>
                     ) : encryptedHandle ? (
                       <span className="text-xs text-gray-500 flex items-center gap-1">
@@ -1572,7 +1567,7 @@ function MintTokensSection({ onMint }: MintTokensSectionProps) {
             <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0 mt-0.5" weight="fill" />
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-green-800">
-                {mintedAmount.toLocaleString()} USDBagel Minted
+                {formatBalance(mintedAmount)} USDBagel Minted
               </p>
               <code className="block text-xs text-green-600 mt-1 truncate">{txid}</code>
               <a
@@ -2086,7 +2081,7 @@ export default function Dashboard() {
       ));
 
       toast.success('Payment sent!', {
-        description: `${monthlyAmount.toFixed(2)} USDBagel sent to ${employee.name} (encrypted)`,
+        description: `${formatBalance(monthlyAmount)} USDBagel sent to ${employee.name} (encrypted)`,
       });
 
       // Refresh payroll business data to update stats
@@ -2199,7 +2194,7 @@ export default function Dashboard() {
                     <span className="text-sm font-medium text-gray-700">Balance:</span>
                     {navbarDecryptedBalance !== null ? (
                       <span className="text-sm font-semibold text-bagel-orange">
-                        {navbarDecryptedBalance.toFixed(2)} USDBagel
+                        {formatBalance(navbarDecryptedBalance)} USDBagel
                       </span>
                     ) : (
                       <span className="text-sm text-gray-400">••••••</span>
@@ -2347,7 +2342,7 @@ export default function Dashboard() {
                     },
                     {
                       icon: Wallet,
-                      value: connected ? `$${employees.reduce((sum, e) => sum + (e.amount || (e as any).salary || 0), 0).toLocaleString()}` : '--',
+                      value: connected ? `$${formatBalance(employees.reduce((sum, e) => sum + (e.amount || (e as any).salary || 0), 0))}` : '--',
                       label: 'Annual Payroll',
                       change: payrollBusiness?.totalDeposited > 0 ? `+${payrollBusiness.totalDeposited}` : undefined,
                       positive: true,
@@ -2467,7 +2462,7 @@ export default function Dashboard() {
                             <code className="text-sm text-gray-600 bg-gray-100 px-2 py-1 rounded">{employee.wallet}</code>
                           </td>
                           <td className="px-4 py-4">
-                            <div className="text-sm font-medium text-bagel-dark">${(employee.amount || (employee as any).salary || 0).toLocaleString()}</div>
+                            <div className="text-sm font-medium text-bagel-dark">${formatBalance(employee.amount || (employee as any).salary || 0)}</div>
                             <div className="text-xs text-gray-500">{employee.currency}</div>
                           </td>
                           <td className="px-4 py-4">

@@ -105,6 +105,15 @@ const config = {
               },
             ],
           },
+          {
+            title: 'Team',
+            items: [
+              { label: 'Tomi — X', href: 'https://x.com/Tomi204_' },
+              { label: 'Tomi — GitHub', href: 'https://github.com/tomi204' },
+              { label: 'Bunny — X', href: 'https://x.com/ConejoCapital' },
+              { label: 'Bunny — GitHub', href: 'https://github.com/ConejoCapital' },
+            ],
+          },
         ],
         copyright: `Copyright ${new Date().getFullYear()} Bagel Protocol. Built with Docusaurus.`,
       },

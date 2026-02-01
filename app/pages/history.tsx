@@ -34,6 +34,7 @@ const WalletButton = dynamic(() => import('../components/WalletButton'), {
 import { PayrollChart } from '@/components/ui/payroll-chart';
 import { CryptoDistributionChart } from '@/components/ui/crypto-distribution-chart';
 import { useTransactions } from '@/hooks/useTransactions';
+import { formatBalance } from '@/lib/format';
 
 // Sidebar navigation items
 const navItems = [
@@ -159,19 +160,19 @@ export default function History() {
                 {[
                   {
                     icon: ArrowUpRight,
-                    value: `${stats.totalOutgoing.toFixed(2)} SOL`,
+                    value: `${formatBalance(stats.totalOutgoing, 2)} SOL`,
                     label: 'Total Outgoing',
                     subtitle: 'Recent transactions',
                   },
                   {
                     icon: ArrowDownLeft,
-                    value: `${stats.totalIncoming.toFixed(2)} SOL`,
+                    value: `${formatBalance(stats.totalIncoming, 2)} SOL`,
                     label: 'Total Incoming',
                     subtitle: 'Recent transactions',
                   },
                   {
                     icon: ClockCounterClockwise,
-                    value: stats.transactionCount.toLocaleString(),
+                    value: formatBalance(stats.transactionCount, 0),
                     label: 'Transactions',
                     subtitle: 'Loaded',
                   },
@@ -326,7 +327,7 @@ export default function History() {
                         </td>
                         <td className="px-4 py-4">
                           <div className={`text-sm font-medium ${tx.direction === 'in' ? 'text-green-600' : 'text-bagel-dark'}`}>
-                            {tx.direction === 'in' ? '+' : '-'}${tx.amount.toLocaleString()}
+                            {tx.direction === 'in' ? '+' : '-'}${formatBalance(tx.amount)}
                           </div>
                           <div className="text-xs text-gray-500">{tx.currency}</div>
                         </td>
