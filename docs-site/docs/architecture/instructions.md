@@ -2,9 +2,13 @@
 sidebar_position: 3
 ---
 
-# Program Instructions
+# Bagel Protocol Instructions
 
-Complete documentation of all Bagel program instructions.
+Complete documentation of all Bagel Protocol (Token Registry) instructions.
+
+:::info Program Distinction
+This section documents the **Bagel Protocol** (`AEd52vEEAdXWUjKut1aQyLLJQnwMWqYMb4hSaHpxd8Hj`) which uses a global MasterVault architecture. For the **Payroll Program** (`J11xMm4pLQ6BUEhTpNwF1Mh4UhzUJNZCcw52zvZJspK2`) with per-business vaults, see [Payroll Program Documentation](../payroll-program/overview).
+:::
 
 ## Overview
 

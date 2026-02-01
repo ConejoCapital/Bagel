@@ -2,9 +2,13 @@
 sidebar_position: 2
 ---
 
-# Account Structures
+# Bagel Protocol Accounts
 
-Detailed documentation of all on-chain account structures.
+Detailed documentation of Bagel Protocol (Token Registry) account structures.
+
+:::info Program Distinction
+This section documents accounts for the **Bagel Protocol** (`AEd52vEEAdXWUjKut1aQyLLJQnwMWqYMb4hSaHpxd8Hj`) which uses a global MasterVault. For the **Payroll Program** accounts with per-business vaults, see [Payroll Program Accounts](../payroll-program/accounts).
+:::
 
 ## MasterVault
 

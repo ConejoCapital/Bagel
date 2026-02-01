@@ -2,9 +2,15 @@
 sidebar_position: 1
 ---
 
-# Architecture Overview
+# Bagel Protocol Architecture
 
-Complete technical architecture of the Bagel Protocol.
+Technical architecture of the Bagel Protocol (Token Registry Program).
+
+:::info Two Programs
+Bagel consists of two main programs:
+- **Bagel Protocol** (`AEd52vEEAdXWUjKut1aQyLLJQnwMWqYMb4hSaHpxd8Hj`) - Global MasterVault with token account PDAs (documented here)
+- **Payroll Program** (`J11xMm4pLQ6BUEhTpNwF1Mh4UhzUJNZCcw52zvZJspK2`) - Per-business vaults with salary streaming ([see Payroll docs](../payroll-program/overview))
+:::
 
 ## System Diagram
 
@@ -236,3 +242,4 @@ cluster = "mainnet-beta"
 - [Instructions](./instructions) - All program instructions
 - [Data Flow](./data-flow) - Complete data flow diagrams
 - [Mathematics](./mathematics) - Cryptographic formulas
+- [Payroll Program](../payroll-program/overview) - Complete Payroll Program documentation
