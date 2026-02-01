@@ -22,6 +22,7 @@ import {
 } from '@phosphor-icons/react';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { useTransactions } from '../hooks/useTransactions';
+import { formatBalance } from '../lib/format';
 
 const WalletButton = dynamic(() => import('../components/WalletButton'), {
   ssr: false,
@@ -249,7 +250,7 @@ export default function Reports() {
                   {[
                     {
                       icon: CurrencyDollar,
-                      value: `$${monthlyPayroll.toLocaleString()}`,
+                      value: `$${formatBalance(monthlyPayroll)}`,
                       label: 'Monthly Payroll',
                       sub: `${activeEmployees.length} active employee${activeEmployees.length !== 1 ? 's' : ''}`,
                     },
@@ -324,14 +325,14 @@ export default function Reports() {
                               animate={{ height: `${(item.outgoing / maxMonthlyAmount) * 100}%` }}
                               transition={{ delay: 0.3 + i * 0.05, duration: 0.4 }}
                               className="flex-1 bg-red-400/60 rounded-t min-h-[2px]"
-                              title={`Out: ${item.outgoing.toFixed(4)} SOL`}
+                              title={`Out: ${formatBalance(item.outgoing, 4)} SOL`}
                             />
                             <motion.div
                               initial={{ height: 0 }}
                               animate={{ height: `${(item.incoming / maxMonthlyAmount) * 100}%` }}
                               transition={{ delay: 0.35 + i * 0.05, duration: 0.4 }}
                               className="flex-1 bg-green-400/60 rounded-t min-h-[2px]"
-                              title={`In: ${item.incoming.toFixed(4)} SOL`}
+                              title={`In: ${formatBalance(item.incoming, 4)} SOL`}
                             />
                           </div>
                           <div className="text-xs text-gray-500">{item.month}</div>
@@ -343,7 +344,7 @@ export default function Reports() {
                     <div className="mt-4 pt-4 border-t border-gray-100 flex items-center justify-between">
                       <div>
                         <div className="text-sm text-gray-500">Annual Payroll Projection</div>
-                        <div className="text-xl font-semibold text-bagel-dark">${annualPayroll.toLocaleString()}</div>
+                        <div className="text-xl font-semibold text-bagel-dark">${formatBalance(annualPayroll)}</div>
                       </div>
                       <Link
                         href="/history"
@@ -381,7 +382,7 @@ export default function Reports() {
                           >
                             <div className="flex items-center justify-between mb-1">
                               <span className="text-sm font-medium text-bagel-dark">{emp.name}</span>
-                              <span className="text-sm text-gray-500">${emp.monthly.toLocaleString()}/mo</span>
+                              <span className="text-sm text-gray-500">${formatBalance(emp.monthly)}/mo</span>
                             </div>
                             <div className="h-2 bg-gray-100 rounded overflow-hidden">
                               <motion.div
@@ -487,7 +488,7 @@ export default function Reports() {
                             <div className={`text-sm font-medium ${
                               tx.direction === 'out' ? 'text-red-600' : 'text-green-600'
                             }`}>
-                              {tx.direction === 'out' ? '-' : '+'}{tx.amount.toFixed(4)} {tx.currency}
+                              {tx.direction === 'out' ? '-' : '+'}{formatBalance(tx.amount, 4)} {tx.currency}
                             </div>
                             <div className="text-xs text-gray-500">{tx.wallet}</div>
                           </div>
@@ -506,7 +507,7 @@ export default function Reports() {
                     className="bg-bagel-cream/50 border border-bagel-orange/20 rounded p-5"
                   >
                     <div className="text-sm text-gray-600 mb-1">Total Outgoing</div>
-                    <div className="text-2xl font-semibold text-bagel-dark">{totalOutgoing.toFixed(4)} SOL</div>
+                    <div className="text-2xl font-semibold text-bagel-dark">{formatBalance(totalOutgoing, 4)} SOL</div>
                     <div className="text-xs text-gray-500 mt-1">{outgoingTransactions.length} transactions</div>
                   </motion.div>
 
@@ -517,7 +518,7 @@ export default function Reports() {
                     className="bg-green-50 border border-green-100 rounded p-5"
                   >
                     <div className="text-sm text-gray-600 mb-1">Total Incoming</div>
-                    <div className="text-2xl font-semibold text-bagel-dark">{totalIncoming.toFixed(4)} SOL</div>
+                    <div className="text-2xl font-semibold text-bagel-dark">{formatBalance(totalIncoming, 4)} SOL</div>
                     <div className="text-xs text-gray-500 mt-1">{incomingTransactions.length} transactions</div>
                   </motion.div>
 
@@ -531,7 +532,7 @@ export default function Reports() {
                     <div className={`text-2xl font-semibold ${
                       totalIncoming - totalOutgoing >= 0 ? 'text-green-600' : 'text-red-600'
                     }`}>
-                      {totalIncoming - totalOutgoing >= 0 ? '+' : ''}{(totalIncoming - totalOutgoing).toFixed(4)} SOL
+                      {totalIncoming - totalOutgoing >= 0 ? '+' : ''}{formatBalance(totalIncoming - totalOutgoing, 4)} SOL
                     </div>
                     <div className="text-xs text-gray-500 mt-1">Based on {transactions.length} transactions</div>
                   </motion.div>

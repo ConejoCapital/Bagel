@@ -38,6 +38,7 @@ import {
   Clock,
   CircleNotch,
 } from '@phosphor-icons/react';
+import { formatBalance } from '../lib/format';
 
 const WalletButton = dynamic(() => import('../components/WalletButton'), {
   ssr: false,
@@ -690,7 +691,7 @@ export default function Employees() {
                   },
                   {
                     icon: Wallet,
-                    value: `$${totalPayroll.toLocaleString()}`,
+                    value: `$${formatBalance(totalPayroll)}`,
                     label: 'Monthly Payroll',
                     subtitle: 'All employees',
                   },
@@ -820,7 +821,7 @@ export default function Employees() {
                           <code className="text-sm text-gray-600 bg-gray-100 px-2 py-1 rounded">{employee.wallet}</code>
                         </td>
                         <td className="px-4 py-4">
-                          <div className="text-sm font-medium text-bagel-dark">${(employee.salary || 0).toLocaleString()}</div>
+                          <div className="text-sm font-medium text-bagel-dark">${formatBalance(employee.salary || 0)}</div>
                           <div className="text-xs text-gray-500">{employee.currency}</div>
                         </td>
                         <td className="px-4 py-4">

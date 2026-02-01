@@ -83,8 +83,8 @@ impl ShadowWireTransfer {
         msg!("🔒 Creating ShadowWire private transfer (PRIVATE)");
         msg!("   Amount: HIDDEN (Bulletproof commitment)");
 
-        require!(!commitment.is_empty(), crate::error::BagelError::InvalidCiphertext);
-        require!(!range_proof.is_empty(), crate::error::BagelError::InvalidCiphertext);
+        require!(!commitment.is_empty(), anchor_lang::error::ErrorCode::ConstraintSeeds);
+        require!(!range_proof.is_empty(), anchor_lang::error::ErrorCode::ConstraintSeeds);
 
         Ok(Self {
             recipient_address: recipient.to_bytes(),
@@ -125,7 +125,7 @@ impl ShadowWireTransfer {
         use crate::constants::program_ids::SHADOWWIRE_PROGRAM_ID;
 
         let _shadowwire_program_id = Pubkey::try_from(SHADOWWIRE_PROGRAM_ID)
-            .map_err(|_| error!(crate::error::BagelError::InvalidCiphertext))?;
+            .map_err(|_| anchor_lang::error::ErrorCode::ConstraintSeeds)?;
 
         msg!("🚀 Executing ShadowWire private transfer (PRIVATE)");
         msg!("   Amount: HIDDEN (Bulletproof)");

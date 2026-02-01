@@ -5,17 +5,29 @@ anchor_version = "0.31.1"
 resolution = true
 skip-lint = false
 
+# ============================================================
+# Program IDs Configuration
+# ============================================================
+
 [programs.devnet]
+# Deployed Bagel Program on Devnet
+# Program ID: AEd52vEEAdXWUjKut1aQyLLJQnwMWqYMb4hSaHpxd8Hj
+# Explorer: https://orbmarkets.io/address/AEd52vEEAdXWUjKut1aQyLLJQnwMWqYMb4hSaHpxd8Hj?cluster=devnet
+# IDL: https://orbmarkets.io/address/AEd52vEEAdXWUjKut1aQyLLJQnwMWqYMb4hSaHpxd8Hj/anchor-idl?cluster=devnet
 bagel = "AEd52vEEAdXWUjKut1aQyLLJQnwMWqYMb4hSaHpxd8Hj"
 payroll = "J11xMm4pLQ6BUEhTpNwF1Mh4UhzUJNZCcw52zvZJspK2"
 delegation_program = "DELeGGvXpWV2fqJUhqcF5ZSYMS4JTLjteaAMARRSaeSh"
 inco_lightning = "5sjEbPiqgZrYwR31ahR6Uk9wf5awoX61YGg7jExQSwaj"
 
 [programs.localnet]
+# NOTE: Localnet program ID is a placeholder - not yet deployed
+# This will be set when deploying to localnet for testing
 bagel = "EijHU9DFQX1gYprK2rd9pNunPxTEQaByUQd1KDngmN8b"
 payroll = "J11xMm4pLQ6BUEhTpNwF1Mh4UhzUJNZCcw52zvZJspK2"
 
 [programs.mainnet]
+# NOTE: Mainnet program ID is a placeholder - not yet deployed
+# This will be set when deploying to mainnet for production
 bagel = "EijHU9DFQX1gYprK2rd9pNunPxTEQaByUQd1KDngmN8b"
 
 [registry]
@@ -27,8 +39,6 @@ wallet = "~/.config/solana/id.json"
 
 [scripts]
 test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"
-
-[hooks]
 
 [test]
 startup_wait = 10000

@@ -977,6 +977,25 @@ const tx = await withdrawPrivately(
                     <li><a href="https://github.com/ConejoCapital" className="text-gray-400 hover:text-white transition-colors text-sm flex items-center gap-1"><Github size={14} /> GitHub</a></li>
                   </ul>
                 </div>
+
+                {/* Team */}
+                <div>
+                  <h4 className="text-white font-semibold mb-4">Team</h4>
+                  <ul className="space-y-3">
+                    <li>
+                      <span className="text-gray-400 text-sm">Tomi — </span>
+                      <a href="https://x.com/Tomi204_" target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-white transition-colors text-sm">X</a>
+                      <span className="text-gray-500 text-sm"> · </span>
+                      <a href="https://github.com/tomi204" target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-white transition-colors text-sm flex items-center gap-1 inline-flex"><Github size={14} /> GitHub</a>
+                    </li>
+                    <li>
+                      <span className="text-gray-400 text-sm">Bunny — </span>
+                      <a href="https://x.com/ConejoCapital" target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-white transition-colors text-sm">X</a>
+                      <span className="text-gray-500 text-sm"> · </span>
+                      <a href="https://github.com/ConejoCapital" target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-white transition-colors text-sm flex items-center gap-1 inline-flex"><Github size={14} /> GitHub</a>
+                    </li>
+                  </ul>
+                </div>
               </div>
 
               {/* Bottom */}

@@ -27,8 +27,9 @@ inco-lightning = { version = "0.1.4", features = ["cpi"] }
 
 # MagicBlock Ephemeral Rollups SDK
 # Program ID: DELeGGvXpWV2fqJUhqcF5ZSYMS4JTLjteaAMARRSaeSh (Delegation Program)
+# Permission Program: ACLseoPoyC3cBqoUtkbjZ4aDrkurZW86v19pXz2XQnp1
 # Devnet RPC: https://devnet.magicblock.app/
-ephemeral-rollups-sdk = { version = "0.8.3", features = ["anchor"] }
+ephemeral-rollups-sdk = { version = "0.8.3", features = ["anchor", "access-control"] }
 
 # Inco Confidential SPL Token SDK
 # Source: https://github.com/Inco-fhevm/lightning-rod-solana

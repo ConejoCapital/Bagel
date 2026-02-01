@@ -69,7 +69,15 @@ pub use shadowwire::{execute_private_payout, initialize_encrypted_balance, Shado
 
 // Re-export MagicBlock functions
 // Note: delegate_employee_entry is deprecated - use delegate_to_tee() instruction with #[delegate] macro
-pub use magicblock::{commit_and_undelegate, get_er_balance, ERConfig};
+pub use magicblock::{
+    commit_and_undelegate,
+    get_er_balance,
+    ERConfig,
+    create_employee_entry_permission,
+    update_employee_entry_permission,
+    derive_permission_pda,
+};
+// Account structs are defined in lib.rs, not re-exported here to avoid duplication
 
 /// Calculate accrued salary using Inco encrypted computation
 ///

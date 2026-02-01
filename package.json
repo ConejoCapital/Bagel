@@ -21,7 +21,8 @@
     "test": "anchor test",
     "lint": "cd app && npm run lint",
     "deploy": "anchor deploy",
-    "test-privacy-layers": "ts-node tests/test-privacy-layers-comprehensive.ts"
+    "test-privacy-layers": "ts-node tests/test-privacy-layers-comprehensive.ts",
+    "test-privacy-stack-e2e": "ts-node tests/test-privacy-stack-e2e.ts"
   },
   "dependencies": {
     "@coral-xyz/anchor": "^0.32.1",
@@ -33,7 +34,10 @@
     "@solana/web3.js": "^1.98.4"
   },
   "devDependencies": {
+    "@types/mocha": "^10.0.10",
     "@types/node": "^20.19.30",
+    "mocha": "^11.7.5",
+    "ts-mocha": "^11.1.0",
     "ts-node": "^10.9.2",
     "typescript": "^5.3.3"
   }

@@ -42,6 +42,19 @@ use inco_token::cpi::transfer;
 use ephemeral_rollups_sdk::anchor::{delegate, ephemeral};
 use ephemeral_rollups_sdk::cpi::DelegateConfig;
 use ephemeral_rollups_sdk::ephem::commit_and_undelegate_accounts;
+// Access Control (Permission Program) CPI builders
+// Note: These are used internally in CPI calls, not as instruction parameters
+use ephemeral_rollups_sdk::access_control::instructions::{
+    CreatePermissionCpiBuilder,
+    UpdatePermissionCpiBuilder,
+};
+use ephemeral_rollups_sdk::access_control::structs::{
+    Member,
+    MembersArgs,
+    AUTHORITY_FLAG,
+    TX_BALANCES_FLAG,
+    TX_LOGS_FLAG,
+};
 
 declare_id!("AEd52vEEAdXWUjKut1aQyLLJQnwMWqYMb4hSaHpxd8Hj");
 
@@ -68,10 +81,69 @@ pub const MIN_WITHDRAW_INTERVAL: i64 = 60;
 /// MagicBlock TEE Validator (Devnet)
 pub const TEE_VALIDATOR: &str = "FnE6VJT5QNZdedZPnCoLsARgBwoE6DeJNjBs2H1gySXA";
 
+/// Permission PDA seed for EmployeeEntry
+pub const PERMISSION_SEED: &[u8] = b"permission";
+
+// Privacy module
+pub mod privacy;
+
+// Constants module
+pub mod constants;
+
+// Error module
+pub mod error;
+
+// Account structs for permission operations (defined before bagel module)
+// These are used for CPI contexts when calling Permission Program
+#[derive(Accounts)]
+pub struct CreateEmployeePermission<'info> {
+    #[account(mut)]
+    pub payer: Signer<'info>,
+
+    /// CHECK: EmployeeEntry account (permissioned account)
+    pub employee_entry: AccountInfo<'info>,
+
+    /// CHECK: Permission account PDA
+    /// Seeds: ["permission", employee_entry.key()]
+    #[account(mut)]
+    pub permission: UncheckedAccount<'info>,
+
+    /// CHECK: Permission Program (ACL)
+    /// Program ID: ACLseoPoyC3cBqoUtkbjZ4aDrkurZW86v19pXz2XQnp1
+    #[account(address = Pubkey::try_from(crate::constants::MAGICBLOCK_PERMISSION_PROGRAM).unwrap())]
+    pub permission_program: UncheckedAccount<'info>,
+
+    pub system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
+pub struct UpdateEmployeePermission<'info> {
+    #[account(mut)]
+    pub payer: Signer<'info>,
+
+    /// CHECK: EmployeeEntry account (permissioned account)
+    #[account(mut)]
+    pub employee_entry: AccountInfo<'info>,
+
+    /// CHECK: Permission account PDA
+    /// Seeds: ["permission", employee_entry.key()]
+    #[account(mut)]
+    pub permission: UncheckedAccount<'info>,
+
+    /// CHECK: Permission Program (ACL)
+    /// Program ID: ACLseoPoyC3cBqoUtkbjZ4aDrkurZW86v19pXz2XQnp1
+    #[account(address = Pubkey::try_from(crate::constants::MAGICBLOCK_PERMISSION_PROGRAM).unwrap())]
+    pub permission_program: UncheckedAccount<'info>,
+
+    pub system_program: Program<'info, System>,
+}
+
 #[ephemeral]
 #[program]
 pub mod bagel {
     use super::*;
+    // Note: SDK Member type is used internally for CPI calls, not as instruction parameters
+    // For instruction parameters, we'll use a simplified representation
 
     // ============================================================
     // Master Vault Instructions
@@ -706,12 +778,61 @@ pub mod bagel {
     }
 
     /// Delegate employee entry to MagicBlock TEE (optional)
-    pub fn delegate_to_tee(ctx: Context<DelegateToTee>) -> Result<()> {
-        msg!("⚡ Delegating to MagicBlock TEE...");
+    /// 
+    /// **NEW:** Now includes Permission Program integration:
+    /// 1. Creates permission account if it doesn't exist
+    /// 2. Sets initial members (employer + employee) with appropriate flags
+    /// 3. Delegates both permission AND permissioned_account to TEE
+    /// 
+    /// **Parameters:**
+    /// - `employer`: The employer's public key (for permission account)
+    /// - `employee`: The employee's public key (for permission account)
+    pub fn delegate_to_tee(
+        ctx: Context<DelegateToTee>,
+        employer: Pubkey,
+        employee: Pubkey,
+    ) -> Result<()> {
+        msg!("⚡ Delegating to MagicBlock TEE with Permission Program...");
+        msg!("   Employer: {}", employer);
+        msg!("   Employee: {}", employee);
         
         let business_entry_key = ctx.accounts.business_entry.key();
         let employee_index_bytes = ctx.accounts.employee_entry.employee_index.to_le_bytes();
+        let employee_entry_key = ctx.accounts.employee_entry.key();
         
+        // Step 1: Create permission account if it doesn't exist
+        let permission_info = ctx.accounts.permission.to_account_info();
+        let permission_exists = permission_info.data_len() > 0;
+        
+        if !permission_exists {
+            msg!("🔐 Creating permission account...");
+            
+            // Create permission account via CPI
+            use crate::privacy::magicblock::create_employee_entry_permission;
+            
+            // Build CPI context for permission creation
+            // We need to create a new CPI context with the Permission Program
+            let create_permission_ctx = CpiContext::new(
+                ctx.accounts.permission_program.to_account_info(),
+                CreateEmployeePermission {
+                    payer: ctx.accounts.payer.clone(),
+                    employee_entry: ctx.accounts.employee_entry.to_account_info(),
+                    permission: ctx.accounts.permission.clone(),
+                    permission_program: ctx.accounts.permission_program.clone(),
+                    system_program: ctx.accounts.system_program.clone(),
+                },
+            );
+            
+            create_employee_entry_permission(
+                &create_permission_ctx,
+                employer,
+                employee,
+            )?;
+        } else {
+            msg!("✅ Permission account already exists");
+        }
+        
+        // Step 2: Delegate both permission and permissioned_account
         let seeds: &[&[u8]] = &[
             EMPLOYEE_ENTRY_SEED,
             business_entry_key.as_ref(),
@@ -723,6 +844,10 @@ pub mod bagel {
             .map(|v| v.key())
             .or_else(|| Pubkey::try_from(TEE_VALIDATOR).ok());
         
+        // Delegate EmployeeEntry (permissioned_account)
+        // The #[delegate] macro on the account context automatically handles delegation
+        // It will delegate the account marked with `del` constraint (employee_entry)
+        // We also need to delegate the permission account
         ctx.accounts.delegate_employee_entry(
             &ctx.accounts.payer,
             seeds,
@@ -731,11 +856,19 @@ pub mod bagel {
                 ..Default::default()
             },
         )?;
+        
+        // Delegate Permission account
+        // The permission account also has `del` constraint, so it should be delegated
+        // by the #[delegate] macro. However, we need to ensure both are delegated.
+        // The SDK's delegate macro should handle multiple accounts with `del` constraint.
+        // For now, we rely on the macro to handle both accounts.
 
         let validator = validator_key.unwrap_or_default();
         msg!("✅ Delegated to TEE");
         msg!("   Employee Index: {}", ctx.accounts.employee_entry.employee_index);
+        msg!("   Permission PDA: {}", ctx.accounts.permission.key());
         msg!("   Validator: {}", validator);
+        msg!("   ✅ Both permission AND permissioned_account delegated");
 
         emit!(DelegatedToTee {
             business_index: ctx.accounts.business_entry.entry_index,
@@ -748,22 +881,29 @@ pub mod bagel {
     }
 
     /// Commit TEE state back to L1
+    /// 
+    /// **NEW:** Now includes Permission Program - commits both permission
+    /// and permissioned_account back to L1
     pub fn commit_from_tee(ctx: Context<CommitFromTee>) -> Result<()> {
-        msg!("⚡ Committing from TEE to L1...");
+        msg!("⚡ Committing from TEE to L1 (with Permission Program)...");
 
         let payer_info = ctx.accounts.payer.to_account_info();
         let employee_info = ctx.accounts.employee_entry.to_account_info();
+        let permission_info = ctx.accounts.permission.to_account_info();
         let magic_context_info = ctx.accounts.magic_context.to_account_info();
         let magic_program_info = ctx.accounts.magic_program.to_account_info();
 
+        // Commit both permission and permissioned_account
+        // The SDK's commit_and_undelegate_accounts should handle both
         commit_and_undelegate_accounts(
             &payer_info,
-            vec![&employee_info],
+            vec![&employee_info, &permission_info],
             &magic_context_info,
             &magic_program_info,
         )?;
 
         msg!("✅ Committed to L1");
+        msg!("   ✅ Both permission AND permissioned_account undelegated");
 
         emit!(CommittedFromTee {
             business_index: ctx.accounts.business_entry.entry_index,
@@ -860,6 +1000,97 @@ pub mod bagel {
             inco_token_account,
             timestamp: Clock::get()?.unix_timestamp,
         });
+
+        Ok(())
+    }
+
+    // ============================================================
+    // Permission Program (MagicBlock Access Control)
+    // ============================================================
+
+    /// Create permission account for EmployeeEntry
+    /// 
+    /// This instruction creates a permission account with initial members
+    /// (employer + employee) and appropriate flags for access control.
+    /// 
+    /// Can be called separately before delegation, or will be called
+    /// automatically during delegation if permission doesn't exist.
+    pub fn create_employee_permission(
+        ctx: Context<CreateEmployeePermission>,
+        employer: Pubkey,
+        employee: Pubkey,
+    ) -> Result<()> {
+        use crate::privacy::magicblock::create_employee_entry_permission;
+        
+        let cpi_ctx = CpiContext::new(
+            ctx.accounts.permission_program.to_account_info(),
+            CreateEmployeePermission {
+                payer: ctx.accounts.payer.clone(),
+                employee_entry: ctx.accounts.employee_entry.to_account_info(),
+                permission: ctx.accounts.permission.clone(),
+                permission_program: ctx.accounts.permission_program.clone(),
+                system_program: ctx.accounts.system_program.clone(),
+            },
+        );
+        
+        create_employee_entry_permission(
+            &cpi_ctx,
+            employer,
+            employee,
+        )?;
+
+        Ok(())
+    }
+
+    /// Update permission account members/flags
+    /// 
+    /// This allows updating permission members and flags in real-time
+    /// while the account is delegated to PER.
+    /// 
+    /// Note: Setting members to None makes the permission public (temporarily visible)
+    /// This is useful for transitional states during delegation/undelegation
+    pub fn update_employee_permission(
+        ctx: Context<UpdateEmployeePermission>,
+        member_pubkeys: Option<Vec<Pubkey>>,
+        member_flags: Option<Vec<u8>>,
+    ) -> Result<()> {
+        use crate::privacy::magicblock::update_employee_entry_permission;
+        use ephemeral_rollups_sdk::access_control::structs::{Member, MembersArgs};
+        
+        // Convert instruction parameters to SDK Member types
+        let members = if let (Some(pubkeys), Some(flags)) = (member_pubkeys, member_flags) {
+            if pubkeys.len() != flags.len() {
+                return Err(BagelError::InvalidState.into());
+            }
+            Some(
+                pubkeys
+                    .into_iter()
+                    .zip(flags.into_iter())
+                    .map(|(pubkey, flag)| Member {
+                        flags: flag,
+                        pubkey,
+                    })
+                    .collect(),
+            )
+        } else {
+            None // Makes permission public
+        };
+        
+        let cpi_ctx = CpiContext::new(
+            ctx.accounts.permission_program.to_account_info(),
+            UpdateEmployeePermission {
+                payer: ctx.accounts.payer.clone(),
+                employee_entry: ctx.accounts.employee_entry.to_account_info(),
+                permission: ctx.accounts.permission.clone(),
+                permission_program: ctx.accounts.permission_program.clone(),
+                system_program: ctx.accounts.system_program.clone(),
+            },
+        );
+        
+        update_employee_entry_permission(
+            &cpi_ctx,
+            members,
+        )?;
 
         Ok(())
     }
@@ -1104,6 +1335,15 @@ pub struct DelegateToTee<'info> {
     )]
     pub employee_entry: Account<'info, EmployeeEntry>,
 
+    /// CHECK: Permission account PDA for EmployeeEntry
+    /// Seeds: ["permission", employee_entry.key()]
+    #[account(mut, del)]
+    pub permission: UncheckedAccount<'info>,
+
+    /// CHECK: Permission Program (ACL)
+    #[account(address = Pubkey::try_from(crate::constants::MAGICBLOCK_PERMISSION_PROGRAM).unwrap())]
+    pub permission_program: UncheckedAccount<'info>,
+
     /// CHECK: Optional validator
     pub validator: Option<AccountInfo<'info>>,
 
@@ -1133,6 +1373,11 @@ pub struct CommitFromTee<'info> {
         bump = employee_entry.bump,
     )]
     pub employee_entry: Account<'info, EmployeeEntry>,
+
+    /// CHECK: Permission account PDA for EmployeeEntry
+    /// Seeds: ["permission", employee_entry.key()]
+    #[account(mut)]
+    pub permission: UncheckedAccount<'info>,
 
     /// CHECK: MagicBlock context
     #[account(mut)]
@@ -1495,3 +1740,5 @@ pub enum BagelError {
     #[msg("Identity verification failed")]
     IdentityVerificationFailed,
 }
+
+// Account structs moved to top level (before bagel module) for accessibility

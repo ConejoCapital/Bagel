@@ -29,6 +29,7 @@ import {
   getConfidentialBalance,
   USDBAGEL_MINT,
 } from '../lib/bagel-client';
+import { formatBalance } from '../lib/format';
 
 const WalletButton = dynamic(() => import('../components/WalletButton'), {
   ssr: false,
@@ -247,7 +248,7 @@ export default function WalletsPage() {
                       {loading ? (
                         <CircleNotch className="w-6 h-6 animate-spin text-bagel-orange" />
                       ) : (
-                        `${accountInfo.solBalance.toFixed(4)} SOL`
+                        `${formatBalance(accountInfo.solBalance, 4)} SOL`
                       )}
                     </div>
                     <div className="text-xs text-gray-500 mt-1">Native Solana</div>

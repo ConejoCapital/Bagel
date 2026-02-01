@@ -248,9 +248,9 @@ The following table demonstrates the complete transaction flow for setting up a 
 | 5 | Deposit 500 USDBagel | [25ywrzwYUeDN1XVr3LoAYiqZZP14Wg1MgddaT8m3PgTFrroCwdiPEiR5XAsappygG8kdV9nMgwJUo8DCFzUYhqm2](https://orbmarkets.io/tx/25ywrzwYUeDN1XVr3LoAYiqZZP14Wg1MgddaT8m3PgTFrroCwdiPEiR5XAsappygG8kdV9nMgwJUo8DCFzUYhqm2?cluster=devnet) |
 | 6 | Add Employee | [2RSt3ccHJFSNZqLRkhiUXKnzwrdCtSZcyKVYdjYp7uZmYMGuwsCccUU31V3hxDYA58T8sSESUzHsznE2dGnFrDXk](https://orbmarkets.io/tx/2RSt3ccHJFSNZqLRkhiUXKnzwrdCtSZcyKVYdjYp7uZmYMGuwsCccUU31V3hxDYA58T8sSESUzHsznE2dGnFrDXk?cluster=devnet) |
 | 7 | Create Employee Token | (init tx) |
-| 8 | Employee Withdrawal 50 USDBagel | [j1Er2WPFs2eRNeFBorSc2F5aS6j4QE6A1WkagtEunFYLwfjZTHeiNaDyY2UJkgGzp4fnWZDpHxgz8w6a7oaMT2z](https://orbmarkets.io/tx/j1Er2WPFs2eRNeFBorSc2F5aS6j4QE6A1WkagtEunFYLwfjZTHeiNaDyY2UJkgGzp4fnWZDpHxgz8w6a7oaMT2z?cluster=devnet) |
+| 8 | Employee Withdrawal 50 USDBagel | [j1Er2WPFs2eRNeFBorSc2F5aS6j4QE6A1WkagtEunFYLwfjZTHeiNaDyY2UJkgGzp4fnWZDpHxgz8w6a7oaMT2z](https://orbmarkets.io/tx/j1Er2WPFs2eRNeFBorSc2F5aS6j4QE6A1WkagtEunFYLwfjZTHeiNaDyY2UJkgGzp4fnWZ   DpHxgz8w6a7oaMT2z?cluster=devnet) |
 
-**Flow Overview:**
+**Flow Overview:** 
 1. A vault token account is created to hold encrypted USDBagel tokens
 2. Business registration establishes the employer's on-chain identity via index-based PDA
 3. Vault initialization links the business to its token storage

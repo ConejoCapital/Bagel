@@ -26,7 +26,20 @@
 use anchor_lang::prelude::*;
 use crate::constants::{
     MAGICBLOCK_DELEGATION_PROGRAM,
+    MAGICBLOCK_PERMISSION_PROGRAM,
     MAGICBLOCK_TEE_VALIDATOR,
+};
+// Use SDK types directly - no custom definitions needed
+use ephemeral_rollups_sdk::access_control::structs::{
+    Member,
+    MembersArgs,
+    AUTHORITY_FLAG,
+    TX_BALANCES_FLAG,
+    TX_LOGS_FLAG,
+};
+use ephemeral_rollups_sdk::access_control::instructions::{
+    CreatePermissionCpiBuilder,
+    UpdatePermissionCpiBuilder,
 };
 
 /// MagicBlock PER Configuration
@@ -208,6 +221,7 @@ pub struct DelegateEmployeeEntry<'info> {
     #[account(mut)]
     pub employer: Signer<'info>,
     
+    /// CHECK: EmployeeEntry account (permissioned account)
     #[account(mut)]
     pub employee_entry: AccountInfo<'info>,
     
@@ -223,6 +237,7 @@ pub struct DelegateEmployeeEntry<'info> {
 /// by the ephemeral-rollups-sdk via commit_and_undelegate_accounts in lib.rs.
 #[derive(Accounts)]
 pub struct CommitAndUndelegate<'info> {
+    /// CHECK: EmployeeEntry account (permissioned account)
     #[account(mut)]
     pub employee_entry: AccountInfo<'info>,
     
@@ -231,3 +246,125 @@ pub struct CommitAndUndelegate<'info> {
     
     pub system_program: Program<'info, System>,
 }
+
+/// Derive Permission PDA for EmployeeEntry
+/// 
+/// Seeds: ["permission", employee_entry.key()]
+pub fn derive_permission_pda(employee_entry: &Pubkey) -> (Pubkey, u8) {
+    Pubkey::find_program_address(
+        &[
+            b"permission",
+            employee_entry.as_ref(),
+        ],
+        &Pubkey::try_from(MAGICBLOCK_PERMISSION_PROGRAM).unwrap_or(Pubkey::default()),
+    )
+}
+
+/// Create permission account for EmployeeEntry
+/// 
+/// This creates a permission account with initial members (employer + employee)
+/// and appropriate flags for access control.
+/// 
+/// Uses MagicBlock's Permission Program CPI via ephemeral-rollups-sdk
+pub fn create_employee_entry_permission<'a, 'b, 'c, 'info>(
+    ctx: &CpiContext<'a, 'b, 'c, 'info, CreateEmployeePermission<'info>>,
+    employer: Pubkey,
+    employee: Pubkey,
+) -> Result<()> {
+    msg!("🔐 Creating permission account for EmployeeEntry...");
+    
+    let permission_program = &ctx.program.to_account_info();
+    let permissioned_account = &ctx.accounts.employee_entry.to_account_info();
+    let permission = &ctx.accounts.permission.to_account_info();
+    let payer = &ctx.accounts.payer.to_account_info();
+    let system_program = &ctx.accounts.system_program.to_account_info();
+    
+    // Create members with appropriate flags
+    // Employer gets AUTHORITY flag (can manage permissions)
+    // Employee gets TX_BALANCES and TX_LOGS flags (can view balance/logs)
+    let members = Some(vec![
+        Member {
+            flags: AUTHORITY_FLAG,
+            pubkey: employer,
+        },
+        Member {
+            flags: TX_BALANCES_FLAG | TX_LOGS_FLAG,
+            pubkey: employee,
+        },
+    ]);
+    
+    // Derive seeds for permission PDA to sign the CPI
+    let seeds: &[&[u8]] = &[
+        b"permission",
+        permissioned_account.key.as_ref(),
+    ];
+    let (_permission_pda, bump) = Pubkey::find_program_address(
+        seeds,
+        &Pubkey::try_from(MAGICBLOCK_PERMISSION_PROGRAM).unwrap_or(Pubkey::default()),
+    );
+    
+    // Create permission via CPI using SDK builder
+    CreatePermissionCpiBuilder::new(permission_program)
+        .permissioned_account(permissioned_account)
+        .permission(permission)
+        .payer(payer)
+        .system_program(system_program)
+        .args(MembersArgs { members })
+        .invoke_signed(&[&[b"permission", permissioned_account.key.as_ref(), &[bump]]])?;
+    
+    msg!("✅ Permission account created");
+    msg!("   Permission PDA: {}", permission.key());
+    msg!("   Employer: {} (AUTHORITY)", employer);
+    msg!("   Employee: {} (TX_BALANCES | TX_LOGS)", employee);
+    
+    Ok(())
+}
+
+/// Update permission account members/flags
+/// 
+/// This allows updating permission members and flags in real-time
+/// while the account is delegated to PER.
+/// 
+/// Uses MagicBlock's Permission Program CPI via ephemeral-rollups-sdk
+pub fn update_employee_entry_permission<'a, 'b, 'c, 'info>(
+    ctx: &CpiContext<'a, 'b, 'c, 'info, UpdateEmployeePermission<'info>>,
+    members: Option<Vec<Member>>,
+) -> Result<()> {
+    msg!("🔐 Updating permission account...");
+    
+    let permission_program = &ctx.program.to_account_info();
+    let permissioned_account = &ctx.accounts.employee_entry.to_account_info();
+    let permission = &ctx.accounts.permission.to_account_info();
+    
+    // Derive seeds for permission PDA to sign the CPI
+    let seeds: &[&[u8]] = &[
+        b"permission",
+        permissioned_account.key.as_ref(),
+    ];
+    let (_permission_pda, bump) = Pubkey::find_program_address(
+        seeds,
+        &Pubkey::try_from(MAGICBLOCK_PERMISSION_PROGRAM).unwrap_or(Pubkey::default()),
+    );
+    
+    // Update permission via CPI using SDK builder
+    // Setting members to None makes the permission public (temporarily visible)
+    UpdatePermissionCpiBuilder::new(permission_program)
+        .authority(permissioned_account, false)
+        .permissioned_account(permissioned_account, true)
+        .permission(permission)
+        .args(MembersArgs { members })
+        .invoke_signed(&[&[
+            b"permission",
+            permissioned_account.key.as_ref(),
+            &[bump],
+        ]])?;
+    
+    msg!("✅ Permission account updated");
+    msg!("   Permission PDA: {}", permission.key());
+    
+    Ok(())
+}
+
+// Account structs are defined in lib.rs at crate level
+// Import them here for use in CPI function signatures
+use crate::{CreateEmployeePermission, UpdateEmployeePermission};
