@@ -197,6 +197,7 @@ import {
   USDBAGEL_MINT as PAYROLL_USDBAGEL_MINT,
   PAYROLL_PROGRAM_ID,
 } from '../lib/payroll-client';
+import { rangeClient, FullComplianceResult } from '../lib/range';
 import { InteractiveGuide, useGuideStatus, GuideStep } from '@/components/InteractiveGuide';
 
 // Define guide steps targeting actual UI elements (shown after wallet connection)
@@ -1138,7 +1139,7 @@ function AddEmployeeModal({ isOpen, onClose, onAddEmployee, businessEntryIndex }
   const [name, setName] = useState('');
   const [wallet, setWallet] = useState('');
   const [salary, setSalary] = useState('');
-  const [currency, setCurrency] = useState('SOL');
+  const [currency, setCurrency] = useState('USDBagel');
   const [paymentFrequency, setPaymentFrequency] = useState<'monthly' | 'bi-weekly' | 'weekly'>('monthly');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -1146,8 +1147,7 @@ function AddEmployeeModal({ isOpen, onClose, onAddEmployee, businessEntryIndex }
   const [employeeIndex, setEmployeeIndex] = useState<number | null>(null);
 
   const currencies = [
-    { symbol: 'SOL', name: 'Solana', icon: '◎' },
-    { symbol: 'USDC', name: 'USD Coin', icon: '$' },
+    { symbol: 'USDBagel', name: 'USD Bagel', icon: '🥯' },
   ];
 
   // Convert salary to per-second rate based on frequency
@@ -1220,7 +1220,7 @@ function AddEmployeeModal({ isOpen, onClose, onAddEmployee, businessEntryIndex }
       setName('');
       setWallet('');
       setSalary('');
-      setCurrency('SOL');
+      setCurrency('USDBagel');
       setPaymentFrequency('monthly');
     }
     onClose();
@@ -1706,6 +1706,47 @@ export default function Dashboard() {
   const [employeeDecryptedSalaryRate, setEmployeeDecryptedSalaryRate] = useState<bigint | null>(null);
   const [employeeDecrypting, setEmployeeDecrypting] = useState(false);
   const [employeeAllowanceSetup, setEmployeeAllowanceSetup] = useState(false);
+
+  // Range Compliance State (real API data - NOT mocked)
+  const [rangeCompliance, setRangeCompliance] = useState<{
+    data: FullComplianceResult | null;
+    loading: boolean;
+    lastChecked: number | null;
+  }>({
+    data: null,
+    loading: false,
+    lastChecked: null,
+  });
+
+  // Fetch Range compliance data (real API call)
+  const fetchRangeCompliance = useCallback(async () => {
+    if (!publicKey) return;
+
+    setRangeCompliance(prev => ({ ...prev, loading: true }));
+
+    try {
+      console.log('🔍 Fetching Range compliance data...');
+      const result = await rangeClient.fullComplianceCheck(publicKey.toBase58());
+
+      setRangeCompliance({
+        data: result,
+        loading: false,
+        lastChecked: Date.now(),
+      });
+
+      console.log('✅ Range compliance:', result.isCompliant ? 'Passed' : 'Review needed', `(Risk: ${result.riskScore}/10)`);
+    } catch (err) {
+      console.error('Failed to fetch Range compliance:', err);
+      setRangeCompliance(prev => ({ ...prev, loading: false }));
+    }
+  }, [publicKey]);
+
+  // Auto-fetch Range compliance when wallet connects
+  useEffect(() => {
+    if (publicKey && !rangeCompliance.lastChecked) {
+      fetchRangeCompliance();
+    }
+  }, [publicKey, rangeCompliance.lastChecked, fetchRangeCompliance]);
 
   // Load employees from localStorage
   useEffect(() => {
@@ -2949,22 +2990,54 @@ export default function Dashboard() {
                     },
                     {
                       icon: ShieldCheck,
-                      value: connected ? '100%' : '--',
-                      label: 'Privacy Score',
-                      badge: connected ? 'Maximum' : undefined,
-                      positive: true,
+                      value: connected
+                        ? rangeCompliance.loading
+                          ? '...'
+                          : rangeCompliance.data?.isCompliant
+                            ? 'Compliant'
+                            : rangeCompliance.data
+                              ? 'Review'
+                              : 'Check'
+                        : '--',
+                      label: 'Range Compliance',
+                      badge: connected && rangeCompliance.data
+                        ? `Risk: ${rangeCompliance.data.riskScore}/10`
+                        : connected
+                          ? 'Powered by Range'
+                          : undefined,
+                      positive: rangeCompliance.data?.isCompliant !== false,
+                      isCompliance: true,
+                      complianceStatus: rangeCompliance.data?.isCompliant,
                     },
-                  ].map((stat, i) => (
+                  ].map((stat: any, i) => (
                     <motion.div
                       key={stat.label}
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: i * 0.1 }}
-                      className="bg-white border border-gray-200 rounded p-5"
+                      className={`rounded p-5 border ${
+                        stat.isCompliance && stat.complianceStatus === false
+                          ? 'bg-red-50 border-red-200'
+                          : stat.isCompliance && stat.complianceStatus === true
+                            ? 'bg-green-50 border-green-200'
+                            : 'bg-white border-gray-200'
+                      }`}
                     >
                       <div className="flex items-start justify-between mb-3">
-                        <div className="w-10 h-10 bg-bagel-cream rounded flex items-center justify-center">
-                          <stat.icon className="w-5 h-5 text-bagel-orange" />
+                        <div className={`w-10 h-10 rounded flex items-center justify-center ${
+                          stat.isCompliance && stat.complianceStatus === false
+                            ? 'bg-red-100'
+                            : stat.isCompliance && stat.complianceStatus === true
+                              ? 'bg-green-100'
+                              : 'bg-bagel-cream'
+                        }`}>
+                          <stat.icon className={`w-5 h-5 ${
+                            stat.isCompliance && stat.complianceStatus === false
+                              ? 'text-red-600'
+                              : stat.isCompliance && stat.complianceStatus === true
+                                ? 'text-green-600'
+                                : 'text-bagel-orange'
+                          }`} />
                         </div>
                         {stat.change && (
                           <div className={`flex items-center gap-0.5 text-xs font-medium ${stat.positive ? 'text-green-600' : 'text-red-500'}`}>
@@ -2973,10 +3046,22 @@ export default function Dashboard() {
                           </div>
                         )}
                         {stat.badge && (
-                          <span className="text-xs font-medium text-green-600">{stat.badge} ↗</span>
+                          <span className={`text-xs font-medium ${
+                            stat.isCompliance && stat.complianceStatus === false
+                              ? 'text-red-600'
+                              : stat.isCompliance && stat.complianceStatus === true
+                                ? 'text-green-600'
+                                : 'text-gray-500'
+                          }`}>{stat.badge}</span>
                         )}
                       </div>
-                      <div className="text-2xl font-semibold text-bagel-dark mb-1">{stat.value}</div>
+                      <div className={`text-2xl font-semibold mb-1 ${
+                        stat.isCompliance && stat.complianceStatus === false
+                          ? 'text-red-600'
+                          : stat.isCompliance && stat.complianceStatus === true
+                            ? 'text-green-600'
+                            : 'text-bagel-dark'
+                      }`}>{stat.value}</div>
                       <div className="text-sm text-gray-500">{stat.label}</div>
                     </motion.div>
                   ))}

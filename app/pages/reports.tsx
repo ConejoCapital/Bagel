@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
@@ -19,10 +19,16 @@ import {
   ArrowRight,
   LockSimple,
   Lightning,
+  Warning,
+  CheckCircle,
+  XCircle,
+  ArrowClockwise,
+  Eye,
 } from '@phosphor-icons/react';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { useTransactions } from '../hooks/useTransactions';
 import { formatBalance } from '../lib/format';
+import { rangeClient, FullComplianceResult, RiskScoreResponse, SanctionsResponse } from '../lib/range';
 
 const WalletButton = dynamic(() => import('../components/WalletButton'), {
   ssr: false,
@@ -50,11 +56,31 @@ interface Employee {
 
 const EMPLOYEES_STORAGE_KEY = 'bagel_employees';
 
+// Range Compliance Analytics State
+interface ComplianceAnalytics {
+  walletRisk: RiskScoreResponse | null;
+  walletSanctions: SanctionsResponse | null;
+  fullCompliance: FullComplianceResult | null;
+  employeeCompliance: Map<string, FullComplianceResult>;
+  loading: boolean;
+  lastChecked: number | null;
+}
+
 export default function Reports() {
   const { publicKey, connected } = useWallet();
   const { transactions, loading: txLoading } = useTransactions(100);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [employees, setEmployees] = useState<Employee[]>([]);
+
+  // Range Compliance State
+  const [compliance, setCompliance] = useState<ComplianceAnalytics>({
+    walletRisk: null,
+    walletSanctions: null,
+    fullCompliance: null,
+    employeeCompliance: new Map(),
+    loading: false,
+    lastChecked: null,
+  });
 
   // Load employees from localStorage
   useEffect(() => {
@@ -70,6 +96,63 @@ export default function Reports() {
       }
     }
   }, [publicKey]);
+
+  // Fetch Range compliance data
+  const fetchComplianceData = useCallback(async () => {
+    if (!publicKey) return;
+
+    setCompliance(prev => ({ ...prev, loading: true }));
+
+    try {
+      console.log('🔍 Fetching Range compliance analytics...');
+
+      // Fetch wallet compliance data in parallel
+      const [riskScore, sanctions, fullCheck] = await Promise.all([
+        rangeClient.getRiskScore(publicKey.toBase58()),
+        rangeClient.checkSanctions(publicKey.toBase58()),
+        rangeClient.fullComplianceCheck(publicKey.toBase58()),
+      ]);
+
+      // Fetch compliance for employees with wallet addresses
+      const employeeChecks = new Map<string, FullComplianceResult>();
+      const employeesWithWallets = employees.filter((e: any) => e.wallet || e.fullWallet);
+
+      await Promise.all(
+        employeesWithWallets.map(async (emp: any) => {
+          const wallet = emp.fullWallet || emp.wallet;
+          if (wallet) {
+            try {
+              const result = await rangeClient.fullComplianceCheck(wallet);
+              employeeChecks.set(wallet, result);
+            } catch (err) {
+              console.error(`Failed to check employee ${emp.name}:`, err);
+            }
+          }
+        })
+      );
+
+      setCompliance({
+        walletRisk: riskScore,
+        walletSanctions: sanctions,
+        fullCompliance: fullCheck,
+        employeeCompliance: employeeChecks,
+        loading: false,
+        lastChecked: Date.now(),
+      });
+
+      console.log('✅ Range compliance data fetched');
+    } catch (err) {
+      console.error('Failed to fetch compliance data:', err);
+      setCompliance(prev => ({ ...prev, loading: false }));
+    }
+  }, [publicKey, employees]);
+
+  // Auto-fetch compliance when wallet connects
+  useEffect(() => {
+    if (publicKey && !compliance.lastChecked) {
+      fetchComplianceData();
+    }
+  }, [publicKey, compliance.lastChecked, fetchComplianceData]);
 
   // Calculate payroll stats
   const activeEmployees = employees.filter(e => e.status === 'Active');
@@ -268,25 +351,58 @@ export default function Reports() {
                     },
                     {
                       icon: ShieldCheck,
-                      value: '100%',
-                      label: 'FHE Encrypted',
-                      sub: 'Inco confidential',
+                      value: compliance.loading
+                        ? '...'
+                        : compliance.fullCompliance?.isCompliant
+                          ? 'Passed'
+                          : compliance.fullCompliance
+                            ? 'Review'
+                            : 'Check',
+                      label: 'Range Compliance',
+                      sub: compliance.fullCompliance
+                        ? `Risk: ${compliance.fullCompliance.riskScore}/10`
+                        : 'Click to check',
+                      highlight: compliance.fullCompliance?.isCompliant === false,
                     },
-                  ].map((stat, i) => (
+                  ].map((stat: any, i) => (
                     <motion.div
                       key={stat.label}
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: i * 0.1 }}
-                      className="bg-white border border-gray-200 rounded p-5"
+                      className={`rounded p-5 border ${
+                        stat.highlight
+                          ? 'bg-red-50 border-red-200'
+                          : stat.label === 'Range Compliance' && compliance.fullCompliance?.isCompliant
+                            ? 'bg-green-50 border-green-200'
+                            : 'bg-white border-gray-200'
+                      }`}
                     >
                       <div className="flex items-start justify-between mb-3">
-                        <div className="w-10 h-10 bg-bagel-cream rounded flex items-center justify-center">
-                          <stat.icon className="w-5 h-5 text-bagel-orange" />
+                        <div className={`w-10 h-10 rounded flex items-center justify-center ${
+                          stat.highlight
+                            ? 'bg-red-100'
+                            : stat.label === 'Range Compliance' && compliance.fullCompliance?.isCompliant
+                              ? 'bg-green-100'
+                              : 'bg-bagel-cream'
+                        }`}>
+                          <stat.icon className={`w-5 h-5 ${
+                            stat.highlight
+                              ? 'text-red-600'
+                              : stat.label === 'Range Compliance' && compliance.fullCompliance?.isCompliant
+                                ? 'text-green-600'
+                                : 'text-bagel-orange'
+                          }`} />
                         </div>
                         <span className="text-xs text-gray-500">{stat.sub}</span>
                       </div>
-                      <div className="text-2xl font-semibold text-bagel-dark mb-1">{stat.value}</div>
+                      <div className={`text-2xl font-semibold mb-1 ${
+                        stat.highlight
+                          ? 'text-red-600'
+                          : stat.label === 'Range Compliance' && compliance.fullCompliance?.isCompliant
+                            ? 'text-green-600'
+                            : 'text-bagel-dark'
+                      }`}>{stat.value}</div>
                       <div className="text-sm text-gray-500">{stat.label}</div>
                     </motion.div>
                   ))}
@@ -537,6 +653,221 @@ export default function Reports() {
                     <div className="text-xs text-gray-500 mt-1">Based on {transactions.length} transactions</div>
                   </motion.div>
                 </div>
+
+                {/* Range Compliance Analytics */}
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.65 }}
+                  className="bg-white border border-gray-200 rounded p-6"
+                >
+                  <div className="flex items-center justify-between mb-6">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-blue-100 rounded flex items-center justify-center">
+                        <Eye className="w-5 h-5 text-blue-600" />
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-semibold text-bagel-dark">Range Compliance Analytics</h3>
+                        <p className="text-xs text-gray-500">Wallet screening powered by Range Protocol</p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={fetchComplianceData}
+                      disabled={compliance.loading}
+                      className="flex items-center gap-2 px-3 py-1.5 text-sm bg-gray-100 hover:bg-gray-200 rounded transition-colors disabled:opacity-50"
+                    >
+                      <ArrowClockwise className={`w-4 h-4 ${compliance.loading ? 'animate-spin' : ''}`} />
+                      {compliance.loading ? 'Checking...' : 'Refresh'}
+                    </button>
+                  </div>
+
+                  {compliance.loading && !compliance.fullCompliance ? (
+                    <div className="flex items-center justify-center py-8">
+                      <ArrowClockwise className="w-6 h-6 text-gray-400 animate-spin" />
+                      <span className="ml-2 text-gray-500">Loading compliance data...</span>
+                    </div>
+                  ) : compliance.fullCompliance ? (
+                    <div className="space-y-6">
+                      {/* Wallet Compliance Overview */}
+                      <div className="grid grid-cols-4 gap-4">
+                        {/* Risk Score */}
+                        <div className={`p-4 rounded border ${
+                          compliance.fullCompliance.riskScore <= 3
+                            ? 'bg-green-50 border-green-200'
+                            : compliance.fullCompliance.riskScore <= 6
+                              ? 'bg-yellow-50 border-yellow-200'
+                              : 'bg-red-50 border-red-200'
+                        }`}>
+                          <div className="text-xs text-gray-500 mb-1">Risk Score</div>
+                          <div className={`text-2xl font-bold ${
+                            compliance.fullCompliance.riskScore <= 3
+                              ? 'text-green-600'
+                              : compliance.fullCompliance.riskScore <= 6
+                                ? 'text-yellow-600'
+                                : 'text-red-600'
+                          }`}>
+                            {compliance.fullCompliance.riskScore}/10
+                          </div>
+                          <div className="text-xs mt-1 capitalize">
+                            {compliance.fullCompliance.riskLevel} risk
+                          </div>
+                        </div>
+
+                        {/* Compliance Status */}
+                        <div className={`p-4 rounded border ${
+                          compliance.fullCompliance.isCompliant
+                            ? 'bg-green-50 border-green-200'
+                            : 'bg-red-50 border-red-200'
+                        }`}>
+                          <div className="text-xs text-gray-500 mb-1">Compliance</div>
+                          <div className="flex items-center gap-2">
+                            {compliance.fullCompliance.isCompliant ? (
+                              <CheckCircle className="w-6 h-6 text-green-600" weight="fill" />
+                            ) : (
+                              <XCircle className="w-6 h-6 text-red-600" weight="fill" />
+                            )}
+                            <span className={`text-lg font-semibold ${
+                              compliance.fullCompliance.isCompliant ? 'text-green-600' : 'text-red-600'
+                            }`}>
+                              {compliance.fullCompliance.isCompliant ? 'Passed' : 'Failed'}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* OFAC Status */}
+                        <div className={`p-4 rounded border ${
+                          !compliance.fullCompliance.isOFACSanctioned
+                            ? 'bg-green-50 border-green-200'
+                            : 'bg-red-50 border-red-200'
+                        }`}>
+                          <div className="text-xs text-gray-500 mb-1">OFAC Sanctions</div>
+                          <div className="flex items-center gap-2">
+                            {!compliance.fullCompliance.isOFACSanctioned ? (
+                              <CheckCircle className="w-6 h-6 text-green-600" weight="fill" />
+                            ) : (
+                              <Warning className="w-6 h-6 text-red-600" weight="fill" />
+                            )}
+                            <span className={`text-lg font-semibold ${
+                              !compliance.fullCompliance.isOFACSanctioned ? 'text-green-600' : 'text-red-600'
+                            }`}>
+                              {compliance.fullCompliance.isOFACSanctioned ? 'Flagged' : 'Clear'}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Blacklist Status */}
+                        <div className={`p-4 rounded border ${
+                          !compliance.fullCompliance.isBlacklisted
+                            ? 'bg-green-50 border-green-200'
+                            : 'bg-red-50 border-red-200'
+                        }`}>
+                          <div className="text-xs text-gray-500 mb-1">Token Blacklist</div>
+                          <div className="flex items-center gap-2">
+                            {!compliance.fullCompliance.isBlacklisted ? (
+                              <CheckCircle className="w-6 h-6 text-green-600" weight="fill" />
+                            ) : (
+                              <Warning className="w-6 h-6 text-red-600" weight="fill" />
+                            )}
+                            <span className={`text-lg font-semibold ${
+                              !compliance.fullCompliance.isBlacklisted ? 'text-green-600' : 'text-red-600'
+                            }`}>
+                              {compliance.fullCompliance.isBlacklisted ? 'Blocked' : 'Clear'}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Reasoning */}
+                      {compliance.fullCompliance.reasoning && (
+                        <div className="p-4 bg-gray-50 rounded border border-gray-200">
+                          <div className="text-xs text-gray-500 mb-1">Analysis</div>
+                          <p className="text-sm text-gray-700">{compliance.fullCompliance.reasoning}</p>
+                        </div>
+                      )}
+
+                      {/* Employee Compliance Table */}
+                      {compliance.employeeCompliance.size > 0 && (
+                        <div>
+                          <h4 className="text-sm font-semibold text-bagel-dark mb-3">Employee Wallet Compliance</h4>
+                          <div className="border border-gray-200 rounded overflow-hidden">
+                            <table className="w-full">
+                              <thead className="bg-gray-50">
+                                <tr>
+                                  <th className="text-left text-xs font-medium text-gray-500 px-4 py-2">Wallet</th>
+                                  <th className="text-center text-xs font-medium text-gray-500 px-4 py-2">Risk Score</th>
+                                  <th className="text-center text-xs font-medium text-gray-500 px-4 py-2">Status</th>
+                                  <th className="text-center text-xs font-medium text-gray-500 px-4 py-2">OFAC</th>
+                                  <th className="text-center text-xs font-medium text-gray-500 px-4 py-2">Blacklist</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-gray-100">
+                                {Array.from(compliance.employeeCompliance.entries()).map(([wallet, result]) => (
+                                  <tr key={wallet} className="hover:bg-gray-50">
+                                    <td className="px-4 py-3">
+                                      <span className="text-sm font-mono text-gray-600">
+                                        {wallet.slice(0, 8)}...{wallet.slice(-6)}
+                                      </span>
+                                    </td>
+                                    <td className="px-4 py-3 text-center">
+                                      <span className={`inline-flex px-2 py-0.5 rounded text-xs font-medium ${
+                                        result.riskScore <= 3
+                                          ? 'bg-green-100 text-green-700'
+                                          : result.riskScore <= 6
+                                            ? 'bg-yellow-100 text-yellow-700'
+                                            : 'bg-red-100 text-red-700'
+                                      }`}>
+                                        {result.riskScore}/10
+                                      </span>
+                                    </td>
+                                    <td className="px-4 py-3 text-center">
+                                      {result.isCompliant ? (
+                                        <CheckCircle className="w-5 h-5 text-green-500 mx-auto" weight="fill" />
+                                      ) : (
+                                        <XCircle className="w-5 h-5 text-red-500 mx-auto" weight="fill" />
+                                      )}
+                                    </td>
+                                    <td className="px-4 py-3 text-center">
+                                      {!result.isOFACSanctioned ? (
+                                        <CheckCircle className="w-5 h-5 text-green-500 mx-auto" weight="fill" />
+                                      ) : (
+                                        <Warning className="w-5 h-5 text-red-500 mx-auto" weight="fill" />
+                                      )}
+                                    </td>
+                                    <td className="px-4 py-3 text-center">
+                                      {!result.isBlacklisted ? (
+                                        <CheckCircle className="w-5 h-5 text-green-500 mx-auto" weight="fill" />
+                                      ) : (
+                                        <Warning className="w-5 h-5 text-red-500 mx-auto" weight="fill" />
+                                      )}
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Last Updated */}
+                      {compliance.lastChecked && (
+                        <div className="text-xs text-gray-400 text-right">
+                          Last checked: {new Date(compliance.lastChecked).toLocaleString()}
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="text-center py-8">
+                      <Eye className="w-10 h-10 text-gray-300 mx-auto mb-2" />
+                      <p className="text-sm text-gray-500">No compliance data available</p>
+                      <button
+                        onClick={fetchComplianceData}
+                        className="mt-3 text-sm text-bagel-orange hover:underline"
+                      >
+                        Run Compliance Check
+                      </button>
+                    </div>
+                  )}
+                </motion.div>
               </div>
             )}
           </main>
