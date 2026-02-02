@@ -155,9 +155,9 @@ export default function Landing() {
 
                 {/* CTA Buttons */}
                 <div className="hidden md:flex items-center gap-3">
-                  <Link href="/docs" className="text-sm font-medium text-gray-600 hover:text-bagel-dark transition-colors px-4 py-2">
+                  <a href="https://docs-bagel.vercel.app/docs/intro" target="_blank" rel="noopener noreferrer" className="text-sm font-medium text-gray-600 hover:text-bagel-dark transition-colors px-4 py-2">
                     Documentation
-                  </Link>
+                  </a>
                   <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
                     <Link href="/dashboard" className="btn-primary text-sm flex items-center gap-2">
                       Launch App
@@ -833,10 +833,10 @@ const tx = await withdrawPrivately(
 
                   <div className="mt-8 flex gap-4">
                     <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-                      <Link href="/docs" className="btn-primary flex items-center gap-2">
+                      <a href="https://docs-bagel.vercel.app/docs/intro" target="_blank" rel="noopener noreferrer" className="btn-primary flex items-center gap-2">
                         <FileText size={18} />
                         Read the Docs
-                      </Link>
+                      </a>
                     </motion.div>
                     <motion.a
                       whileHover={{ scale: 1.02 }}
@@ -920,10 +920,10 @@ const tx = await withdrawPrivately(
                   </Link>
                 </motion.div>
                 <motion.div whileHover={{ scale: 1.02, y: -2 }} whileTap={{ scale: 0.98 }}>
-                  <Link href="/docs" className="btn-secondary px-10 py-4 text-lg flex items-center justify-center gap-2">
+                  <a href="https://docs-bagel.vercel.app/docs/intro" target="_blank" rel="noopener noreferrer" className="btn-secondary px-10 py-4 text-lg flex items-center justify-center gap-2">
                     <FileText size={20} />
                     Read Documentation
-                  </Link>
+                  </a>
                 </motion.div>
               </div>
 
@@ -963,7 +963,7 @@ const tx = await withdrawPrivately(
                 <div>
                   <h4 className="text-white font-semibold mb-4">Resources</h4>
                   <ul className="space-y-3">
-                    <li><Link href="/docs" className="text-gray-400 hover:text-white transition-colors text-sm">Documentation</Link></li>
+                    <li><a href="https://docs-bagel.vercel.app/docs/intro" target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-white transition-colors text-sm">Documentation</a></li>
                     <li><a href="https://github.com/ConejoCapital/Bagel" className="text-gray-400 hover:text-white transition-colors text-sm flex items-center gap-1"><Github size={14} /> GitHub</a></li>
                     <li><a href="https://orbmarkets.io/address/J45uxvT26szuQcmxvs5NRgtAMornKM9Ga9WaQ58bKUNE?cluster=devnet" className="text-gray-400 hover:text-white transition-colors text-sm flex items-center gap-1"><ExternalLink size={14} /> OrbMarkets</a></li>
                   </ul>

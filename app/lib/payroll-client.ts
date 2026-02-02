@@ -661,6 +661,7 @@ export async function addEmployee(
       { pubkey: wallet.publicKey, isSigner: true, isWritable: true },
       { pubkey: businessPDA, isSigner: false, isWritable: true },
       { pubkey: employeePDA, isSigner: false, isWritable: true },
+      { pubkey: INCO_LIGHTNING_ID, isSigner: false, isWritable: false }, // Inco Lightning for registering ciphertext
       { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
     ],
     programId: PAYROLL_PROGRAM_ID,
@@ -668,7 +669,82 @@ export async function addEmployee(
   });
 
   const txid = await sendAndConfirmTransaction(connection, wallet, instruction);
+
+  // Register employee's encrypted salary handle with Inco covalidator
+  // This is REQUIRED for the employee to decrypt their salary later
+  try {
+    console.log('📝 Registering employee allowance with Inco covalidator...');
+    const allowanceResponse = await fetch('/api/setup-employee-allowance', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        businessPDA: businessPDA.toBase58(),
+        employeeIndex: employeeIndex,
+        employeeWallet: employeeWallet.toBase58(),
+      }),
+    });
+
+    if (allowanceResponse.ok) {
+      const allowanceResult = await allowanceResponse.json();
+      console.log('✅ Employee allowance registered:', allowanceResult);
+    } else {
+      const errorText = await allowanceResponse.text();
+      console.warn('⚠️ Failed to register employee allowance (decryption may not work):', errorText);
+    }
+  } catch (allowanceError) {
+    console.warn('⚠️ Failed to register employee allowance (decryption may not work):', allowanceError);
+    // Don't throw - the employee was created successfully, allowance can be set up later
+  }
+
   return { txid, employeePDA, employeeIndex };
+}
+
+// ============================================================
+// Employee Allowance Setup (for decryption)
+// ============================================================
+
+/**
+ * Set up allowance for an existing employee to enable decryption
+ *
+ * This registers the employee's encrypted salary/accrued handles with the
+ * Inco covalidator, which is REQUIRED for decryption to work.
+ *
+ * Call this for employees that were created before the automatic allowance
+ * setup was added, or if the allowance setup failed during employee creation.
+ */
+export async function setupEmployeeAllowance(
+  businessPDA: PublicKey,
+  employeeIndex: number,
+  employeeWallet: PublicKey
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    console.log(`📝 Setting up allowance for employee #${employeeIndex}...`);
+    console.log(`   Business: ${businessPDA.toBase58()}`);
+    console.log(`   Employee Wallet: ${employeeWallet.toBase58()}`);
+
+    const response = await fetch('/api/setup-employee-allowance', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        businessPDA: businessPDA.toBase58(),
+        employeeIndex: employeeIndex,
+        employeeWallet: employeeWallet.toBase58(),
+      }),
+    });
+
+    if (response.ok) {
+      const result = await response.json();
+      console.log('✅ Allowance setup successful:', result);
+      return { success: true };
+    } else {
+      const errorText = await response.text();
+      console.error('❌ Allowance setup failed:', errorText);
+      return { success: false, error: errorText };
+    }
+  } catch (error: any) {
+    console.error('❌ Allowance setup error:', error);
+    return { success: false, error: error.message || 'Unknown error' };
+  }
 }
 
 // ============================================================
@@ -891,6 +967,209 @@ export function monthlyToPerSecond(monthlyRate: number): number {
 export function perSecondToMonthly(perSecond: number): number {
   const secondsPerMonth = 30 * 24 * 60 * 60;
   return perSecond * secondsPerMonth;
+}
+
+// ============================================================
+// Employee Detection
+// ============================================================
+
+/**
+ * Hash a wallet pubkey to match against employee ID
+ * Uses the same algorithm as when adding an employee
+ */
+export async function hashWalletForEmployeeId(wallet: PublicKey): Promise<Uint8Array> {
+  const pubkeyBuffer = wallet.toBuffer();
+  const hashBuffer = await crypto.subtle.digest('SHA-256', new Uint8Array(pubkeyBuffer));
+  return new Uint8Array(hashBuffer).slice(0, 32);
+}
+
+/**
+ * Check if a wallet matches an employee's encrypted ID
+ * Supports both 16-byte (bagel-client) and 32-byte (payroll-client) hashes
+ */
+export async function isWalletEmployee(
+  wallet: PublicKey,
+  employee: EmployeeAccount
+): Promise<boolean> {
+  const pubkeyBuffer = wallet.toBuffer();
+  const hashBuffer = await crypto.subtle.digest('SHA-256', new Uint8Array(pubkeyBuffer));
+  const fullHash = new Uint8Array(hashBuffer);
+  const employeeId = employee.encryptedEmployeeId;
+
+  // Check 32-byte hash match (payroll-client format)
+  let is32ByteMatch = true;
+  for (let i = 0; i < 32 && i < employeeId.length; i++) {
+    if (fullHash[i] !== employeeId[i]) {
+      is32ByteMatch = false;
+      break;
+    }
+  }
+  if (is32ByteMatch) {
+    console.log(`✅ 32-byte hash match for wallet ${wallet.toBase58().slice(0, 8)}...`);
+    return true;
+  }
+
+  // Check 16-byte hash match (bagel-client format - rest should be zeros)
+  let is16ByteMatch = true;
+  for (let i = 0; i < 16; i++) {
+    if (fullHash[i] !== employeeId[i]) {
+      is16ByteMatch = false;
+      break;
+    }
+  }
+  // Verify remaining bytes are zeros (indicating 16-byte format)
+  let restIsZeros = true;
+  for (let i = 16; i < 32 && i < employeeId.length; i++) {
+    if (employeeId[i] !== 0) {
+      restIsZeros = false;
+      break;
+    }
+  }
+  if (is16ByteMatch && restIsZeros) {
+    console.log(`✅ 16-byte hash match for wallet ${wallet.toBase58().slice(0, 8)}...`);
+    return true;
+  }
+
+  return false;
+}
+
+/**
+ * Find if a wallet is an employee of a business
+ * Returns the employee data if found, null otherwise
+ */
+export async function findEmployeeByWallet(
+  connection: Connection,
+  business: PublicKey,
+  wallet: PublicKey,
+  maxEmployees: number = 20
+): Promise<{ employee: EmployeeAccount; employeeIndex: number } | null> {
+  console.log(`🔍 Searching for wallet ${wallet.toBase58().slice(0, 8)}... in business ${business.toBase58().slice(0, 8)}...`);
+
+  for (let i = 0; i < maxEmployees; i++) {
+    try {
+      const employee = await getEmployeeAccount(connection, business, i);
+      if (!employee) {
+        console.log(`   Employee #${i}: not found`);
+        continue;
+      }
+
+      console.log(`   Employee #${i}: isActive=${employee.isActive}, checking hash match...`);
+      const isMatch = await isWalletEmployee(wallet, employee);
+
+      if (isMatch) {
+        if (employee.isActive) {
+          console.log(`✅ Found matching ACTIVE employee at index ${i}`);
+          return { employee, employeeIndex: i };
+        } else {
+          console.log(`⚠️ Found matching but INACTIVE employee at index ${i}`);
+        }
+      }
+    } catch (err) {
+      // No employee at this index - this is normal for sparse arrays
+    }
+  }
+  console.log(`❌ No matching employee found for wallet ${wallet.toBase58().slice(0, 8)}...`);
+  return null;
+}
+
+// ============================================================
+// Employee Encrypted Data Extraction
+// ============================================================
+
+/**
+ * Extract encrypted accrued salary handle from Employee PDA
+ *
+ * This reads the encrypted_accrued field from the Employee account
+ * and extracts the u128 handle needed for decryption.
+ *
+ * Employee struct layout:
+ * 0-8: discriminator
+ * 8-40: business (32)
+ * 40-48: employee_index (u64)
+ * 48-80: encrypted_employee_id (32)
+ * 80-112: encrypted_salary_rate (32)
+ * 112-144: encrypted_accrued (32)
+ * 144-152: last_accrual_time (i64)
+ *
+ * The handle is the first 16 bytes of the encrypted field (u128 little-endian).
+ */
+export function extractEmployeeAccruedHandle(employee: EmployeeAccount): bigint {
+  const bytes = employee.encryptedAccrued.slice(0, 16);
+  let result = BigInt(0);
+  for (let i = 15; i >= 0; i--) {
+    result = result * BigInt(256) + BigInt(bytes[i]);
+  }
+  return result;
+}
+
+/**
+ * Extract encrypted salary rate handle from Employee PDA
+ */
+export function extractEmployeeSalaryHandle(employee: EmployeeAccount): bigint {
+  const bytes = employee.encryptedSalaryRate.slice(0, 16);
+  let result = BigInt(0);
+  for (let i = 15; i >= 0; i--) {
+    result = result * BigInt(256) + BigInt(bytes[i]);
+  }
+  return result;
+}
+
+/**
+ * Get encrypted handles as hex strings for Inco decryption
+ *
+ * Returns the accrued and salary rate handles as hex strings
+ * that can be passed to Inco's decrypt function.
+ */
+export interface EmployeeDecryptHandles {
+  accruedHandle: string;
+  salaryHandle: string;
+  accruedHandleValue: bigint;
+  salaryHandleValue: bigint;
+}
+
+export function getEmployeeDecryptHandles(employee: EmployeeAccount): EmployeeDecryptHandles {
+  const accruedHandleValue = extractEmployeeAccruedHandle(employee);
+  const salaryHandleValue = extractEmployeeSalaryHandle(employee);
+
+  // Convert to decimal strings (Inco SDK expects decimal, not hex)
+  const accruedHandle = accruedHandleValue.toString();
+  const salaryHandle = salaryHandleValue.toString();
+
+  return {
+    accruedHandle,
+    salaryHandle,
+    accruedHandleValue,
+    salaryHandleValue,
+  };
+}
+
+/**
+ * Get employee's encrypted data ready for decryption
+ *
+ * This fetches the Employee account and extracts the encrypted handles
+ * needed for calling the /api/setup-employee-allowance endpoint and
+ * then decrypting with Inco SDK.
+ */
+export async function getEmployeeForDecryption(
+  connection: Connection,
+  business: PublicKey,
+  employeeIndex: number
+): Promise<{
+  employee: EmployeeAccount;
+  handles: EmployeeDecryptHandles;
+  employeePDA: PublicKey;
+} | null> {
+  const employee = await getEmployeeAccount(connection, business, employeeIndex);
+  if (!employee) return null;
+
+  const [employeePDA] = getEmployeePDA(business, employeeIndex);
+  const handles = getEmployeeDecryptHandles(employee);
+
+  return {
+    employee,
+    handles,
+    employeePDA,
+  };
 }
 
 // ============================================================

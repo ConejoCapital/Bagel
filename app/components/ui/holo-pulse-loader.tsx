@@ -56,7 +56,7 @@ export function BagelLoader({ text = 'Loading', size = 'md', fullScreen = true }
         <p className="text-xs font-mono tracking-[0.2em] text-bagel-orange uppercase">
           {text}{dots}
         </p>
-        <p className="text-[10px] text-bagel-dark/50">Privacy-First Payroll</p>
+        <p className="text-[10px] text-bagel-dark/50">The People's Private Payroll</p>
       </div>
     </div>
   )

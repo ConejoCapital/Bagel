@@ -94,6 +94,18 @@ a:hover {
   border-color: var(--bagel-orange);
 }
 
+/* Hide browser default number input spinners for a cleaner field */
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+input[type="number"] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
 .wallet-adapter-button {
   background-color: var(--bagel-orange) !important;
 }

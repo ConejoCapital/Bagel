@@ -155,9 +155,9 @@ export default function Landing() {
 
                 {/* CTA Buttons */}
                 <div className="hidden md:flex items-center gap-3">
-                  <Link href="/docs" className="text-sm font-medium text-gray-600 hover:text-bagel-dark transition-colors px-4 py-2">
+                  <a href="https://docs-bagel.vercel.app/docs/intro" target="_blank" rel="noopener noreferrer" className="text-sm font-medium text-gray-600 hover:text-bagel-dark transition-colors px-4 py-2">
                     Documentation
-                  </Link>
+                  </a>
                   <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
                     <Link href="/dashboard" className="btn-primary text-sm flex items-center gap-2">
                       Launch App
@@ -832,10 +832,10 @@ const balance = await incoClient.decryptSalary(
 
                   <div className="mt-8 flex gap-4">
                     <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-                      <Link href="/docs" className="btn-primary flex items-center gap-2">
+                      <a href="https://docs-bagel.vercel.app/docs/intro" target="_blank" rel="noopener noreferrer" className="btn-primary flex items-center gap-2">
                         <FileText size={18} />
                         Read the Docs
-                      </Link>
+                      </a>
                     </motion.div>
                     <motion.a
                       whileHover={{ scale: 1.02 }}

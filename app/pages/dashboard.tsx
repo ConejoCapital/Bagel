@@ -33,7 +33,6 @@ import {
   CaretDown as CaretDownIcon,
   CurrencyDollar,
   CalendarBlank,
-  Clock,
   Lightning,
   Info,
   Warning,
@@ -158,13 +157,8 @@ import {
   confidentialTransfer,
   getCurrentBusinessIndex,
   getCurrentEmployeeIndex,
-  getBusinessEntryPDA,
-  getEmployeeEntryPDA,
-  getMasterVaultPDA,
   getMasterVaultTokenAccount,
   getConfidentialTokenAccount,
-  getEmployeeEntrySalaryData,
-  type EmployeeEntrySalaryData,
   solToLamports,
   lamportsToSOL,
   BAGEL_PROGRAM_ID,
@@ -184,7 +178,6 @@ import { CryptoDistributionChart } from '@/components/ui/crypto-distribution-cha
 import { useRecentTransactions } from '@/hooks/useTransactions';
 import {
   addEmployee as addPayrollEmployee,
-  payEmployee,
   getLegacyBusinessAccount as getPayrollBusinessAccount,
   depositToPayroll,
   registerBusiness as registerPayrollBusiness,
@@ -198,8 +191,11 @@ import {
   getBusinessAccount,
   getVaultAccount,
   getEmployeeAccount,
+  getEmployeeForDecryption,
+  getEmployeePDA,
   simpleWithdraw,
   USDBAGEL_MINT as PAYROLL_USDBAGEL_MINT,
+  PAYROLL_PROGRAM_ID,
 } from '../lib/payroll-client';
 import { InteractiveGuide, useGuideStatus, GuideStep } from '@/components/InteractiveGuide';
 
@@ -1653,6 +1649,7 @@ export default function Dashboard() {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState('');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [viewMode, setViewMode] = useState<'employer' | 'employee'>('employer');
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [isTransferModalOpen, setIsTransferModalOpen] = useState(false);
   const [isAddEmployeeModalOpen, setIsAddEmployeeModalOpen] = useState(false);
@@ -1704,11 +1701,11 @@ export default function Dashboard() {
   const [employeeClaiming, setEmployeeClaiming] = useState(false);
   const [employeeClaimTxid, setEmployeeClaimTxid] = useState('');
   const [employeeClaimError, setEmployeeClaimError] = useState('');
-  // Salary to claim (employee view) – real-time polling
-  const [salaryToClaimData, setSalaryToClaimData] = useState<EmployeeEntrySalaryData | null>(null);
-  const [decryptedAccrued, setDecryptedAccrued] = useState<bigint | null>(null);
-  const [decryptedSalaryPerSecond, setDecryptedSalaryPerSecond] = useState<bigint | null>(null);
-  const [salaryDecrypting, setSalaryDecrypting] = useState(false);
+  // Employee accrued salary decryption (Payroll program)
+  const [employeeDecryptedAccrued, setEmployeeDecryptedAccrued] = useState<bigint | null>(null);
+  const [employeeDecryptedSalaryRate, setEmployeeDecryptedSalaryRate] = useState<bigint | null>(null);
+  const [employeeDecrypting, setEmployeeDecrypting] = useState(false);
+  const [employeeAllowanceSetup, setEmployeeAllowanceSetup] = useState(false);
 
   // Load employees from localStorage
   useEffect(() => {
@@ -1749,53 +1746,149 @@ export default function Dashboard() {
     }
   }, [publicKey, connection]);
 
-  // Poll salary-to-claim data (employee entry 0) every 10s when user has a business
-  const fetchSalaryToClaimData = useCallback(async () => {
-    if (!connection || businessEntryIndex === null) return;
-    try {
-      const [masterVaultPda] = getMasterVaultPDA();
-      const [businessEntryPda] = getBusinessEntryPDA(masterVaultPda, businessEntryIndex);
-      const [employeeEntryPda] = getEmployeeEntryPDA(businessEntryPda, 0);
-      const data = await getEmployeeEntrySalaryData(connection, employeeEntryPda);
-      setSalaryToClaimData(data);
-    } catch {
-      setSalaryToClaimData(null);
-    }
-  }, [connection, businessEntryIndex]);
-
-  useEffect(() => {
-    if (!connected || businessEntryIndex === null) {
-      setSalaryToClaimData(null);
+  // Decrypt employee's accrued salary from Payroll program
+  const handleDecryptEmployeeAccrued = useCallback(async () => {
+    if (!employeeData || !wallet.publicKey || !wallet.signMessage) {
+      toast.error('No employee data available');
       return;
     }
-    fetchSalaryToClaimData();
-    const interval = setInterval(fetchSalaryToClaimData, 10_000);
-    return () => clearInterval(interval);
-  }, [connected, businessEntryIndex, fetchSalaryToClaimData]);
 
-  // Decrypt salary/accrued for "Salary to Claim" (user signs once)
-  const handleDecryptSalaryToClaim = useCallback(async () => {
-    if (!salaryToClaimData || !wallet.publicKey || !wallet.signMessage) return;
-    setSalaryDecrypting(true);
+    setEmployeeDecrypting(true);
     try {
-      const handles = [salaryToClaimData.encryptedSalaryHex, salaryToClaimData.encryptedAccruedHex];
-      const result = await decrypt(handles, {
+      // Get the business PDA from the employer wallet
+      const employerPubkey = new PublicKey(employeeData.employerWallet);
+      const [businessPDA] = getBusinessPDA(employerPubkey);
+
+      // Get employee data with decrypt handles
+      const empData = await getEmployeeForDecryption(connection, businessPDA, employeeData.employeeIndex);
+      if (!empData) {
+        toast.error('Could not fetch employee data');
+        return;
+      }
+
+      console.log('📊 Employee decrypt handles:', empData.handles);
+      console.log('   Accrued Handle:', empData.handles.accruedHandle);
+      console.log('   Salary Handle:', empData.handles.salaryHandle);
+
+      // Check if handles are zero (no data encrypted yet)
+      const hasAccrued = empData.handles.accruedHandleValue !== BigInt(0);
+      const hasSalary = empData.handles.salaryHandleValue !== BigInt(0);
+
+      if (!hasAccrued && !hasSalary) {
+        toast.info('No accrued salary yet. Your employer may not have started streaming payments.', { duration: 5000 });
+        setEmployeeDecryptedAccrued(BigInt(0));
+        setEmployeeDecryptedSalaryRate(BigInt(0));
+        return;
+      }
+
+      // If no accrued but has salary rate, show zero accrued
+      if (!hasAccrued) {
+        console.log('⚠️ Accrued handle is zero - no salary accrued yet');
+        setEmployeeDecryptedAccrued(BigInt(0));
+      }
+
+      // Check if handles look like mock/plaintext data (test scripts use raw values, not real Inco encryption)
+      // Real Inco handles are large 128-bit numbers (> 10^30), mock data is small (< 10^18)
+      const MOCK_DATA_THRESHOLD = BigInt('1000000000000000000'); // 10^18
+      const isMockSalary = hasSalary && empData.handles.salaryHandleValue < MOCK_DATA_THRESHOLD;
+      const isMockAccrued = hasAccrued && empData.handles.accruedHandleValue < MOCK_DATA_THRESHOLD;
+
+      if (isMockSalary || isMockAccrued) {
+        console.log('⚠️ Detected mock/plaintext data (added via test script, not real Inco encryption)');
+        console.log('   Using values directly without decryption');
+
+        // For mock data, the "handle" IS the plaintext value
+        if (isMockSalary) {
+          setEmployeeDecryptedSalaryRate(empData.handles.salaryHandleValue);
+        }
+        if (isMockAccrued) {
+          setEmployeeDecryptedAccrued(empData.handles.accruedHandleValue);
+        } else {
+          setEmployeeDecryptedAccrued(BigInt(0));
+        }
+
+        // Calculate and display
+        const salaryPerSecond = Number(empData.handles.salaryHandleValue) / 1_000_000_000;
+        const salaryPerMonth = salaryPerSecond * 30 * 24 * 60 * 60;
+        const accruedAmount = Number(empData.handles.accruedHandleValue) / 1_000_000_000;
+
+        toast.info(`Demo mode: Salary ${salaryPerMonth.toFixed(2)} USDBagel/month, Accrued ${accruedAmount.toFixed(4)} USDBagel`, { duration: 5000 });
+        return;
+      }
+
+      // Real Inco encryption - proceed with decryption
+      const handlesToDecrypt: string[] = [];
+      if (hasSalary) handlesToDecrypt.push(empData.handles.salaryHandle);
+
+      // Set up allowance if not done yet (only for non-zero handles)
+      if (!employeeAllowanceSetup && hasSalary) {
+        console.log('🔐 Setting up employee allowance...');
+        toast.info('Setting up decrypt permissions...', { duration: 3000 });
+
+        const allowanceRes = await fetch('/api/setup-employee-allowance', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            businessPDA: businessPDA.toBase58(),
+            employeeIndex: employeeData.employeeIndex,
+            employeeWallet: wallet.publicKey.toBase58(),
+          }),
+        });
+        const allowanceResult = await allowanceRes.json();
+        if (!allowanceResult.success) {
+          console.error('Allowance setup failed:', allowanceResult.error);
+          toast.error(`Allowance setup failed: ${allowanceResult.error}`);
+          return;
+        }
+        console.log('✅ Allowance set up:', allowanceResult);
+        setEmployeeAllowanceSetup(true);
+      }
+
+      // Decrypt only non-zero handles
+      if (handlesToDecrypt.length === 0) {
+        toast.info('No salary data to decrypt yet.', { duration: 3000 });
+        return;
+      }
+
+      console.log('🔓 Decrypting employee salary data...');
+      console.log('   Handles to decrypt:', handlesToDecrypt);
+
+      const result = await decryptWithRetry(handlesToDecrypt, {
         address: wallet.publicKey,
         signMessage: (msg: Uint8Array) => wallet.signMessage!(msg),
       });
-      if (Array.isArray(result?.plaintexts) && result.plaintexts.length >= 2) {
+
+      if (Array.isArray(result?.plaintexts) && result.plaintexts.length >= 1) {
+        // We only decrypted salary rate (since accrued was 0)
         const salary = result.plaintexts[0];
-        const accrued = result.plaintexts[1];
-        setDecryptedSalaryPerSecond(typeof salary === 'bigint' ? salary : BigInt(String(salary)));
-        setDecryptedAccrued(typeof accrued === 'bigint' ? accrued : BigInt(String(accrued)));
+        const salaryValue = typeof salary === 'bigint' ? salary : BigInt(String(salary));
+
+        setEmployeeDecryptedSalaryRate(salaryValue);
+
+        // Convert from lamports (9 decimals)
+        const salaryPerSecond = Number(salaryValue) / 1_000_000_000;
+        const salaryPerMonth = salaryPerSecond * 30 * 24 * 60 * 60;
+
+        console.log('✅ Decrypted employee data:');
+        console.log(`   Accrued: 0 USDBagel (not yet accrued)`);
+        console.log(`   Salary Rate: ${salaryPerMonth.toFixed(2)} USDBagel/month`);
+
+        toast.success(`Your salary rate is ${salaryPerMonth.toFixed(2)} USDBagel/month. No accrued salary yet.`, { duration: 5000 });
+      } else {
+        console.warn('Unexpected decrypt result:', result);
+        toast.error('Could not decrypt salary data');
       }
-    } catch (e) {
-      console.error('Decrypt salary failed:', e);
-      toast.error('Decryption failed or denied');
+    } catch (e: any) {
+      console.error('Decrypt employee accrued failed:', e);
+      if (e.message?.includes('User rejected') || e.message?.includes('denied')) {
+        toast.error('Signature request denied');
+      } else {
+        toast.error(`Decryption failed: ${e.message || 'Unknown error'}`);
+      }
     } finally {
-      setSalaryDecrypting(false);
+      setEmployeeDecrypting(false);
     }
-  }, [salaryToClaimData, wallet.publicKey, wallet.signMessage]);
+  }, [employeeData, wallet.publicKey, wallet.signMessage, connection, employeeAllowanceSetup]);
 
   // Load payroll business data
   const loadPayrollBusinessData = async () => {
@@ -1808,60 +1901,128 @@ export default function Dashboard() {
     }
   };
 
-  // Check if current wallet is an employee of the demo business
+  // Check if current wallet is an employee of ANY business
+  // Searches all program accounts to find matching employee records
   const checkEmployeeStatus = useCallback(async () => {
     if (!publicKey || !connection) return;
 
     try {
-      // Get demo business addresses
-      const demoAddresses = getDemoAddresses();
-      if (!demoAddresses.businessPDA) return;
+      // Check localStorage first for faster load
+      const storageKey = `bagel_employee_${publicKey.toBase58()}`;
+      const savedEmployeeData = localStorage.getItem(storageKey);
 
-      // Get business account to find owner
-      const businessInfo = await connection.getAccountInfo(demoAddresses.businessPDA);
-      if (!businessInfo) return;
-
-      // Parse owner from business account (offset 8-40)
-      const ownerBytes = businessInfo.data.slice(8, 40);
-      const ownerPubkey = new PublicKey(ownerBytes);
-
-      // Get vault account
-      const vault = await getVaultAccount(connection, demoAddresses.businessPDA);
-      if (!vault) return;
-
-      // Check if current wallet is an employee (check first few employee indices)
-      for (let i = 0; i < 10; i++) {
+      if (savedEmployeeData) {
         try {
-          const employee = await getEmployeeAccount(connection, demoAddresses.businessPDA, i);
+          const parsed = JSON.parse(savedEmployeeData);
+          const businessPubkey = new PublicKey(parsed.businessPDA);
+          const employee = await getEmployeeAccount(connection, businessPubkey, parsed.employeeIndex);
+
           if (employee && employee.isActive) {
-            // We found an active employee - check if we're on that employee's token account
-            // Since we can't directly verify wallet from encrypted ID, we show this to all users
-            // In production, you'd verify the encrypted employee ID matches
-            console.log(`Found active employee #${i}`);
-            setEmployeeData({
-              employerWallet: ownerPubkey.toBase58(),
-              employeeIndex: i,
-              isActive: employee.isActive,
-              isDelegated: employee.isDelegated,
-              vaultTokenAccount: vault.tokenAccount.toBase58(),
-            });
-            return; // Found one, stop checking
+            const vault = await getVaultAccount(connection, businessPubkey);
+            if (vault) {
+              setEmployeeData({
+                employerWallet: parsed.employerWallet,
+                employeeIndex: parsed.employeeIndex,
+                isActive: employee.isActive,
+                isDelegated: employee.isDelegated,
+                vaultTokenAccount: vault.tokenAccount.toBase58(),
+              });
+              console.log(`✅ Loaded employee data from localStorage`);
+              return;
+            }
           }
-        } catch {
-          // No employee at this index, continue
+        } catch (e) {
+          localStorage.removeItem(storageKey);
         }
       }
+
+      // Search ALL program accounts for employee records matching this wallet
+      console.log('Searching all businesses for employee record...');
+
+      // Compute wallet hash for matching
+      const pubkeyBuffer = publicKey.toBuffer();
+      const hashBuffer = await crypto.subtle.digest('SHA-256', new Uint8Array(pubkeyBuffer));
+      const walletHash = new Uint8Array(hashBuffer);
+
+      // Get all program accounts
+      const accounts = await connection.getProgramAccounts(PAYROLL_PROGRAM_ID);
+
+      // Find employees (187 bytes) that match this wallet's hash
+      for (const { account } of accounts) {
+        if (account.data.length !== 187) continue; // Skip non-employee accounts
+
+        const data = account.data;
+        const encryptedEmployeeId = data.slice(48, 80);
+        const isActive = data[152] === 1;
+
+        if (!isActive) continue;
+
+        // Check 32-byte hash match
+        let isMatch = true;
+        for (let i = 0; i < 32; i++) {
+          if (walletHash[i] !== encryptedEmployeeId[i]) {
+            isMatch = false;
+            break;
+          }
+        }
+
+        if (isMatch) {
+          const businessPubkey = new PublicKey(data.slice(8, 40));
+          const employeeIndex = Number(data.readBigUInt64LE(40));
+          const isDelegated = data[153] === 1;
+
+          // Get business owner
+          const businessInfo = await connection.getAccountInfo(businessPubkey);
+          if (businessInfo) {
+            const ownerBytes = businessInfo.data.slice(8, 40);
+            const ownerPubkey = new PublicKey(ownerBytes);
+
+            const vault = await getVaultAccount(connection, businessPubkey);
+            if (vault) {
+              setEmployeeData({
+                employerWallet: ownerPubkey.toBase58(),
+                employeeIndex,
+                isActive: true,
+                isDelegated,
+                vaultTokenAccount: vault.tokenAccount.toBase58(),
+              });
+
+              // Save to localStorage
+              localStorage.setItem(storageKey, JSON.stringify({
+                employerWallet: ownerPubkey.toBase58(),
+                employeeIndex,
+                businessPDA: businessPubkey.toBase58(),
+              }));
+
+              console.log(`✅ Found employee record: index ${employeeIndex} in business ${businessPubkey.toBase58().slice(0, 8)}...`);
+              return;
+            }
+          }
+        }
+      }
+
+      console.log('No employee record found for this wallet');
     } catch (err) {
       console.error('Error checking employee status:', err);
     }
   }, [publicKey, connection]);
 
   // Auto-check employee status when wallet connects
+  // IMPORTANT: Reset ALL employee-related state when wallet changes
   useEffect(() => {
+    // Reset employee state first when wallet changes
+    setEmployeeData(null);
+    setEmployeeClaimAmount('1');
+    setEmployeeClaiming(false);
+    setEmployeeClaimTxid('');
+    setEmployeeClaimError('');
+    setEmployeeDecryptedAccrued(null);
+    setEmployeeDecryptedSalaryRate(null);
+    setEmployeeDecrypting(false);
+    setEmployeeAllowanceSetup(false);
+
     if (publicKey && connection) {
       checkEmployeeStatus();
-    } else {
-      setEmployeeData(null);
     }
   }, [publicKey, connection, checkEmployeeStatus]);
 
@@ -2325,28 +2486,32 @@ export default function Dashboard() {
       return;
     }
 
-    // Check if payroll business is registered
-    const payrollBusiness = await getPayrollBusinessAccount(connection, publicKey);
-    if (!payrollBusiness) {
-      toast.error('Please register your business first using the Deposit modal (select Payroll Deposit)');
+    const monthlyAmount = (employee.amount || 0) / 12;
+    if (monthlyAmount <= 0) {
+      toast.error('Invalid payment amount');
+      return;
+    }
+
+    // Ensure the business owner has a confidential token account
+    const senderTokenAccount = await resolveUserTokenAccount(connection, publicKey, USDBAGEL_MINT);
+    if (!senderTokenAccount) {
+      toast.error('No USDBagel token account found. Please mint tokens first.');
       return;
     }
 
     setPayingEmployee(employee.id);
 
     try {
-      // Convert annual salary to monthly payment amount
-      const monthlyAmount = (employee.amount || 0) / 12;
-
-      console.log('💸 Paying employee via confidential payroll...');
+      console.log('💸 Paying employee via confidential token transfer...');
       console.log(`   Employee: ${employee.name} (${employee.fullWallet})`);
       console.log(`   Amount: ${monthlyAmount} USDBagel`);
 
-      const txid = await payEmployee(
+      const txid = await confidentialTransfer(
         connection,
         wallet,
-        new PublicKey(employee.fullWallet),
-        monthlyAmount
+        employee.fullWallet,
+        monthlyAmount,
+        senderTokenAccount
       );
 
       console.log('✅ Employee paid!', txid);
@@ -2407,6 +2572,34 @@ export default function Dashboard() {
             </Link>
           </div>
 
+          {/* View Mode Switcher */}
+          {!sidebarCollapsed && (
+            <div className="px-4 py-3 border-b border-gray-100">
+              <div className="flex bg-gray-100 rounded p-0.5">
+                <button
+                  onClick={() => setViewMode('employer')}
+                  className={`flex-1 px-3 py-1.5 text-xs font-medium rounded transition-all ${
+                    viewMode === 'employer'
+                      ? 'bg-white text-gray-900 shadow-sm'
+                      : 'text-gray-500 hover:text-gray-700'
+                  }`}
+                >
+                  Employer
+                </button>
+                <button
+                  onClick={() => setViewMode('employee')}
+                  className={`flex-1 px-3 py-1.5 text-xs font-medium rounded transition-all ${
+                    viewMode === 'employee'
+                      ? 'bg-white text-gray-900 shadow-sm'
+                      : 'text-gray-500 hover:text-gray-700'
+                  }`}
+                >
+                  Employee
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* Search */}
           {!sidebarCollapsed && (
             <div className="px-4 py-4">
@@ -2459,8 +2652,12 @@ export default function Dashboard() {
           {/* Header */}
           <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-6">
             <div>
-              <h1 className="text-xl font-semibold text-bagel-dark">Dashboard</h1>
-              <p className="text-sm text-gray-500">Manage your private payroll operations</p>
+              <h1 className="text-xl font-semibold text-bagel-dark">
+                {viewMode === 'employer' ? 'Dashboard' : 'Employee Portal'}
+              </h1>
+              <p className="text-sm text-gray-500">
+                {viewMode === 'employer' ? 'Manage your private payroll operations' : 'View and claim your salary'}
+              </p>
             </div>
             <div className="flex items-center gap-3">
               {/* Navbar Balance Display */}
@@ -2535,6 +2732,120 @@ export default function Dashboard() {
 
           {/* Content Area */}
           <main className="flex-1 overflow-auto p-6">
+            {/* Employee View */}
+            {viewMode === 'employee' && (
+              <div className="max-w-2xl mx-auto space-y-6">
+                {/* Employee Info Card */}
+                <div className="bg-white rounded border border-gray-200 p-6">
+                  <h2 className="text-lg font-semibold text-gray-900 mb-4">Your Employment Info</h2>
+
+                  {!connected ? (
+                    <div className="text-center py-8">
+                      <p className="text-gray-500 mb-4">Connect your wallet to view your employment status</p>
+                      <WalletButton />
+                    </div>
+                  ) : employeeData ? (
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between py-3 border-b border-gray-100">
+                        <span className="text-sm text-gray-500">Status</span>
+                        <span className={`text-sm font-medium ${employeeData.isActive ? 'text-green-600' : 'text-gray-400'}`}>
+                          {employeeData.isActive ? 'Active' : 'Inactive'}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between py-3 border-b border-gray-100">
+                        <span className="text-sm text-gray-500">Employee Index</span>
+                        <span className="text-sm font-medium text-gray-900">#{employeeData.employeeIndex}</span>
+                      </div>
+                      <div className="flex items-center justify-between py-3 border-b border-gray-100">
+                        <span className="text-sm text-gray-500">Payment Mode</span>
+                        <span className="text-sm font-medium text-gray-900">
+                          {employeeData.isDelegated ? 'TEE Streaming' : 'Manual'}
+                        </span>
+                      </div>
+
+                      {/* Accrued Salary */}
+                      <div className="mt-6 p-4 bg-gray-50 rounded">
+                        <div className="flex items-center justify-between mb-3">
+                          <span className="text-sm font-medium text-gray-700">Available to Claim</span>
+                          {employeeDecryptedAccrued !== null ? (
+                            <span className="text-lg font-semibold text-gray-900">
+                              {formatBalance(Number(employeeDecryptedAccrued) / 1_000_000_000)} USDBagel
+                            </span>
+                          ) : (
+                            <span className="text-sm text-gray-400">Encrypted</span>
+                          )}
+                        </div>
+                        <button
+                          onClick={handleDecryptEmployeeAccrued}
+                          disabled={employeeDecrypting}
+                          className="w-full py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded hover:bg-gray-50 transition-colors disabled:opacity-50"
+                        >
+                          {employeeDecrypting ? 'Decrypting...' : employeeDecryptedAccrued !== null ? 'Refresh' : 'Decrypt Balance'}
+                        </button>
+                      </div>
+
+                      {/* Claim Form */}
+                      <div className="mt-6 space-y-3">
+                        <label className="block text-sm font-medium text-gray-700">
+                          Amount to Claim (USDBagel)
+                        </label>
+                        <input
+                          type="number"
+                          step="0.000001"
+                          min="0"
+                          value={employeeClaimAmount}
+                          onChange={(e) => setEmployeeClaimAmount(e.target.value)}
+                          placeholder="1.0"
+                          className="w-full px-4 py-3 border border-gray-200 rounded text-sm focus:outline-none focus:border-bagel-orange focus:ring-1 focus:ring-bagel-orange/20"
+                        />
+                        <button
+                          onClick={handleEmployeeClaim}
+                          disabled={employeeClaiming || !employeeData}
+                          className="w-full py-3 bg-bagel-orange text-white font-medium rounded hover:bg-bagel-orange/90 transition-colors disabled:opacity-50"
+                        >
+                          {employeeClaiming ? 'Processing...' : 'Claim Salary'}
+                        </button>
+
+                        {employeeClaimError && (
+                          <div className="p-3 bg-red-50 border border-red-100 rounded text-sm text-red-700">
+                            {employeeClaimError}
+                          </div>
+                        )}
+
+                        {employeeClaimTxid && (
+                          <div className="p-3 bg-green-50 border border-green-100 rounded">
+                            <div className="text-sm text-green-700 font-medium">Claim successful</div>
+                            <a
+                              href={`https://orbmarkets.io/tx/${employeeClaimTxid}?cluster=devnet`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1 text-xs text-green-600 hover:text-green-800 mt-1"
+                            >
+                              View transaction <ArrowSquareOut className="w-3 h-3" />
+                            </a>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      <div className="p-4 bg-gray-50 rounded text-sm text-gray-600">
+                        No employment record found for this wallet. If you're an employee, ask your employer for your employee index and use the Employee page to register.
+                      </div>
+                      <Link
+                        href="/employee"
+                        className="block w-full py-3 text-center text-sm font-medium text-bagel-orange border border-bagel-orange rounded hover:bg-bagel-orange/5 transition-colors"
+                      >
+                        Go to Employee Registration
+                      </Link>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Employer View */}
+            {viewMode === 'employer' && (
             <div className="flex gap-6">
               {/* Left Column - Stats & Table */}
               <div className="flex-1 space-y-6">
@@ -2581,6 +2892,7 @@ export default function Dashboard() {
                       <div className="mt-3 p-3 bg-blue-50 border border-blue-100 rounded text-sm text-blue-700">
                         Setting up your business... Please approve the transactions in your wallet.
                       </div>
+                      
                     )}
                     {registrationError && (
                       <div className="mt-3 p-3 bg-red-50 border border-red-100 rounded text-sm text-red-700">
@@ -2601,172 +2913,6 @@ export default function Dashboard() {
                         </a>
                       </div>
                     )}
-                  </motion.div>
-                )}
-
-                {/* Employee Claim Banner - Show if user is detected as an employee */}
-                {connected && employeeData && (
-                  <motion.div
-                    initial={{ opacity: 0, y: -10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded p-6"
-                  >
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <h3 className="text-lg font-semibold text-green-800 flex items-center gap-2">
-                          <span className="text-2xl">💰</span> You Have Salary to Claim!
-                        </h3>
-                        <p className="text-sm text-green-700 mt-1">
-                          You're registered as Employee #{employeeData.employeeIndex} in a payroll business.
-                        </p>
-                        <div className="mt-2 flex items-center gap-2 text-xs text-green-600">
-                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full ${employeeData.isActive ? 'bg-green-100' : 'bg-gray-100'}`}>
-                            {employeeData.isActive ? '🟢 Active' : '⚪ Inactive'}
-                          </span>
-                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full ${employeeData.isDelegated ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-600'}`}>
-                            {employeeData.isDelegated ? '⚡ TEE Streaming' : '📋 Manual'}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="flex flex-col items-end gap-2">
-                        <div className="flex items-center gap-2">
-                          <input
-                            type="number"
-                            min="0"
-                            step="0.1"
-                            value={employeeClaimAmount}
-                            onChange={(e) => setEmployeeClaimAmount(e.target.value)}
-                            placeholder="Amount"
-                            className="w-24 px-3 py-2 border border-green-300 rounded text-sm focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                          />
-                          <motion.button
-                            whileHover={{ scale: 1.02 }}
-                            whileTap={{ scale: 0.98 }}
-                            onClick={handleEmployeeClaim}
-                            disabled={employeeClaiming}
-                            className="px-6 py-2 bg-green-600 hover:bg-green-700 text-white rounded font-medium text-sm flex items-center gap-2 disabled:opacity-50"
-                          >
-                            {employeeClaiming ? (
-                              <>
-                                <CircleNotch className="w-4 h-4 animate-spin" />
-                                Claiming...
-                              </>
-                            ) : (
-                              <>
-                                <CurrencyDollar className="w-4 h-4" weight="fill" />
-                                Claim USDBagel
-                              </>
-                            )}
-                          </motion.button>
-                        </div>
-                        <span className="text-xs text-green-600">Enter amount in USDBagel</span>
-                      </div>
-                    </div>
-                    {employeeClaimError && (
-                      <div className="mt-3 p-3 bg-red-50 border border-red-100 rounded text-sm text-red-700">
-                        {employeeClaimError}
-                      </div>
-                    )}
-                    {employeeClaimTxid && !employeeClaiming && (
-                      <div className="mt-3 p-3 bg-green-100 border border-green-200 rounded">
-                        <div className="text-sm text-green-800 font-medium flex items-center gap-2">
-                          <CheckCircle className="w-4 h-4" weight="fill" />
-                          Claim Successful!
-                        </div>
-                        <div className="text-xs text-green-700 mt-1 break-all font-mono">{employeeClaimTxid}</div>
-                        <a
-                          href={`https://orbmarkets.io/tx/${employeeClaimTxid}?cluster=devnet`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1 text-xs text-green-800 hover:text-green-900 mt-2 font-medium"
-                        >
-                          View on OrbMarkets <ArrowSquareOut className="w-3 h-3" />
-                        </a>
-                      </div>
-                    )}
-                  </motion.div>
-                )}
-
-                {/* Salary to Claim metrics (Total to Claim, Max/year, Max/month, Max withdraw) – real-time */}
-                {connected && businessEntryIndex !== null && salaryToClaimData && (
-                  <motion.div
-                    initial={{ opacity: 0, y: -10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-xl p-6"
-                  >
-                    <h3 className="text-lg font-semibold text-bagel-dark flex items-center gap-2 mb-4">
-                      <CurrencyDollar className="w-5 h-5 text-green-600" weight="fill" />
-                      Total Salary to Claim &amp; Max Withdraw
-                    </h3>
-                    <p className="text-sm text-gray-600 mb-4">
-                      You&apos;re registered as Employee #0 in a payroll business. Values update in real time.
-                    </p>
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-4">
-                      <div>
-                        <div className="text-xs text-gray-500 uppercase tracking-wider mb-1">Total Salary to Claim</div>
-                        <div className="text-lg font-semibold text-bagel-dark">
-                          {decryptedAccrued !== null
-                            ? `${formatBalance(Number(decryptedAccrued) / 1e6)} USDBagel`
-                            : '••••••'}
-                        </div>
-                      </div>
-                      <div>
-                        <div className="text-xs text-gray-500 uppercase tracking-wider mb-1">Max Salary / year</div>
-                        <div className="text-lg font-semibold text-bagel-dark">
-                          {decryptedSalaryPerSecond !== null
-                            ? `${formatBalance((Number(decryptedSalaryPerSecond) * 31557600) / 1e6)} USDBagel`
-                            : '••••••'}
-                        </div>
-                      </div>
-                      <div>
-                        <div className="text-xs text-gray-500 uppercase tracking-wider mb-1">Max Salary / month</div>
-                        <div className="text-lg font-semibold text-bagel-dark">
-                          {decryptedSalaryPerSecond !== null
-                            ? `${formatBalance((Number(decryptedSalaryPerSecond) * 2629800) / 1e6)} USDBagel`
-                            : '••••••'}
-                        </div>
-                      </div>
-                      <div>
-                        <div className="text-xs text-gray-500 uppercase tracking-wider mb-1">Max available to withdraw</div>
-                        <div className="text-lg font-semibold text-bagel-dark">
-                          {decryptedAccrued !== null
-                            ? `${formatBalance(Number(decryptedAccrued) / 1e6)} USDBagel`
-                            : '••••••'}
-                        </div>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-4 flex-wrap">
-                      {decryptedAccrued === null && (
-                        <motion.button
-                          type="button"
-                          onClick={handleDecryptSalaryToClaim}
-                          disabled={salaryDecrypting}
-                          className="px-4 py-2 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white text-sm font-medium rounded-lg transition-colors flex items-center gap-2"
-                        >
-                          {salaryDecrypting ? (
-                            <>
-                              <CircleNotch className="w-4 h-4 animate-spin" />
-                              Decrypting...
-                            </>
-                          ) : (
-                            <>
-                              <LockSimpleOpen className="w-4 h-4" />
-                              Decrypt to view amounts
-                            </>
-                          )}
-                        </motion.button>
-                      )}
-                      <span className="text-xs text-gray-500 flex items-center gap-1">
-                        <Clock className="w-3.5 h-3.5" />
-                        Last action: {salaryToClaimData.lastAction > 0 ? `${Math.max(0, Math.floor(Date.now() / 1000 - salaryToClaimData.lastAction))}s ago` : '—'}
-                      </span>
-                      {salaryToClaimData.isActive && (
-                        <span className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium bg-green-100 text-green-700">
-                          <CheckCircle className="w-3 h-3" weight="fill" />
-                          Active
-                        </span>
-                      )}
-                    </div>
                   </motion.div>
                 )}
 
@@ -3039,6 +3185,7 @@ export default function Dashboard() {
                 </motion.div>
               </div>
             </div>
+            )}
           </main>
         </div>
       </div>

@@ -280,8 +280,8 @@ export default function IntroAnimation() {
                         transition={{ duration: 1 }}
                         className="text-2xl font-medium tracking-tight text-[#2D2D2A] md:text-4xl"
                     >
-                        Privacy-First Payroll
-                    </motion.h1>
+                        The People's Private Payroll
+                                          </motion.h1>
                     <motion.p
                         initial={{ opacity: 0 }}
                         animate={introPhase === "circle" && morphValue < 0.5 ? { opacity: 0.5 - morphValue } : { opacity: 0 }}
@@ -301,8 +301,8 @@ export default function IntroAnimation() {
                         Stream Salaries on <span className="text-[#FF6B35]">Solana</span>
                     </h2>
                     <p className="text-sm md:text-base text-gray-600 max-w-lg leading-relaxed">
-                        Encrypted storage. Zero-knowledge transfers. Automated yield. <br className="hidden md:block" />
-                        Your team&apos;s compensation stays completely private.
+                        Encrypted storage. Private transfers. Automated yield. <br className="hidden md:block" />
+                 global instantaneus private compliant payroll.
                     </p>
                 </motion.div>
 

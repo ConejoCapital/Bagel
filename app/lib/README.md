@@ -12,14 +12,6 @@ Inco Lightning integration for FHE encrypted state.
 - Homomorphic operations (add, subtract)
 - Client-side encryption helpers
 
-### `shadowwire.ts`
-ShadowWire private transfer integration.
-
-**Key Features:**
-- Zero-knowledge private transfers
-- Bulletproof amount hiding
-- Internal/external transfer types
-
 ### `magicblock.ts`
 MagicBlock PER integration for real-time streaming.
 

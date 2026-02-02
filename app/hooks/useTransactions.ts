@@ -150,8 +150,20 @@ function parseHeliusTransaction(tx: HeliusTransaction, walletAddress: string): T
     type = 'Confidential Transfer';
   }
   // Use description if available for more specific transaction names
+  // But format it to be professional (shorten addresses)
   else if (tx.description && tx.description.trim() !== '' && tx.description.toUpperCase() !== 'UNKNOWN') {
-    type = tx.description;
+    // Clean up description: shorten any Solana addresses (base58 strings 32-44 chars)
+    type = tx.description.replace(
+      /[1-9A-HJ-NP-Za-km-z]{32,44}/g,
+      (addr) => shortenAddress(addr)
+    );
+    // Simplify common patterns
+    if (type.includes('transferred') && type.includes('SOL')) {
+      const match = type.match(/(\S+)\s+transferred\s+([\d.]+)\s+SOL\s+to\s+(\S+)/);
+      if (match) {
+        type = `Sent ${match[2]} SOL to ${match[3]}`;
+      }
+    }
   } else if (tx.type === 'SWAP') {
     type = 'Swap';
   } else if (tx.type === 'NFT_SALE') {

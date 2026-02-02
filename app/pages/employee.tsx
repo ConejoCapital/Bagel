@@ -104,6 +104,17 @@ export default function EmployeeDashboard() {
         lastAccrualTime: employee.lastAccrualTime,
       });
 
+      // Save to localStorage so dashboard can show employee claim UI
+      if (wallet.publicKey) {
+        const storageKey = `bagel_employee_${wallet.publicKey.toBase58()}`;
+        localStorage.setItem(storageKey, JSON.stringify({
+          employerWallet: employerWallet,
+          employeeIndex: empIndex,
+          businessPDA: business.address.toBase58(),
+        }));
+        console.log('💾 Saved employee data to localStorage');
+      }
+
       console.log('✅ Employee found:', {
         index: empIndex,
         isActive: employee.isActive,
