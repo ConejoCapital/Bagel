@@ -921,10 +921,10 @@ const balance = await incoClient.decryptSalary(
                   </Link>
                 </motion.div>
                 <motion.div whileHover={{ scale: 1.02, y: -2 }} whileTap={{ scale: 0.98 }}>
-                  <Link href="/docs" className="btn-secondary px-10 py-4 text-lg flex items-center justify-center gap-2">
+                  <a href="https://docs-bagel.vercel.app/docs/intro" target="_blank" rel="noopener noreferrer" className="btn-secondary px-10 py-4 text-lg flex items-center justify-center gap-2">
                     <FileText size={20} />
                     Read Documentation
-                  </Link>
+                  </a>
                 </motion.div>
               </div>
 
@@ -964,7 +964,7 @@ const balance = await incoClient.decryptSalary(
                 <div>
                   <h4 className="text-bagel-dark font-semibold mb-4">Resources</h4>
                   <ul className="space-y-3">
-                    <li><Link href="/docs" className="text-gray-600 hover:text-bagel-orange transition-colors text-sm">Documentation</Link></li>
+                    <li><a href="https://docs-bagel.vercel.app/docs/intro" target="_blank" rel="noopener noreferrer" className="text-gray-600 hover:text-bagel-orange transition-colors text-sm">Documentation</a></li>
                     <li><a href="https://github.com/ConejoCapital/Bagel" className="text-gray-600 hover:text-bagel-orange transition-colors text-sm flex items-center gap-1"><Github size={14} /> GitHub</a></li>
                     <li><a href="https://orbmarkets.io/address/J45uxvT26szuQcmxvs5NRgtAMornKM9Ga9WaQ58bKUNE?cluster=devnet" className="text-gray-600 hover:text-bagel-orange transition-colors text-sm flex items-center gap-1"><ExternalLink size={14} /> OrbMarkets</a></li>
                   </ul>
