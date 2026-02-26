@@ -68,8 +68,8 @@ pub struct Euint128 {
 
 ## F
 
-### FHE (Fully Homomorphic Encryption)
-Encryption scheme that allows computation on encrypted data. Bagel uses TFHE via Inco.
+### Inco Confidential Compute
+Encryption scheme that allows computation on encrypted data. Bagel uses Inco confidential compute via Inco Lightning.
 
 ## H
 
@@ -79,7 +79,7 @@ A reference to encrypted data stored by Inco. The 16-byte `handle` field in `Eui
 ### Helius
 Infrastructure provider for high-performance Solana RPC and APIs.
 
-### Homomorphic Operation
+### Confidential Compute Operation
 A mathematical operation on encrypted data that produces encrypted results.
 - `e_add`: Encrypted addition
 - `e_sub`: Encrypted subtraction
@@ -96,7 +96,7 @@ seeds = ["employee", business_pda, employee_index]
 ```
 
 ### Inco Lightning
-The FHE service providing encrypted storage and computation on Solana.
+The Inco confidential compute service providing encrypted storage and computation on Solana.
 - **Program ID**: `5sjEbPiqgZrYwR31ahR6Uk9wf5awoX61YGg7jExQSwaj`
 
 ### Inco Token Program
@@ -144,8 +144,8 @@ Real-time salary accrual, typically using TEE for sub-second granularity.
 ### TEE (Trusted Execution Environment)
 Secure hardware enclave for private computation. Used by MagicBlock.
 
-### TFHE (Torus FHE)
-The specific FHE scheme used by Inco Lightning.
+### Inco Confidential Compute Scheme
+The specific confidential compute scheme used by Inco Lightning.
 
 ## U
 
@@ -169,4 +169,4 @@ The process of an employee claiming accrued salary. Uses confidential transfers.
 ## Z
 
 ### Zero-Knowledge
-Cryptographic technique where a prover demonstrates knowledge without revealing the data. Bagel uses FHE which provides similar privacy guarantees through a different mechanism.
+Cryptographic technique where a prover demonstrates knowledge without revealing the data. Bagel uses Inco confidential compute which provides similar privacy guarantees through a different mechanism.

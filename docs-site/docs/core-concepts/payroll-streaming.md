@@ -30,14 +30,14 @@ Where:
 
 ### Encrypted Streaming
 
-With FHE, this becomes:
+With Inco confidential compute, this becomes:
 
 ```
 E(A(t)) = E(S) ⊗ Δt
 
 Where:
   E(x) = Encryption of x
-  ⊗ = Homomorphic scalar multiplication
+  ⊗ = Confidential compute scalar multiplication
 ```
 
 The calculation happens **without decrypting** the salary. See [Mathematics](../architecture/mathematics) for formal derivations.

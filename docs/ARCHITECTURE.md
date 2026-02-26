@@ -1,6 +1,6 @@
 # Bagel Protocol Architecture
 
-> Privacy-First Payroll Infrastructure on Solana with Fully Homomorphic Encryption (FHE)
+> Privacy-First Payroll Infrastructure on Solana with Inco confidential compute
 
 ---
 
@@ -22,19 +22,19 @@
 
 ## Executive Summary
 
-Bagel is a privacy-preserving payroll protocol built on Solana that leverages **Fully Homomorphic Encryption (FHE)** via Inco Lightning to ensure complete confidentiality of salary data, account balances, and employee identities.
+Bagel is a privacy-preserving payroll protocol built on Solana that leverages **Inco confidential compute** via Inco Lightning to ensure complete confidentiality of salary data, account balances, and employee identities.
 
 ### Key Privacy Guarantees
 
 | Data Type | Privacy Method | Observer Visibility |
 |-----------|---------------|---------------------|
-| Salary amounts | FHE (Euint128) | ❌ Encrypted |
-| Account balances | FHE (Euint128) | ❌ Encrypted |
+| Salary amounts | Inco confidential compute (Euint128) | ❌ Encrypted |
+| Account balances | Inco confidential compute (Euint128) | ❌ Encrypted |
 | Transfer amounts | Confidential Tokens | ❌ Encrypted |
-| Employer identity | FHE + Index PDAs | ❌ Encrypted |
-| Employee identity | FHE + Index PDAs | ❌ Encrypted |
-| Business count | FHE (Euint128) | ❌ Encrypted |
-| Employee count | FHE (Euint128) | ❌ Encrypted |
+| Employer identity | Inco confidential compute + Index PDAs | ❌ Encrypted |
+| Employee identity | Inco confidential compute + Index PDAs | ❌ Encrypted |
+| Business count | Inco confidential compute (Euint128) | ❌ Encrypted |
+| Employee count | Inco confidential compute (Euint128) | ❌ Encrypted |
 | Transaction signatures | On-chain | ✅ Public |
 | Account addresses | On-chain | ✅ Public |
 
@@ -47,7 +47,7 @@ Bagel is a privacy-preserving payroll protocol built on Solana that leverages **
 │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────┐ │
 │  │ Inco        │  │ Inco        │  │ MagicBlock  │  │ Helius              │ │
 │  │ Lightning   │  │ Confidential│  │ TEE/PER     │  │ RPC + DAS           │ │
-│  │ FHE Engine  │  │ Tokens      │  │ Streaming   │  │ Infrastructure      │ │
+│  │ Confidential Compute Engine  │  │ Tokens      │  │ Streaming   │  │ Infrastructure      │ │
 │  └─────────────┘  └─────────────┘  └─────────────┘  └─────────────────────┘ │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                           SOLANA BLOCKCHAIN                                  │
@@ -89,11 +89,11 @@ Bagel is a privacy-preserving payroll protocol built on Solana that leverages **
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                         PRIVACY SDK LAYER                                    │
 │  ┌─────────────────────────────────────────────────────────────────────────┐│
-│  │                     Inco Lightning FHE                                   ││
+│  │                     Inco Lightning confidential compute                                   ││
 │  │  • new_euint128()  - Create encrypted value                             ││
-│  │  • e_add()         - Homomorphic addition                               ││
-│  │  • e_sub()         - Homomorphic subtraction                            ││
-│  │  • e_mul()         - Homomorphic multiplication                         ││
+│  │  • e_add()         - Confidential compute addition                               ││
+│  │  • e_sub()         - Confidential compute subtraction                            ││
+│  │  • e_mul()         - Confidential compute multiplication                         ││
 │  │  • decrypt()       - Authorized decryption                              ││
 │  └─────────────────────────────────────────────────────────────────────────┘│
 │  ┌───────────────────────────┐  ┌──────────────────────────────────────────┐│
@@ -129,7 +129,7 @@ Bagel is a privacy-preserving payroll protocol built on Solana that leverages **
 | Program | ID | Network | Purpose |
 |---------|---|---------|---------|
 | **Bagel** | `AEd52vEEAdXWUjKut1aQyLLJQnwMWqYMb4hSaHpxd8Hj` | Devnet | Main payroll program |
-| **Inco Lightning** | `5sjEbPiqgZrYwR31ahR6Uk9wf5awoX61YGg7jExQSwaj` | Devnet | FHE operations |
+| **Inco Lightning** | `5sjEbPiqgZrYwR31ahR6Uk9wf5awoX61YGg7jExQSwaj` | Devnet | Inco confidential compute operations |
 | **Inco Tokens** | `HuUn2JwCPCLWwJ3z17m7CER73jseqsxvbcFuZN4JAw22` | Devnet | Confidential transfers |
 | **MagicBlock** | `DELeGGvXpWV2fqJUhqcF5ZSYMS4JTLjteaAMARRSaeSh` | Devnet | TEE delegation |
 
@@ -137,9 +137,9 @@ Bagel is a privacy-preserving payroll protocol built on Solana that leverages **
 
 ## Cryptographic Foundations
 
-### Fully Homomorphic Encryption (FHE)
+### Inco confidential compute
 
-Bagel uses Inco Lightning's implementation of FHE based on the TFHE (Torus Fully Homomorphic Encryption) scheme. This allows computation on encrypted data without ever revealing the plaintext.
+Bagel uses Inco Lightning's implementation of Inco confidential compute based on the Inco confidential compute scheme. This allows computation on encrypted data without ever revealing the plaintext.
 
 #### Euint128 Type
 
@@ -161,7 +161,7 @@ Offset  Size   Field
 0       16     handle (encrypted value reference)
 ```
 
-### Homomorphic Operations
+### Confidential compute Operations
 
 #### Addition: `e_add(a, b) → c`
 
@@ -172,13 +172,13 @@ E(a) ⊕ E(b) = E(a + b)
 
 Where:
   E(x) = Encryption function
-  ⊕    = Homomorphic addition operation
+  ⊕    = Confidential compute addition operation
 ```
 
 **Mathematical Definition:**
 ```
 Let E: ℤ → C be the encryption function
-Let ⊕: C × C → C be the homomorphic add
+Let ⊕: C × C → C be the confidential compute add
 
 ∀ a,b ∈ ℤ₂¹²⁸: E(a) ⊕ E(b) = E((a + b) mod 2¹²⁸)
 ```
@@ -201,7 +201,7 @@ Performs subtraction on encrypted values:
 E(a) ⊖ E(b) = E(a - b)
 
 Where:
-  ⊖ = Homomorphic subtraction operation
+  ⊖ = Confidential compute subtraction operation
 ```
 
 **Mathematical Definition:**
@@ -598,7 +598,7 @@ Payer ──▶ commit_and_undelegate_accounts(
 
 ## Privacy Layer Integration
 
-### Inco Lightning FHE
+### Inco Lightning confidential compute
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
@@ -607,7 +607,7 @@ Payer ──▶ commit_and_undelegate_accounts(
 │                                                                              │
 │  Program ID: 5sjEbPiqgZrYwR31ahR6Uk9wf5awoX61YGg7jExQSwaj                   │
 │  SDK Version: inco_lightning 0.1.4                                           │
-│  Encryption: TFHE (Torus Fully Homomorphic Encryption)                       │
+│  Encryption: Inco confidential compute                       │
 │                                                                              │
 │  ┌─────────────────────────────────────────────────────────────────────────┐│
 │  │ OPERATIONS                                                               ││
@@ -616,16 +616,16 @@ Payer ──▶ commit_and_undelegate_accounts(
 │  │      Creates encrypted value from ciphertext or plaintext               ││
 │  │                                                                          ││
 │  │  e_add(a, b, type) ──▶ Euint128                                         ││
-│  │      Homomorphic: E(a) + E(b) = E(a + b)                                ││
+│  │      Confidential compute: E(a) + E(b) = E(a + b)                                ││
 │  │                                                                          ││
 │  │  e_sub(a, b, type) ──▶ Euint128                                         ││
-│  │      Homomorphic: E(a) - E(b) = E(a - b)                                ││
+│  │      Confidential compute: E(a) - E(b) = E(a - b)                                ││
 │  │                                                                          ││
 │  │  e_mul(a, b, type) ──▶ Euint128                                         ││
-│  │      Homomorphic: E(a) × E(b) = E(a × b)                                ││
+│  │      Confidential compute: E(a) × E(b) = E(a × b)                                ││
 │  │                                                                          ││
 │  │  e_ge(a, b, type) ──▶ Ebool                                             ││
-│  │      Homomorphic: E(a) >= E(b) = E(a >= b)                              ││
+│  │      Confidential compute: E(a) >= E(b) = E(a >= b)                              ││
 │  │                                                                          ││
 │  └─────────────────────────────────────────────────────────────────────────┘│
 │                                                                              │
@@ -858,7 +858,7 @@ The core payroll calculation performs multiplication on encrypted values:
 │    t₁ = current timestamp                                                   │
 │    Δt = t₁ - t₀ (elapsed seconds)                                           │
 │                                                                              │
-│  Accrued calculation (homomorphic):                                         │
+│  Accrued calculation (confidential compute):                                         │
 │                                                                              │
 │    A = E(S) ⊗ Δt                                                            │
 │                                                                              │
@@ -881,7 +881,7 @@ The core payroll calculation performs multiplication on encrypted values:
 
 ### Balance Update Formulas
 
-**Deposit (Homomorphic Addition):**
+**Deposit (Confidential compute Addition):**
 ```
 B'_business = E(B_business) ⊕ E(amount)
            = E(B_business + amount)
@@ -889,10 +889,10 @@ B'_business = E(B_business) ⊕ E(amount)
 Where:
   B_business = Current business balance
   amount = Deposit amount
-  ⊕ = Homomorphic addition (e_add)
+  ⊕ = Confidential compute addition (e_add)
 ```
 
-**Withdrawal (Homomorphic Subtraction):**
+**Withdrawal (Confidential compute Subtraction):**
 ```
 A'_employee = E(A_employee) ⊖ E(amount)
            = E(A_employee - amount)
@@ -900,7 +900,7 @@ A'_employee = E(A_employee) ⊖ E(amount)
 Where:
   A_employee = Current accrued balance
   amount = Withdrawal amount
-  ⊖ = Homomorphic subtraction (e_sub)
+  ⊖ = Confidential compute subtraction (e_sub)
 ```
 
 ### Count Management
@@ -929,7 +929,7 @@ C'_vault = E(C_vault_employees) ⊕ E(1)
 │                                                                              │
 │  Where:                                                                      │
 │    H = SHA-256 or Keccak-256 hash function                                  │
-│    E = Inco FHE encryption                                                  │
+│    E = Inco confidential compute                                                  │
 │                                                                              │
 │  Verification (off-chain with Inco decryption):                             │
 │    1. User signs challenge with private key                                 │
@@ -962,7 +962,7 @@ C'_vault = E(C_vault_employees) ⊕ E(1)
 │  └── Transaction submitter (can submit own transactions)                    │
 │                                                                              │
 │  ATTACKER LIMITATIONS                                                        │
-│  ├── Cannot decrypt Inco FHE ciphertexts                                    │
+│  ├── Cannot decrypt Inco confidential compute ciphertexts                                    │
 │  ├── Cannot forge signatures                                                │
 │  └── Cannot access Inco decryption service without authorization            │
 │                                                                              │
@@ -987,7 +987,7 @@ C'_vault = E(C_vault_employees) ⊕ E(1)
 
 | Property | Mechanism | Guarantee |
 |----------|-----------|-----------|
-| **Confidentiality** | FHE (Euint128) | Salary/balance values encrypted |
+| **Confidentiality** | Inco confidential compute (Euint128) | Salary/balance values encrypted |
 | **Unlinkability** | Index-based PDAs | Cannot link accounts to identities |
 | **Access Control** | Anchor constraints + signatures | Only authorized operations |
 | **Arithmetic Safety** | `checked_*` operations | Overflow/underflow protection |
@@ -1248,7 +1248,7 @@ All events are designed for minimal information leakage:
 - [Solana Documentation](https://solana.com/docs)
 - [Anchor Framework](https://book.anchor-lang.com/)
 - [Inco Lightning SDK](https://docs.inco.org/svm/home)
-- [Inco FHE Overview](https://docs.inco.org/svm/rust-sdk/overview)
+- [Inco confidential compute Overview](https://docs.inco.org/svm/rust-sdk/overview)
 - [Helius RPC & APIs](https://docs.helius.dev/)
 - [MagicBlock Ephemeral Rollups](https://docs.magicblock.gg)
 - [OrbMarkets Explorer](https://orbmarkets.io)

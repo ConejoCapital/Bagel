@@ -67,9 +67,9 @@ function Feature({title, description, icon}) {
 function HomepageFeatures() {
   const features = [
     {
-      title: 'FHE Encryption',
+      title: 'Inco Confidential Compute',
       icon: '🔐',
-      description: 'Fully Homomorphic Encryption keeps salaries, balances, and identities encrypted on-chain.',
+      description: 'Inco confidential compute keeps salaries, balances, and identities encrypted on-chain.',
     },
     {
       title: 'Confidential Transfers',
@@ -114,7 +114,7 @@ function HomepageFeatures() {
 
 function TechStack() {
   const techs = [
-    { name: 'Inco Lightning', desc: 'FHE Engine' },
+    { name: 'Inco Lightning', desc: 'Confidential Compute Engine' },
     { name: 'Inco Tokens', desc: 'Confidential Transfers' },
     { name: 'MagicBlock', desc: 'TEE Streaming' },
     { name: 'Helius', desc: 'RPC Infrastructure' },
@@ -203,7 +203,7 @@ export default function Home() {
   return (
     <Layout
       title={`${siteConfig.title} - Documentation`}
-      description="Privacy-first payroll infrastructure on Solana with FHE encryption">
+      description="Privacy-first payroll infrastructure on Solana with Inco confidential compute">
       <HomepageHeader />
       <main>
         <HomepageFeatures />

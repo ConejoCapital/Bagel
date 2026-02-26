@@ -272,14 +272,14 @@ The handle is a pointer to encrypted data stored in the Inco Lightning system:
                               ▼
 ┌─────────────────────────────────────────────────────────────────┐
 │                    Inco Lightning                                │
-│  Ciphertext storage + Homomorphic computation                   │
+│  Ciphertext storage + Confidential compute computation                   │
 │  E(value) → actual encrypted data                               │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
 This design:
 - Minimizes on-chain storage (32 bytes vs. variable ciphertext size)
-- Enables FHE operations via CPI calls
+- Enables Inco confidential compute operations via CPI calls
 - Maintains full privacy of underlying values
 
 ---

@@ -6,11 +6,11 @@ sidebar_position: 5
 
 Cryptographic and mathematical foundations of the Bagel Protocol.
 
-## Fully Homomorphic Encryption
+## Inco confidential compute
 
 ### Definition
 
-FHE allows computation on encrypted data:
+Inco confidential compute allows computation on encrypted data:
 
 ```
 Eval(E(m₁), E(m₂), f) = E(f(m₁, m₂))
@@ -22,17 +22,17 @@ Where:
 - `f` is any computable function
 - The result is encrypted
 
-### TFHE Scheme
+### Inco confidential compute Scheme
 
-Bagel uses TFHE (Torus FHE) via Inco Lightning:
+Bagel uses Inco confidential compute via Inco Lightning:
 
 ```
-TFHE: ℤ₂¹²⁸ → C
+Inco confidential compute: ℤ₂¹²⁸ → C
 
 Where C = Ciphertext space
 ```
 
-## Homomorphic Operations
+## Confidential compute Operations
 
 ### Addition
 
@@ -91,7 +91,7 @@ Where:
 
 ### Encrypted Streaming
 
-With FHE, this becomes:
+With Inco confidential compute, this becomes:
 
 ```
 E(A(t)) = E(A(t₀)) ⊕ (E(S) ⊗ Δt)
@@ -302,6 +302,6 @@ Total balance is conserved (verified on encrypted values).
 
 ## References
 
-1. Chillotti, I., et al. "TFHE: Fast Fully Homomorphic Encryption over the Torus." Journal of Cryptology, 2020.
-2. Gentry, C. "A Fully Homomorphic Encryption Scheme." Stanford University, 2009.
+1. Chillotti, I., et al. "Inco confidential compute: Fast Inco confidential compute over the Torus." Journal of Cryptology, 2020.
+2. Gentry, C. "A Inco confidential compute Scheme." Stanford University, 2009.
 3. [Inco Network Documentation](https://docs.inco.org)

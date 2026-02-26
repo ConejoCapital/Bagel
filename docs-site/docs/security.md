@@ -26,12 +26,12 @@ An adversary **cannot**:
 
 | Limitation | Why |
 |------------|-----|
-| Decrypt FHE ciphertexts | Requires Inco decryption keys |
+| Decrypt Inco confidential compute ciphertexts | Requires Inco decryption keys |
 | Forge signatures | Cryptographically secure |
 | Link PDAs to identities | Index-based derivation |
 | See transfer amounts | Confidential tokens |
-| See salary values | FHE encrypted |
-| See balances | FHE encrypted |
+| See salary values | encrypted via Inco confidential compute |
+| See balances | encrypted via Inco confidential compute |
 
 ## Security Properties
 
@@ -102,13 +102,13 @@ overflow-checks = true
 
 | Data | Method | Level |
 |------|--------|-------|
-| Salary amounts | FHE (Euint128) | Maximum |
-| Account balances | FHE (Euint128) | Maximum |
+| Salary amounts | Inco confidential compute (Euint128) | Maximum |
+| Account balances | Inco confidential compute (Euint128) | Maximum |
 | Transfer amounts | Confidential Tokens | Maximum |
-| Employer identity | FHE + Index PDAs | Maximum |
-| Employee identity | FHE + Index PDAs | Maximum |
-| Business count | FHE (Euint128) | Maximum |
-| Employee count | FHE (Euint128) | Maximum |
+| Employer identity | Inco confidential compute + Index PDAs | Maximum |
+| Employee identity | Inco confidential compute + Index PDAs | Maximum |
+| Business count | Inco confidential compute (Euint128) | Maximum |
+| Employee count | Inco confidential compute (Euint128) | Maximum |
 
 ### What's Public
 
@@ -154,8 +154,8 @@ overflow-checks = true
 **Attack:** Monitoring balance changes to infer activity.
 
 **Mitigation:**
-- All balances encrypted (FHE)
-- Homomorphic updates preserve encryption
+- All balances encrypted (Inco confidential compute)
+- Confidential compute updates preserve encryption
 - Only authorized parties can decrypt
 
 ### 5. Replay Attacks

@@ -874,9 +874,9 @@ describe("Leak Audit Summary", () => {
     console.log("│   ✅ Observer cannot correlate addresses to identities         │");
     console.log("│                                                                │");
     console.log("│ Storage:                                                       │");
-    console.log("│   ✅ encrypted_employee_id: Euint128 (FHE encrypted hash)      │");
-    console.log("│   ✅ encrypted_salary: Euint128 (FHE encrypted)                │");
-    console.log("│   ✅ encrypted_accrued: Euint128 (FHE encrypted)               │");
+    console.log("│   ✅ encrypted_employee_id: Euint128 (Inco confidential compute hash)      │");
+    console.log("│   ✅ encrypted_salary: Euint128 (encrypted via Inco confidential compute)                │");
+    console.log("│   ✅ encrypted_accrued: Euint128 (encrypted via Inco confidential compute)               │");
     console.log("│                                                                │");
     console.log("│ Events:                                                        │");
     console.log("│   ✅ EmployeeAdded uses indices only (no pubkeys)              │");

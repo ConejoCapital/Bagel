@@ -53,7 +53,7 @@ npm run dev
 
 ### Employee Dashboard (`pages/employee.tsx`)
 - Request withdrawals using business and employee indices
-- Private withdrawal with FHE encrypted transfers
+- Private withdrawal with Inco confidential compute transfers
 - Transaction verification links
 
 ## Demo Mode
@@ -98,7 +98,7 @@ NEXT_PUBLIC_BAGEL_PROGRAM_ID=AEd52vEEAdXWUjKut1aQyLLJQnwMWqYMb4hSaHpxd8Hj
 ## Privacy Integration Libraries
 
 Located in `lib/`:
-- `inco.ts` - Inco Lightning client for FHE encrypted state
+- `inco.ts` - Inco Lightning client for Inco confidential compute state
 - `shadowwire.ts` - ShadowWire client for confidential transfers
 - `magicblock.ts` - MagicBlock client for streaming payments
 - `range.ts` - Range API client for compliance checks
@@ -146,7 +146,7 @@ Employees need their business entry index and employee index (provided by employ
 
 1. **Enhanced Inco Integration**
    - Use Inco SDK for client-side encryption
-   - Real FHE operations on encrypted values
+   - Real Inco confidential compute operations on encrypted values
 
 2. **Real ShadowWire Integration**
    - Implement actual Bulletproof generation

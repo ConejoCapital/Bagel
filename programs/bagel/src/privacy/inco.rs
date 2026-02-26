@@ -8,7 +8,7 @@
 //!
 //! Key Features:
 //! - Encrypted uint128 balances (Euint128)
-//! - Homomorphic operations (add, sub, mul)
+//! - Confidential compute operations (add, sub, mul)
 //! - Encrypted comparisons (ge, le, eq)
 //! - Access-controlled decryption
 //!
@@ -126,7 +126,7 @@ impl Ebool {
 
 /// Confidential Balance using Inco Euint128
 ///
-/// Provides encrypted balance storage using Inco Lightning's FHE encryption.
+/// Provides encrypted balance storage using Inco Lightning confidential compute.
 /// All balance operations are performed on encrypted data.
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Default)]
 pub struct ConfidentialBalance {
@@ -174,12 +174,12 @@ impl ConfidentialBalance {
         Ok(value as u64)
     }
 
-    /// Add to this balance (homomorphic operation)
+    /// Add to this balance (confidential compute operation)
     ///
     /// PRIVACY: Delta value is never logged
     /// **PRODUCTION:** Will use Inco's e_add CPI
     pub fn add(&mut self, delta: u64) -> Result<()> {
-        msg!("➕ INCO: Homomorphic addition (PRIVATE)");
+        msg!("➕ INCO: Confidential compute addition (PRIVATE)");
 
         let current = self.decrypt()?;
         let new_amount = current
@@ -190,10 +190,10 @@ impl ConfidentialBalance {
         Ok(())
     }
 
-    /// Subtract from this balance (homomorphic operation)
+    /// Subtract from this balance (confidential compute operation)
     /// PRIVACY: Delta value is never logged
     pub fn sub(&mut self, delta: u64) -> Result<()> {
-        msg!("➖ INCO: Homomorphic subtraction (PRIVATE)");
+        msg!("➖ INCO: Confidential compute subtraction (PRIVATE)");
 
         let current = self.decrypt()?;
         let new_amount = current
@@ -204,13 +204,13 @@ impl ConfidentialBalance {
         Ok(())
     }
 
-    /// Multiply by a scalar (homomorphic operation)
+    /// Multiply by a scalar (confidential compute operation)
     ///
     /// This is the KEY operation for payroll: salary_per_second * elapsed_time
     /// PRIVACY: Scalar value is never logged
     /// **PRODUCTION:** Will use Inco's e_mul CPI
     pub fn multiply_scalar(&self, scalar: u64) -> Result<Self> {
-        msg!("✖️ INCO: Homomorphic multiplication (PRIVATE)");
+        msg!("✖️ INCO: Confidential compute multiplication (PRIVATE)");
 
         let amount = self.decrypt()?;
         let result = amount
@@ -315,7 +315,7 @@ mod tests {
     }
 
     #[test]
-    fn test_homomorphic_addition() {
+    fn test_confidential compute_addition() {
         let mut balance = ConfidentialBalance::new(1_000_000);
         balance.add(500_000).unwrap();
         assert_eq!(balance.decrypt().unwrap(), 1_500_000);

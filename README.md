@@ -37,7 +37,7 @@ Bagel is **privacy-preserving payroll infrastructure** for stablecoin payments o
 
 | Traditional Crypto Payroll | Bagel |
 |---------------------------|-------|
-| Salaries visible on-chain | Salaries encrypted (Inco Lightning FHE) |
+| Salaries visible on-chain | Salaries encrypted (Inco Lightning confidential compute) |
 | Employer-employee links exposed | Index-based PDAs hide relationships |
 | Individual balances trackable | Single Master Vault pools all funds |
 | Withdrawal amounts public | ZK proofs hide amounts (ShadowWire) |
@@ -59,7 +59,7 @@ flowchart TB
         NOID[NO pubkeys in seeds]
     end
 
-    subgraph Layer2[Layer 2: Inco Lightning FHE]
+    subgraph Layer2[Layer 2: Inco Lightning confidential compute]
         EID[encrypted_employer_id<br/>Euint128]
         EMID[encrypted_employee_id<br/>Euint128]
         EBAL[encrypted_balance<br/>Euint128]
@@ -110,7 +110,7 @@ flowchart TB
 | Layer | Technology | Purpose | Status |
 |-------|------------|---------|--------|
 | **Layer 1** | Index-Based PDAs | Hide employer/employee relationships | Working |
-| **Layer 2** | Inco Lightning FHE | Encrypt all sensitive data (Euint128) | Working |
+| **Layer 2** | Inco Lightning confidential compute | Encrypt all sensitive data (Euint128) | Working |
 | **Layer 3** | MagicBlock PER (via TEE) | Real-time streaming in trusted enclave | **Delegation Working** |
 | **Layer 4** | Inco Confidential Tokens | Encrypt transfer amounts on-chain | Working |
 | **Layer 5** | Helius Verification | Prove what chain sees (encrypted only) | Working |
@@ -209,7 +209,7 @@ npm run dev
 
 **Test Scenario:**
 - **Phase 1:** Index-Based PDA Verification (real transactions)
-- **Phase 2:** Inco Lightning FHE Encryption (real encryption, verified)
+- **Phase 2:** Inco Lightning Confidential Compute (real encryption, verified)
 - **Phase 3:** MagicBlock PER (via TEE) Delegation (real transaction, successful)
 - **Phase 4:** PER Streaming Verification (60-second accrual period)
 - **Phase 5:** Commit from PER (transaction successful)
@@ -271,7 +271,7 @@ The following table demonstrates the complete transaction flow for setting up a 
 
 ### 2. Funds Deposited
 - Confidential USDBagel tokens transferred to single Master Vault (encrypted amount)
-- Business balance updated via encrypted homomorphic addition
+- Business balance updated via encrypted confidential compute addition
 - Observer sees only total vault balance change
 - Transfer amounts are encrypted on-chain (ciphertext, not plaintext)
 
@@ -323,8 +323,8 @@ The following table demonstrates the complete transaction flow for setting up a 
 - Risk score + OFAC sanctions check
 
 ### Inco - Encrypted Ledger
-- FHE encryption for all sensitive data
-- Homomorphic operations (add, subtract) on encrypted values
+- Inco confidential compute for all sensitive data
+- Confidential compute operations (add, subtract) on encrypted values
 
 ### MagicBlock - Real-Time Privacy
 
@@ -360,7 +360,7 @@ Bagel/
 │   ├── lib.rs                   # Maximum privacy architecture
 │   ├── constants.rs             # Privacy tool program IDs
 │   ├── privacy/                 # Privacy integrations
-│   │   ├── inco.rs              # Inco Lightning FHE
+│   │   ├── inco.rs              # Inco Lightning confidential compute
 │   │   ├── magicblock.rs        # MagicBlock PER
 │   │   └── shadowwire.rs        # ShadowWire ZK
 │   └── instructions/            # Instruction handlers

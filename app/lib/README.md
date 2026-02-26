@@ -5,11 +5,11 @@ This directory contains utility modules for integrating with privacy SDKs.
 ## Files
 
 ### `inco.ts`
-Inco Lightning integration for FHE encrypted state.
+Inco Lightning integration for Inco confidential compute state.
 
 **Key Features:**
 - Encrypted value creation (Euint128)
-- Homomorphic operations (add, subtract)
+- Confidential compute operations (add, subtract)
 - Client-side encryption helpers
 
 ### `magicblock.ts`

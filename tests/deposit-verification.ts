@@ -6,7 +6,7 @@
  * This test proves:
  * 1. The deposit transaction calls the Inco Token Program transfer
  * 2. The encrypted amount parameter is passed correctly
- * 3. The business encrypted_balance is updated via homomorphic addition
+ * 3. The business encrypted_balance is updated via confidential compute addition
  * 4. The transaction succeeds and token balances move
  *
  * Test Strategy:

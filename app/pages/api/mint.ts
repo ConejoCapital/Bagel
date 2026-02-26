@@ -191,7 +191,7 @@ export default async function handler(
     // Convert amount to lamports (9 decimals)
     const amountWithDecimals = BigInt(amount) * BigInt(1_000_000_000);
 
-    // Encrypt the amount for Inco FHE (using real SDK)
+    // Encrypt the amount for Inco confidential compute (using real SDK)
     const encryptedAmount = await encryptForInco(amountWithDecimals);
 
     // Step 1: Initialize Bagel PDA if it doesn't exist

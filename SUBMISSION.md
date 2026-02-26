@@ -44,7 +44,7 @@
 |---------|-------------------|
 | **Helius** | FULL - All transactions use Helius RPC |
 | **Range** | FULL - Compliance pre-screening |
-| **Inco** | FULL - FHE encrypted ledger |
+| **Inco** | FULL - Inco confidential compute ledger |
 | **MagicBlock** | **FULL** - Private Ephemeral Rollups (PER) via TEE delegation |
 | **ShadowWire** | SIMULATED - ZK Bulletproof payouts (mainnet-ready) |
 
@@ -66,7 +66,7 @@
 
 ### 3. Inco Lightning (Encrypted Ledger)
 - **Status:** FULL
-- **Usage:** FHE encryption for salaries, IDs, balances, counts
+- **Usage:** Inco confidential compute for salaries, IDs, balances, counts
 - **Types:** `Euint128` for all sensitive data
 - **Files:** `programs/bagel/src/lib.rs`, `programs/bagel/src/privacy/inco.rs`
 
@@ -204,7 +204,7 @@ Bagel/
 │   ├── lib.rs              # Maximum privacy architecture
 │   ├── constants.rs        # Program IDs
 │   └── privacy/            # Privacy tool integrations
-│       ├── inco.rs         # Inco Lightning FHE
+│       ├── inco.rs         # Inco Lightning confidential compute
 │       ├── magicblock.rs   # MagicBlock PER (TEE)
 │       └── shadowwire.rs   # ShadowWire ZK
 ├── app/                    # Frontend (Next.js)

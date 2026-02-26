@@ -76,11 +76,11 @@ export default function Landing() {
     <>
       <Head>
         <title>Bagel - Privacy-First Payroll for Solana</title>
-        <meta name="description" content="Run payroll with complete financial privacy. Real-time streaming payments, FHE encrypted transfers, and automated yield generation on Solana." />
+        <meta name="description" content="Run payroll with complete financial privacy. Real-time streaming payments, Inco confidential compute transfers, and automated yield generation on Solana." />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <link rel="icon" href="/favicon.ico" />
         <meta property="og:title" content="Bagel - Privacy-First Payroll for Solana" />
-        <meta property="og:description" content="Run payroll with complete financial privacy. Real-time streaming, FHE encrypted transfers, automated yield." />
+        <meta property="og:description" content="Run payroll with complete financial privacy. Real-time streaming, Inco confidential compute transfers, automated yield." />
         <meta property="og:type" content="website" />
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content="Bagel - Privacy-First Payroll" />
@@ -240,7 +240,7 @@ export default function Landing() {
                     variants={fadeInUp}
                     className="text-lg sm:text-xl text-gray-600 mb-8 leading-relaxed max-w-xl"
                   >
-                    Run payroll on Solana with encrypted salaries, FHE confidential transfers,
+                    Run payroll on Solana with encrypted salaries, Inco confidential compute confidential transfers,
                     and automated yield generation. Your team's compensation stays private.
                   </motion.p>
 
@@ -376,7 +376,7 @@ export default function Landing() {
                         <CheckCircle2 className="w-5 h-5 text-green-600" />
                       </div>
                       <div>
-                        <div className="text-sm font-semibold text-bagel-dark">FHE Protected</div>
+                        <div className="text-sm font-semibold text-bagel-dark">Confidential Compute</div>
                         <div className="text-xs text-gray-500">Amount hidden</div>
                       </div>
                     </div>
@@ -460,7 +460,7 @@ export default function Landing() {
                   {
                     icon: Lock,
                     title: 'Encrypted Salary Storage',
-                    desc: "Salaries are encrypted using Inco Lightning FHE before being stored on-chain. Even validators cannot see the actual amounts.",
+                    desc: "Salaries are encrypted using Inco Lightning confidential compute before being stored on-chain. Even validators cannot see the actual amounts.",
                     powered: 'Inco Lightning',
                     color: 'bg-bagel-orange/10',
                     iconColor: 'text-bagel-orange'
@@ -468,8 +468,8 @@ export default function Landing() {
                   {
                     icon: Shield,
                     title: 'Confidential Transfers',
-                    desc: 'Transfers use Inco FHE to keep amounts encrypted end-to-end. Only authorized parties can decrypt and view the actual values.',
-                    powered: 'Inco FHE',
+                    desc: 'Transfers use Inco confidential compute to keep amounts encrypted end-to-end. Only authorized parties can decrypt and view the actual values.',
+                    powered: 'Inco confidential compute',
                     color: 'bg-bagel-sesame/20',
                     iconColor: 'text-bagel-sesame'
                   },
@@ -541,7 +541,7 @@ export default function Landing() {
                   { step: '01', title: 'Create Payroll', desc: 'Employer registers a business and adds employees with encrypted salary rates.', icon: '📝' },
                   { step: '02', title: 'Deposit Funds', desc: 'Funds are deposited and automatically split: 90% to yield vault, 10% liquid.', icon: '💰' },
                   { step: '03', title: 'Stream in Real-Time', desc: 'Salary streams per-second. Employee watches balance grow continuously.', icon: '⚡' },
-                  { step: '04', title: 'Withdraw Privately', desc: 'Employee withdraws with FHE decryption. Transfer amount stays completely hidden.', icon: '🔒' },
+                  { step: '04', title: 'Withdraw Privately', desc: 'Employee withdraws with Inco confidential compute decryption. Transfer amount stays completely hidden.', icon: '🔒' },
                 ].map((item, i) => (
                   <motion.div
                     key={item.step}
@@ -766,7 +766,7 @@ export default function Landing() {
                     </div>
                     <pre className="p-6 text-sm overflow-x-auto bg-gray-50">
                       <code className="text-gray-700">
-{`// Encrypt salary with Inco FHE
+{`// Encrypt salary with Inco confidential compute
 const { ciphertext } = await incoClient.encryptSalary(
   BigInt(salaryPerSecond)  // Amount never visible on-chain
 );
@@ -871,7 +871,7 @@ const balance = await incoClient.decryptSalary(
               </motion.div>
               <div className="flex flex-wrap justify-center items-center gap-8 md:gap-12">
                 {[
-                  { name: 'Inco Lightning', type: 'FHE Encryption' },
+                  { name: 'Inco Lightning', type: 'Inco Confidential Compute' },
                   { name: 'ShadowWire', type: 'Bulletproofs' },
                   { name: 'MagicBlock', type: 'Ephemeral Rollups' },
                   { name: 'Helius', type: 'RPC & APIs' },
@@ -910,7 +910,7 @@ const balance = await incoClient.decryptSalary(
               </h2>
               <p className="text-lg text-gray-600 mb-10 max-w-2xl mx-auto">
                 Join teams that value financial privacy. Start streaming salaries
-                with encrypted storage, FHE transfers, and automated yield today.
+                with encrypted storage, Inco confidential compute transfers, and automated yield today.
               </p>
 
               <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12">
@@ -953,7 +953,7 @@ const balance = await incoClient.decryptSalary(
                   </div>
                   <p className="text-gray-600 mb-6 max-w-sm">
                     Privacy-first payroll infrastructure for Solana.
-                    Real-time streaming, FHE confidential transfers, automated yield.
+                    Real-time streaming, Inco confidential compute confidential transfers, automated yield.
                   </p>
                   <p className="text-sm text-gray-500">
                     Built for Solana Privacy Hackathon 2026

@@ -28,7 +28,7 @@ pub mod magicblock;
 ///
 /// Provides:
 /// - Encrypted Euint128 storage
-/// - Homomorphic operations (add, sub, mul)
+/// - Confidential compute operations (add, sub, mul)
 /// - Access-controlled decryption
 pub use inco::ConfidentialBalance as EncryptedU64;
 
@@ -81,7 +81,7 @@ pub use magicblock::{
 
 /// Calculate accrued salary using Inco encrypted computation
 ///
-/// **LEAN BAGEL:** Uses Inco's homomorphic multiplication
+/// **LEAN BAGEL:** Uses Inco's confidential compute multiplication
 ///
 /// In production, this calls Inco's e_mul CPI for encrypted computation.
 /// The salary amount stays encrypted throughout the calculation!

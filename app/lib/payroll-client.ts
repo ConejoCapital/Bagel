@@ -375,7 +375,7 @@ async function sendAndConfirmTransaction(
 // ============================================================
 
 /**
- * Encrypt a value for Inco FHE
+ * Encrypt a value for Inco confidential compute
  */
 async function encryptForInco(value: bigint): Promise<Buffer> {
   const encryptedHex = await encryptValue(value);
@@ -557,7 +557,7 @@ export async function createVaultTokenAccount(
 /**
  * Deposit encrypted tokens to business vault
  *
- * PRIVACY: Amount is encrypted using Inco FHE
+ * PRIVACY: Amount is encrypted using Inco confidential compute
  */
 export async function deposit(
   connection: Connection,

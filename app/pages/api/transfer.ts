@@ -100,7 +100,7 @@ export default async function handler(
     // Convert amount to lamports with 9 decimals
     const amountWithDecimals = BigInt(Math.floor(amount * 1_000_000_000));
 
-    // Encrypt the amount for Inco FHE using real SDK
+    // Encrypt the amount for Inco confidential compute using real SDK
     const encryptedAmount = await encryptForInco(amountWithDecimals);
 
     // Build instruction data: discriminator + amount (bytes) + input_type (u8)

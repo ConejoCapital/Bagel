@@ -222,7 +222,7 @@ sequenceDiagram
     C->>P: deposit(encrypted_amount)
     P->>P: Validate amount not empty
     P->>IT: CPI: transfer(encrypted_amount)
-    IT->>IL: FHE processing
+    IT->>IL: Inco confidential compute processing
     IL-->>IT: Success
     IT-->>P: Transfer complete
     P-->>C: FundsDeposited event

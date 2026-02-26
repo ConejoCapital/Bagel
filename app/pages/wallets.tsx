@@ -276,7 +276,7 @@ export default function WalletsPage() {
                     </div>
                     <div className="text-xs text-gray-500 mt-1">
                       {accountInfo.incoTokenAccount
-                        ? 'FHE-encrypted balance'
+                        ? 'encrypted via Inco confidential compute balance'
                         : 'Mint tokens to create account'}
                     </div>
                   </div>
@@ -439,10 +439,10 @@ export default function WalletsPage() {
                 <div className="p-4 bg-bagel-cream/50 rounded border border-bagel-orange/10">
                   <h4 className="font-medium text-bagel-dark mb-2 flex items-center gap-2">
                     <LockSimple className="w-4 h-4 text-bagel-orange" />
-                    Fully Homomorphic Encryption (FHE)
+                    Inco confidential compute
                   </h4>
                   <p className="text-xs leading-relaxed">
-                    Your USDBagel balance is encrypted using Inco's FHE technology. This means your balance
+                    Your USDBagel balance is encrypted using Inco confidential compute technology. This means your balance
                     remains encrypted on-chain at all times - even the blockchain validators cannot see your
                     actual balance. Computations (transfers, payroll calculations) happen directly on encrypted
                     data without ever decrypting it.
@@ -510,7 +510,7 @@ export default function WalletsPage() {
         {/* Footer */}
         <footer className="mt-16 py-8 border-t border-gray-200">
           <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center text-gray-600">
-            <p className="text-xs">Bagel Privacy Payroll - Built on Solana with Inco FHE</p>
+            <p className="text-xs">Bagel Privacy Payroll - Built on Solana with Inco confidential compute</p>
           </div>
         </footer>
       </div>
