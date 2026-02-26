@@ -411,7 +411,7 @@ export default function EmployeeDashboard() {
                   You receive an employee index (0, 1, 2, etc.).
                 </p>
                 <p>
-                  <strong>2. Salary accrues over time</strong> - Your salary is calculated in encrypted form using FHE (Fully Homomorphic Encryption).
+                  <strong>2. Salary accrues over time</strong> - Your salary is calculated in encrypted form using Inco confidential compute (Inco confidential compute).
                   No one can see the actual amounts on-chain.
                 </p>
                 <p>

@@ -350,7 +350,7 @@ pub mod bagel {
 
         msg!("✅ Confidential deposit completed");
 
-        // Update business encrypted balance via homomorphic addition
+        // Update business encrypted balance via confidential compute addition
         let cpi_accounts1 = Operation {
             signer: ctx.accounts.depositor.to_account_info(),
         };
@@ -1406,7 +1406,7 @@ pub struct InitializeUserTokenAccount<'info> {
     )]
     pub user_token_account: Account<'info, UserTokenAccount>,
 
-    /// CHECK: Inco Lightning program for FHE operations
+    /// CHECK: Inco Lightning program for Inco confidential compute operations
     #[account(address = INCO_LIGHTNING_ID)]
     pub inco_lightning_program: AccountInfo<'info>,
 
@@ -1598,7 +1598,7 @@ pub struct UserTokenAccount {
     /// This is the keypair-based account that holds actual tokens
     pub inco_token_account: Pubkey,
 
-    /// ENCRYPTED balance (FHE via Inco) - cached/synced from Inco
+    /// ENCRYPTED balance (Inco confidential compute via Inco) - cached/synced from Inco
     pub balance: Euint128,
 
     /// Timestamp when initialized

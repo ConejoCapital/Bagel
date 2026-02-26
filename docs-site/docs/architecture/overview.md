@@ -23,7 +23,7 @@ graph TB
     end
 
     subgraph Privacy["Privacy Layer"]
-        IL[Inco Lightning<br/>FHE Engine]
+        IL[Inco Lightning<br/>Confidential Compute Engine]
         IT[Inco Tokens<br/>Confidential Transfers]
         MB[MagicBlock<br/>TEE Streaming]
     end
@@ -62,13 +62,13 @@ graph TB
 | Styling | Tailwind CSS v4 | Design system |
 | Wallet | Solana Wallet Adapter | Multi-wallet support |
 | State | React Query | Server state |
-| Encryption | Inco SDK | Client-side FHE |
+| Encryption | Inco SDK | Client-side Inco confidential compute |
 
 ### 2. Privacy Layer
 
 | Component | Program ID | Purpose |
 |-----------|------------|---------|
-| Inco Lightning | `5sjEbPiqgZrYwR31ahR6Uk9wf5awoX61YGg7jExQSwaj` | FHE operations |
+| Inco Lightning | `5sjEbPiqgZrYwR31ahR6Uk9wf5awoX61YGg7jExQSwaj` | Inco confidential compute operations |
 | Inco Token Program | `4cyJHzecVWuU2xux6bCAPAhALKQT8woBh4Vx3AGEGe5N` | Encrypted transfers |
 | MagicBlock | `DELeGGvXpWV2fqJUhqcF5ZSYMS4JTLjteaAMARRSaeSh` | TEE delegation |
 

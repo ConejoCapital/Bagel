@@ -162,7 +162,7 @@ For employee token account setup, see [Employee Lifecycle - Token Account Setup]
 
 ## Balance Management
 
-All balance updates use homomorphic operations:
+All balance updates use confidential compute operations:
 
 ```
 Deposit:  vault.balance = e_add(vault.balance, encrypted_deposit)
@@ -188,9 +188,9 @@ console.log(`Vault balance: ${balance / 1_000_000_000n} USDBagel`);
 
 | Guarantee | Implementation |
 |-----------|----------------|
-| Amount privacy | All amounts encrypted via FHE |
+| Amount privacy | All amounts encrypted via Inco confidential compute |
 | Transfer integrity | Inco Token Program verification |
-| Balance consistency | Homomorphic arithmetic |
+| Balance consistency | Confidential compute arithmetic |
 
 ## Troubleshooting
 

@@ -9,7 +9,7 @@ const sidebars = {
       label: 'Core Concepts',
       items: [
         'core-concepts/privacy-layer',
-        'core-concepts/fhe-encryption',
+        'core-concepts/confidential-compute',
         'core-concepts/payroll-streaming',
         'core-concepts/confidential-tokens',
         'core-concepts/glossary',

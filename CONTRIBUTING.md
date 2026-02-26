@@ -139,7 +139,7 @@ When working with privacy features:
 4. **Follow SDK best practices** for each integration
 
 ### Inco Lightning Integration
-- Use FHE encryption for all sensitive data
+- Use Inco confidential compute for all sensitive data
 - Never decrypt salary amounts unless absolutely necessary
 - Document encrypted fields clearly
 

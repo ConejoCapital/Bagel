@@ -9,8 +9,8 @@
  *    Declaration: "This test verifies Range API is used to pre-screen the
  *    employer wallet before payroll creation."
  *
- * 2. INCO: FHE encryption (instruction/account data).
- *    Declaration: "This test verifies Inco Lightning FHE for encrypted IDs,
+ * 2. INCO: Inco confidential compute (instruction/account data).
+ *    Declaration: "This test verifies Inco Lightning confidential compute for encrypted IDs,
  *    balances, and Option::None format."
  *
  * 3. MAGICBLOCK: TEE/PER delegation and (optional) commit.
@@ -428,9 +428,9 @@ async function main() {
 
   // ---------- Phase 1: Register business + Add employee (Inco used in CPI) ----------
   console.log('\n' + '═'.repeat(60));
-  log('PRIVACY STACK: INCO - FHE encryption (register + add employee)', 'encrypted');
+  log('PRIVACY STACK: INCO - Inco confidential compute (register + add employee)', 'encrypted');
   console.log('═'.repeat(60));
-  log('Declaration: Inco Lightning FHE for encrypted IDs, balances, and Option::None format.', 'encrypted');
+  log('Declaration: Inco Lightning confidential compute for encrypted IDs, balances, and Option::None format.', 'encrypted');
   log('Registering business...', 'info');
   const { txid: registerTx, entryIndex: businessIndex_ } = await registerBusinessFunction(connection, authorityWallet as any);
   businessIndex = businessIndex_;
@@ -561,7 +561,7 @@ async function main() {
 | Tool | Declaration | Status |
 |------|-------------|--------|
 | **Range** | Pre-screen employer wallet before payroll creation | ${results.range} |
-| **Inco** | FHE for encrypted IDs, balances, Option::None format | ${results.inco} |
+| **Inco** | Inco confidential compute for encrypted IDs, balances, Option::None format | ${results.inco} |
 | **MagicBlock** | PER (delegate_to_tee / commit_from_tee) for real-time streaming in TEE | ${results.magicblock} |
 | **Helius** | RPC/DAS to prove chain sees encrypted data only | ${results.helius} |
 | **ShadowWire** | Simulated on devnet; on mainnet ZK would hide withdrawal amount | ${results.shadowwire} |

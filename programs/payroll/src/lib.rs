@@ -2,7 +2,7 @@
 //!
 //! A privacy-preserving payroll system with:
 //! - Program-owned token custody (BusinessVault PDA)
-//! - Encrypted salaries and balances (Inco Lightning FHE)
+//! - Encrypted salaries and balances (Inco Lightning confidential compute)
 //! - Real-time streaming via MagicBlock TEE
 //! - Index-based PDAs (no pubkey correlation)
 //!
@@ -323,7 +323,7 @@ pub mod payroll {
     /// Accrue salary (called automatically by TEE)
     ///
     /// Computes: accrued += salary_rate * elapsed_seconds
-    /// Uses Inco homomorphic operations on encrypted values.
+    /// Uses Inco confidential compute operations on encrypted values.
     pub fn accrue(ctx: Context<Accrue>) -> Result<()> {
         let employee = &mut ctx.accounts.employee;
         let clock = Clock::get()?;
@@ -339,7 +339,7 @@ pub mod payroll {
         msg!("⚡ Accruing salary in TEE...");
 
         // In TEE context, we update the encrypted accrued balance
-        // The actual FHE computation happens via Inco Lightning CPI
+        // The actual Inco confidential compute computation happens via Inco Lightning CPI
         // For now, just update the timestamp - the encrypted computation
         // would be done via raw invoke to Inco Lightning
 

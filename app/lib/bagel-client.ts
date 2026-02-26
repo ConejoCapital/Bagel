@@ -653,7 +653,7 @@ export async function initializeConfidentialTokenAccount(
  * Mint USDBagel tokens via Inco Confidential Token Program
  *
  * Calls the server-side API which has mint authority to create real
- * confidential tokens with FHE-encrypted amounts.
+ * confidential tokens with encrypted via Inco confidential compute amounts.
  *
  * Flow:
  * 1. Initialize user's Bagel PDA if not exists (on-chain registry)

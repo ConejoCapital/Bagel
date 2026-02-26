@@ -118,7 +118,7 @@ NEXT_PUBLIC_SOLANA_NETWORK=devnet
 NEXT_PUBLIC_BAGEL_PROGRAM_ID=AEd52vEEAdXWUjKut1aQyLLJQnwMWqYMb4hSaHpxd8Hj
 
 # ===========================================
-# Inco FHE Configuration
+# Inco confidential compute Configuration
 # ===========================================
 NEXT_PUBLIC_INCO_LIGHTNING_ID=5sjEbPiqgZrYwR31ahR6Uk9wf5awoX61YGg7jExQSwaj
 NEXT_PUBLIC_INCO_TOKEN_ID=4cyJHzecVWuU2xux6bCAPAhALKQT8woBh4Vx3AGEGe5N

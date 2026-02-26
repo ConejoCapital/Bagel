@@ -12,7 +12,7 @@
 |---------------|--------|--------|
 | **Phase 0: Setup** | PASSED | Authority funded, MasterVault exists, employee funded |
 | **Layer 1: Index-Based PDAs** | PASSED | Business and Employee PDAs derived from indices only; no pubkeys in seeds |
-| **Layer 2: Inco Lightning FHE** | PASSED | Register, Add Employee, Deposit; Option::None format; Euint128 in account data |
+| **Layer 2: Inco Lightning confidential compute** | PASSED | Register, Add Employee, Deposit; Option::None format; Euint128 in account data |
 | **Layer 3: MagicBlock PER (TEE)** | PASSED | delegate_to_tee and commit_from_tee (comprehensive); delegate_to_tee (stack E2E); commit optional on stack E2E |
 | **Layer 4: TEE Streaming** | PASSED | 60s accrual; on-chain state unchanged during streaming |
 | **Layer 5: Helius chain view** | RUN | Deposit/withdrawal tx fetch; instruction privacy check (stack E2E reported FAILED for one tx parse) |
@@ -25,7 +25,7 @@
 | Tool | Declaration | Observed |
 |------|-------------|----------|
 | **Range** | Pre-screen employer wallet before payroll | SKIPPED (no API key in run); declared as used in production |
-| **Inco** | FHE for encrypted IDs, balances, Option::None | PASSED — register, add employee, deposit all use Inco CPI; instruction data Option::None |
+| **Inco** | Inco confidential compute for encrypted IDs, balances, Option::None | PASSED — register, add employee, deposit all use Inco CPI; instruction data Option::None |
 | **MagicBlock** | PER (delegate_to_tee / commit_from_tee) for real-time streaming | PASSED — delegate and commit (comprehensive); delegate (stack E2E) |
 | **Helius** | RPC/DAS to prove chain sees encrypted data only | Used for all RPC; chain view verification run (one check failed in stack E2E) |
 | **ShadowWire** | Simulated on devnet; on mainnet ZK hides withdrawal amount | Simulated (useShadowwire=false); withdrawal failed with 3007 before ZK step |

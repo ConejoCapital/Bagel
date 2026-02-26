@@ -4,15 +4,15 @@ sidebar_position: 1
 
 # Inco Lightning Integration
 
-Complete guide to integrating Inco Lightning FHE in Bagel.
+Complete guide to integrating Inco Lightning confidential compute in Bagel.
 
 ## Overview
 
-Inco Lightning provides Fully Homomorphic Encryption (FHE) on Solana:
+Inco Lightning provides Inco confidential compute on Solana:
 
 - **Program ID**: `5sjEbPiqgZrYwR31ahR6Uk9wf5awoX61YGg7jExQSwaj`
 - **Network**: Devnet (current), Mainnet (planned)
-- **Encryption**: TFHE (Torus FHE)
+- **Encryption**: Inco confidential compute
 
 ## Dependencies
 
@@ -82,7 +82,7 @@ pub fn create_encrypted_value(
 }
 ```
 
-### Homomorphic Addition
+### Confidential compute Addition
 
 ```rust
 use inco_lightning::cpi::e_add;
@@ -104,7 +104,7 @@ pub fn add_encrypted(
 }
 ```
 
-### Homomorphic Subtraction
+### Confidential compute Subtraction
 
 ```rust
 use inco_lightning::cpi::e_sub;
@@ -250,4 +250,4 @@ Batch operations when possible to reduce transaction size.
 
 - [Inco Lightning Documentation](https://docs.inco.org/svm/home)
 - [Inco SDK Reference](https://docs.inco.org/svm/rust-sdk/overview)
-- [FHE Operations](https://docs.inco.org/svm/operations)
+- [Inco confidential compute Operations](https://docs.inco.org/svm/operations)

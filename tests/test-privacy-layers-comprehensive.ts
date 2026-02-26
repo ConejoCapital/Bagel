@@ -4,7 +4,7 @@
  * 
  * This test showcases ALL privacy layers in the Bagel stack:
  * 1. Index-Based PDAs (privacy through derivation)
- * 2. Inco Lightning FHE (encrypted storage)
+ * 2. Inco Lightning confidential compute (encrypted storage)
  * 3. MagicBlock TEE (real-time streaming in trusted enclave)
  * 4. ShadowWire (ZK proofs for amount hiding)
  * 5. Option::None Format (no plaintext amounts)
@@ -809,7 +809,7 @@ async function main() {
   // ============================================================
   
   console.log('\n' + '═'.repeat(60));
-  log('PHASE 2: Inco Lightning FHE Encryption (Layer 1)', 'encrypted');
+  log('PHASE 2: Inco Lightning Confidential Compute (Layer 1)', 'encrypted');
   console.log('═'.repeat(60));
   
   log('Demonstrating: Encrypted amounts in instruction data (Option::None)', 'encrypted');
@@ -1110,7 +1110,7 @@ async function main() {
   verificationResults.push('   - ✅ NO pubkeys in PDA seeds');
   verificationResults.push('');
   
-  verificationResults.push('✅ Layer 2: Inco Lightning FHE');
+  verificationResults.push('✅ Layer 2: Inco Lightning confidential compute');
   verificationResults.push(`   - Deposit TX: ${results.phase2?.depositTx}`);
   verificationResults.push('   - ✅ Instruction data: Option::None (0x00)');
   verificationResults.push('   - ✅ Account data: Euint128 handles');
@@ -1169,7 +1169,7 @@ async function main() {
   log('All Privacy Layers Demonstrated:', 'success');
   log('', 'info');
   log('1. ✅ Index-Based PDAs - Privacy through derivation', 'privacy');
-  log('2. ✅ Inco Lightning FHE - Encrypted storage', 'encrypted');
+  log('2. ✅ Inco Lightning confidential compute - Encrypted storage', 'encrypted');
   if (results.phase3?.delegateTx && results.phase3.delegateTx !== 'SKIPPED') {
     log('3. ✅ MagicBlock TEE - Real-time streaming', 'tee');
   } else {
@@ -1245,14 +1245,14 @@ This test demonstrates **ALL privacy layers** in the Bagel payroll system, showi
 
 ---
 
-### Layer 2: Inco Lightning FHE Encryption ✅
+### Layer 2: Inco Lightning Confidential Compute ✅
 
 **Purpose:** Encrypted storage and operations - all sensitive data is ciphertext.
 
 **Implementation:**
 - Instruction data: \`[discriminator][0x00][enc_len][encrypted_amount]\` (Option::None)
 - Account data: Euint128 handles (16-byte encrypted values)
-- Homomorphic operations on encrypted data
+- Confidential compute operations on encrypted data
 
 **Verification:**
 - ✅ Deposit instruction uses Option::None (0x00 tag)
@@ -1371,7 +1371,7 @@ ${heliusReports.withdrawal}
 
 **Key Findings:**
 1. ✅ Index-based PDAs prevent address correlation
-2. ✅ Inco Lightning FHE encrypts all sensitive data
+2. ✅ Inco Lightning confidential compute secures all sensitive data
 3. ${results.phase3?.delegateTx && results.phase3.delegateTx !== 'SKIPPED' ? '✅' : '⚠️'} MagicBlock TEE enables real-time streaming (${results.phase3?.delegateTx && results.phase3.delegateTx !== 'SKIPPED' ? 'verified' : 'simulated'})
 4. ✅ Option::None format ensures no plaintext amounts
 5. ✅ Helius verification proves chain sees only encrypted data

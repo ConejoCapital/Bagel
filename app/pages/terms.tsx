@@ -40,7 +40,7 @@ export default function Terms() {
               <h3 className="text-lg font-semibold text-[#2D2D2A] mb-3">2. Service Description</h3>
               <p className="text-sm leading-relaxed">
                 Bagel is a privacy-focused payroll platform built on Solana that enables confidential token transfers
-                using Fully Homomorphic Encryption (FHE) technology. The Service allows employers to deposit funds
+                using Inco confidential compute technology. The Service allows employers to deposit funds
                 and pay employees with encrypted amounts that remain private on-chain.
               </p>
             </section>
@@ -65,7 +65,7 @@ export default function Terms() {
             <section>
               <h3 className="text-lg font-semibold text-[#2D2D2A] mb-3">5. Privacy & Encryption</h3>
               <p className="text-sm leading-relaxed">
-                Bagel uses FHE technology provided by Inco Network to encrypt transaction amounts on-chain.
+                Bagel uses Inco confidential compute technology provided by Inco Network to encrypt transaction amounts on-chain.
                 While we strive to maintain the highest level of privacy, we make no guarantees about the
                 absolute security of any cryptographic system. Users should understand the risks associated
                 with blockchain technology.

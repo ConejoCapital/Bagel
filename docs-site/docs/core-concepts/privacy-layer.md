@@ -11,15 +11,15 @@ Bagel implements a multi-layered privacy architecture to ensure complete confide
 ```mermaid
 graph TB
     subgraph "Privacy Layers"
-        A[FHE - Encrypted Storage] --> B[Confidential Tokens - Encrypted Transfers]
+        A[Inco confidential compute - Encrypted Storage] --> B[Confidential Tokens - Encrypted Transfers]
         B --> C[Index PDAs - Hidden Identity]
         C --> D[TEE Streaming - Private Computation]
     end
 ```
 
-## Layer 1: Fully Homomorphic Encryption (FHE)
+## Layer 1: Inco confidential compute
 
-All sensitive data is stored encrypted using Inco Lightning's FHE implementation:
+All sensitive data is stored encrypted using Inco Lightning's confidential compute implementation:
 
 | Field | Encryption | Visibility |
 |-------|------------|------------|
@@ -31,7 +31,7 @@ All sensitive data is stored encrypted using Inco Lightning's FHE implementation
 | `encrypted_business_count` | Euint128 | Only authority can decrypt |
 | `encrypted_employee_count` | Euint128 | Only authority can decrypt |
 
-### Homomorphic Operations
+### Confidential compute Operations
 
 Computations happen on encrypted data without decryption:
 
@@ -141,13 +141,13 @@ graph LR
 
 | Data | Protection Level | Method |
 |------|-----------------|--------|
-| Salary rates | Maximum | FHE Euint128 |
-| Accrued balances | Maximum | FHE Euint128 |
+| Salary rates | Maximum | Inco confidential compute Euint128 |
+| Accrued balances | Maximum | Inco confidential compute Euint128 |
 | Transfer amounts | Maximum | Confidential Tokens |
-| Employer identity | Maximum | FHE + Index PDAs |
-| Employee identity | Maximum | FHE + Index PDAs |
-| Business count | Maximum | FHE Euint128 |
-| Employee count | Maximum | FHE Euint128 |
+| Employer identity | Maximum | Inco confidential compute + Index PDAs |
+| Employee identity | Maximum | Inco confidential compute + Index PDAs |
+| Business count | Maximum | Inco confidential compute Euint128 |
+| Employee count | Maximum | Inco confidential compute Euint128 |
 
 ### What's Public (Unavoidable)
 
@@ -172,7 +172,7 @@ An attacker with full chain access can:
 ### Attacker Limitations
 
 An attacker **cannot**:
-- Decrypt FHE ciphertexts without Inco decryption keys
+- Decrypt Inco confidential compute ciphertexts without Inco decryption keys
 - Link accounts to real-world identities
 - Determine salary amounts
 - Determine transfer amounts

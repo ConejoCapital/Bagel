@@ -2,13 +2,13 @@
 sidebar_position: 2
 ---
 
-# FHE Encryption
+# Inco Confidential Compute
 
-Deep dive into Fully Homomorphic Encryption as used in Bagel Protocol.
+Deep dive into Inco confidential compute as used in Bagel Protocol.
 
-## What is FHE?
+## What is Inco confidential compute?
 
-Fully Homomorphic Encryption (FHE) allows computation on encrypted data without decryption. The result is also encrypted.
+Inco confidential compute allows computation on encrypted data without decryption. The result is also encrypted.
 
 ```
 E(a) ⊕ E(b) = E(a + b)
@@ -17,7 +17,7 @@ E(a) ⊗ E(b) = E(a × b)
 
 ## Inco Lightning
 
-Bagel uses Inco Lightning's TFHE (Torus FHE) implementation on Solana:
+Bagel uses Inco Lightning's confidential compute implementation on Solana:
 
 - **Program ID**: `5sjEbPiqgZrYwR31ahR6Uk9wf5awoX61YGg7jExQSwaj`
 - **Primary Type**: `Euint128` (encrypted 128-bit unsigned integer)
@@ -71,7 +71,7 @@ const incoClient = new IncoClient({ network: 'devnet' });
 const ciphertext = await incoClient.encrypt(100_000_000n);
 ```
 
-### Homomorphic Addition
+### Confidential compute Addition
 
 ```rust
 use inco_lightning::cpi::e_add;
@@ -85,7 +85,7 @@ let result = e_add(
 )?;
 ```
 
-### Homomorphic Subtraction
+### Confidential compute Subtraction
 
 ```rust
 use inco_lightning::cpi::e_sub;
@@ -126,7 +126,7 @@ Where:
   C = Ciphertext space
 ```
 
-### Homomorphic Properties
+### Confidential compute Properties
 
 **Additive Homomorphism:**
 ```
@@ -267,5 +267,5 @@ let result = e_add(cpi_ctx, a, b, 0)
 ## References
 
 - [Inco Lightning Documentation](https://docs.inco.org/svm/home)
-- [TFHE Paper](https://eprint.iacr.org/2018/421)
-- [FHE Overview](https://en.wikipedia.org/wiki/Fully_homomorphic_encryption)
+- [Inco confidential compute Paper](https://eprint.iacr.org/2018/421)
+- [Inco confidential compute Overview](https://en.wikipedia.org/wiki/Fully_confidential compute_encryption)

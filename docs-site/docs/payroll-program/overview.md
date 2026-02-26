@@ -18,7 +18,7 @@ Comprehensive documentation of the Bagel Payroll Program for privacy-preserving 
 
 The Payroll Program provides a complete privacy-preserving payroll system with:
 
-- **Encrypted Salaries**: Salary rates stored as FHE ciphertexts
+- **Encrypted Salaries**: Salary rates stored as Inco confidential compute ciphertexts
 - **Confidential Transfers**: All deposits and withdrawals use encrypted amounts
 - **Identity Privacy**: Index-based PDAs prevent identity correlation
 - **Real-Time Streaming**: MagicBlock TEE integration for continuous accrual
@@ -40,7 +40,7 @@ graph TB
     end
 
     subgraph Privacy["Privacy Layer"]
-        IL[Inco Lightning FHE]
+        IL[Inco Lightning confidential compute]
         IT[Inco Confidential Tokens]
         MB[MagicBlock TEE]
     end
@@ -114,7 +114,7 @@ The actual encrypted values are stored and computed in the Inco Lightning system
 
 | Program | ID | Purpose |
 |---------|----|----|
-| Inco Lightning | `5sjEbPiqgZrYwR31ahR6Uk9wf5awoX61YGg7jExQSwaj` | FHE operations |
+| Inco Lightning | `5sjEbPiqgZrYwR31ahR6Uk9wf5awoX61YGg7jExQSwaj` | Inco confidential compute operations |
 | Inco Token | `4cyJHzecVWuU2xux6bCAPAhALKQT8woBh4Vx3AGEGe5N` | Encrypted transfers |
 | MagicBlock | `DELeGGvXpWV2fqJUhqcF5ZSYMS4JTLjteaAMARRSaeSh` | TEE streaming |
 | System Program | `11111111111111111111111111111111` | Account creation |
@@ -161,11 +161,11 @@ The actual encrypted values are stored and computed in the Inco Lightning system
 
 | Data | Protection Method | Visibility |
 |------|-------------------|------------|
-| Salary amounts | FHE (Euint128) | Never visible |
+| Salary amounts | Inco confidential compute (Euint128) | Never visible |
 | Employee identity | Encrypted hash | Never visible |
-| Accrued balance | FHE (Euint128) | Never visible |
+| Accrued balance | Inco confidential compute (Euint128) | Never visible |
 | Business identity | Encrypted hash | Never visible |
-| Employee count | FHE (Euint128) | Never visible |
+| Employee count | Inco confidential compute (Euint128) | Never visible |
 | Transfer amounts | Confidential tokens | Never visible |
 
 ## Events

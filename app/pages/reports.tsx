@@ -314,7 +314,7 @@ export default function Reports() {
             </div>
             <div className="flex items-center gap-2 text-sm text-gray-500">
               <LockSimple className="w-4 h-4 text-bagel-orange" />
-              All amounts encrypted via FHE
+              All amounts encrypted via Inco confidential compute
             </div>
           </header>
 

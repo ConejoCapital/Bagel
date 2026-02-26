@@ -153,7 +153,7 @@ At time T:
   increment = E(salary_rate) × elapsed
   new_accrued = E(accrued) + increment
 
-All operations on encrypted values via FHE!
+All operations on encrypted values via Inco confidential compute!
 ```
 
 ### Streaming State

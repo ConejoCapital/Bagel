@@ -5,9 +5,9 @@ slug: /intro
 
 # Welcome to Bagel Protocol
 
-**Privacy-First Payroll Infrastructure on Solana with Fully Homomorphic Encryption (FHE)**
+**Privacy-First Payroll Infrastructure on Solana with Inco confidential compute**
 
-Bagel is a revolutionary payroll protocol that brings complete privacy to employee compensation on the Solana blockchain. Using cutting-edge cryptographic techniques including Fully Homomorphic Encryption (FHE), confidential token transfers, and TEE-based streaming, Bagel ensures that salary data remains encrypted and private at all times.
+Bagel is a revolutionary payroll protocol that brings complete privacy to employee compensation on the Solana blockchain. Using cutting-edge cryptographic techniques including Inco confidential compute, confidential token transfers, and TEE-based streaming, Bagel ensures that salary data remains encrypted and private at all times.
 
 ## Why Bagel?
 
@@ -20,15 +20,15 @@ Traditional payroll systems expose sensitive financial information:
 
 | Data | Traditional | Bagel |
 |------|-------------|-------|
-| Salary amounts | Public | Encrypted (FHE) |
-| Account balances | Public | Encrypted (FHE) |
+| Salary amounts | Public | Encrypted (Inco confidential compute) |
+| Account balances | Public | Encrypted (Inco confidential compute) |
 | Transfer amounts | Public | Encrypted (Confidential Tokens) |
 | Employer identity | Public | Encrypted + Index PDAs |
 | Employee identity | Public | Encrypted + Index PDAs |
 
 ## Key Features
 
-### Fully Homomorphic Encryption (FHE)
+### Inco confidential compute
 
 Powered by **Inco Lightning**, Bagel performs computations on encrypted data without ever decrypting it:
 
@@ -93,7 +93,7 @@ graph TB
     end
 
     subgraph Privacy Layer
-        D[Inco Lightning FHE]
+        D[Inco Lightning confidential compute]
         E[Confidential Tokens]
         F[MagicBlock TEE]
     end
@@ -128,7 +128,7 @@ Ready to build with Bagel? Start with our guides:
 |---------|---------|---------|
 | Bagel (Token Registry) | `AEd52vEEAdXWUjKut1aQyLLJQnwMWqYMb4hSaHpxd8Hj` | Token account PDAs |
 | Payroll Program | `J11xMm4pLQ6BUEhTpNwF1Mh4UhzUJNZCcw52zvZJspK2` | Payroll operations |
-| Inco Lightning | `5sjEbPiqgZrYwR31ahR6Uk9wf5awoX61YGg7jExQSwaj` | FHE operations |
+| Inco Lightning | `5sjEbPiqgZrYwR31ahR6Uk9wf5awoX61YGg7jExQSwaj` | Inco confidential compute operations |
 | Inco Token Program | `4cyJHzecVWuU2xux6bCAPAhALKQT8woBh4Vx3AGEGe5N` | Encrypted transfers |
 | MagicBlock Delegation | `DELeGGvXpWV2fqJUhqcF5ZSYMS4JTLjteaAMARRSaeSh` | TEE streaming |
 

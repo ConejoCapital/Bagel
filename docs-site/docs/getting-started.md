@@ -214,7 +214,7 @@ console.log('Withdrawal processed (amount encrypted)');
 
 Now that you have the basics working:
 
-1. [Learn about the privacy layer](./core-concepts/privacy-layer) - Understand how FHE protects your data
+1. [Learn about the privacy layer](./core-concepts/privacy-layer) - Understand how Inco confidential compute protects your data
 2. [Explore the architecture](./architecture/overview) - Deep dive into the system design
 3. [Payroll Program documentation](./payroll-program/overview) - Complete guide to the Payroll Program
 4. [Check the API reference](./reference/program-api) - Full documentation of all instructions

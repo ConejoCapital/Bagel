@@ -228,7 +228,7 @@ const guideSteps: GuideStep[] = [
     id: 'privacy',
     target: '[data-guide="privacy"]',
     title: 'Privacy Features',
-    description: 'All privacy features are enabled by default - FHE encryption, stealth addresses, and more.',
+    description: 'All privacy features are enabled by default - Inco confidential compute, stealth addresses, and more.',
     position: 'left',
   },
 ];
@@ -255,7 +255,7 @@ const navItems = [
 
 // Privacy features
 const privacyFeatures = [
-  { icon: Fingerprint, label: 'FHE Encryption', enabled: true },
+  { icon: Fingerprint, label: 'Inco Confidential Compute', enabled: true },
   { icon: EyeSlash, label: 'Stealth Addresses', enabled: true },
   { icon: LockSimple, label: 'Transaction Mixing', enabled: true },
   { icon: Eye, label: 'IP Masking', enabled: true },
@@ -628,7 +628,7 @@ function PaymentModal({ isOpen, onClose, onDeposit, businessEntryIndex, employee
                   </div>
                 </div>
                 <div className="text-xs text-gray-500 text-right max-w-[180px]">
-                  Tokens are FHE-encrypted on-chain
+                  Tokens are encrypted via Inco confidential compute on-chain
                 </div>
               </div>
 
@@ -1051,7 +1051,7 @@ function TransferModal({ isOpen, onClose, onTransfer, onBalanceUpdate }: Transfe
                   </div>
                   <div>
                     <div className="text-xs font-medium text-bagel-dark">Confidential Transfer</div>
-                    <div className="text-[10px] text-gray-500">FHE encrypted on Inco Network</div>
+                    <div className="text-[10px] text-gray-500">encrypted via Inco confidential compute on Inco Network</div>
                   </div>
                 </div>
               </div>
@@ -1557,7 +1557,7 @@ function MintTokensSection({ onMint }: MintTokensSectionProps) {
         <div className="flex items-start gap-3 p-3 bg-bagel-cream/50 rounded">
           <ShieldCheck className="w-4 h-4 text-bagel-orange flex-shrink-0 mt-0.5" />
           <p className="text-xs text-gray-600">
-            <span className="font-medium text-bagel-dark">FHE Encrypted:</span> Token amounts are encrypted on-chain using Inco's Fully Homomorphic Encryption.
+            <span className="font-medium text-bagel-dark">Inco Confidential Compute:</span> Token amounts are encrypted on-chain using Inco confidential compute.
           </p>
         </div>
 

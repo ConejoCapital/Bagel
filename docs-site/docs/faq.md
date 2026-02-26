@@ -10,7 +10,7 @@ Frequently asked questions about Bagel Protocol.
 
 ### What is Bagel?
 
-Bagel is a privacy-first payroll protocol on Solana that uses Fully Homomorphic Encryption (FHE) to keep salary data, balances, and identities encrypted on-chain.
+Bagel is a privacy-first payroll protocol on Solana that uses Inco confidential compute to keep salary data, balances, and identities encrypted on-chain.
 
 ### How is Bagel different from traditional payroll?
 
@@ -27,9 +27,9 @@ Currently Devnet, with Mainnet planned for production release.
 
 ## Privacy
 
-### How does FHE work?
+### How does Inco confidential compute work?
 
-Fully Homomorphic Encryption allows computations on encrypted data without decrypting:
+Inco confidential compute allows computations on encrypted data without decrypting:
 
 ```
 E(a) + E(b) = E(a + b)
